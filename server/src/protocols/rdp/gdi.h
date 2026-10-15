@@ -25,8 +25,8 @@
 
 /**
  * Notifies the internal GDI implementation that a frame is either starting or
- * ending. If the frame is ending and the connected client is ready to receive
- * a new frame, a new frame will be flushed to the client.
+ * ending. An explicit start holds incomplete drawing until its matching end
+ * or a bounded recovery deadline. Completed frames still respect client lag.
  *
  * @param context
  *     The rdpContext associated with the current RDP session.

@@ -37,17 +37,22 @@ TESTS = $(check_PROGRAMS)
 
 test_rdp_SOURCES =      \
     fs/basename.c       \
-    fs/normalize_path.c
+    fs/normalize_path.c \
+    gdi/frame-markers.c
 
 test_rdp_CFLAGS =                \
     -Werror -Wall -pedantic      \
     @LIBGUAC_CLIENT_RDP_INCLUDE@ \
-    @LIBGUAC_INCLUDE@
+    @LIBGUAC_INCLUDE@            \
+    @COMMON_INCLUDE@             \
+    @COMMON_SSH_INCLUDE@         \
+    @RDP_CFLAGS@
 
 test_rdp_LDADD =               \
     @CUNIT_LIBS@               \
     @LIBGUAC_CLIENT_RDP_LTLIB@ \
-    @LIBGUAC_LTLIB@
+    @LIBGUAC_LTLIB@            \
+    @RDP_LIBS@
 
 #
 # Autogenerate test runner

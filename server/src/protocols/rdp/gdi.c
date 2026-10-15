@@ -40,8 +40,11 @@ void guac_rdp_gdi_mark_frame(rdpContext* context, int starting) {
     guac_client* client = ((rdp_freerdp_context*) context)->client;
     guac_rdp_client* rdp_client = (guac_rdp_client*) client->data;
 
-    /* A new frame has been received from the RDP server and processed */
-    if (!starting)
+    /* Hold all updates between the matching start/end markers. Considering
+     * only END allows timing heuristics to publish a partly received frame. */
+    if (starting)
+        guac_display_render_thread_notify_frame_start(rdp_client->render_thread);
+    else
         guac_display_render_thread_notify_frame(rdp_client->render_thread);
 
 }
@@ -62,7 +65,10 @@ BOOL guac_rdp_gdi_surface_frame_marker(rdpContext* context, const SURFACE_FRAME_
     frame_acknowledge = context->settings->FrameAcknowledge;
 #endif
 
-    if (frame_acknowledge > 0)
+    /* Frame acknowledgements describe a completed frame. Acknowledging BEGIN
+     * can let the server send ahead before this frame has even arrived. */
+    if (frame_acknowledge > 0
+            && surface_frame_marker->frameAction == SURFACECMD_FRAMEACTION_END)
         IFCALL(context->update->SurfaceFrameAcknowledge, context,
                 surface_frame_marker->frameId);
 
@@ -159,6 +165,10 @@ BOOL guac_rdp_gdi_desktop_resize(rdpContext* context) {
 
     int width = guac_rdp_get_width(context->instance);
     int height = guac_rdp_get_height(context->instance);
+
+    /* A reactivation may discard an unfinished source frame. Its missing END
+     * must not hold the resized display until the recovery deadline expires. */
+    guac_display_render_thread_reset_frame(rdp_client->render_thread);
 
 #if (FREERDP_VERSION_MAJOR < 3) || \
     (FREERDP_VERSION_MAJOR == 3 && FREERDP_VERSION_MINOR < 8)

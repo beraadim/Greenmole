@@ -38,6 +38,27 @@
  */
 #define GUAC_DISPLAY_MAX_LAG_COMPENSATION 500
 
+/** The maximum time to hold an unmatched explicit source frame, in ms. */
+#define GUAC_DISPLAY_SOURCE_FRAME_TIMEOUT 100
+
+/** The maximum batching delay for updates without explicit boundaries. */
+#define GUAC_DISPLAY_UNMARKED_FRAME_BUDGET 32
+
+/** The maximum quiet window inferred from gaps between unmarked updates. */
+#define GUAC_DISPLAY_UNMARKED_QUIET_LIMIT 12
+
+/** Number of millisecond buckets for render-batch gap statistics. */
+#define GUAC_DISPLAY_RENDER_GAP_BUCKETS 101
+
+/** Why the render scheduler decided to submit a batch. */
+typedef enum guac_display_render_reason {
+    GUAC_DISPLAY_RENDER_EXPLICIT,
+    GUAC_DISPLAY_RENDER_QUIET,
+    GUAC_DISPLAY_RENDER_BUDGET,
+    GUAC_DISPLAY_RENDER_SOURCE_TIMEOUT,
+    GUAC_DISPLAY_RENDER_REASON_COUNT
+} guac_display_render_reason;
+
 /*
  * IMPORTANT: All functions defined within the internals of guac_display that
  * DO NOT acquire locks on their own are given prefixes based on whether they
@@ -315,6 +336,28 @@ struct guac_display_render_thread {
      */
     unsigned int frames;
 
+    /** Whether a source-frame start is awaiting its matching end. */
+    int source_frame_open;
+
+    /** Earliest unmatched start. Duplicate starts never extend its deadline. */
+    guac_timestamp source_frame_start;
+
+    /** Timestamp and quiet-window estimate for the latest graphical change. */
+    guac_timestamp last_modified;
+    int have_last_modified;
+    unsigned int quiet_window;
+
+    /** Low-volume TRACE diagnostics. All counters are scheduler-owned. */
+    unsigned long batches;
+    unsigned long source_frames;
+    unsigned long coalesced_frames;
+    unsigned long closure_reasons[GUAC_DISPLAY_RENDER_REASON_COUNT];
+    unsigned long gap_histogram[GUAC_DISPLAY_RENDER_GAP_BUCKETS];
+    unsigned long gap_count;
+    guac_timestamp last_batch;
+    guac_timestamp last_diagnostics;
+    int have_last_batch;
+
 };
 
 /**
@@ -559,6 +602,13 @@ struct guac_display_layer {
      * modifying or reading this member.
      */
     guac_display_layer_state pending_frame;
+
+    /**
+     * Whether the underlying buffer was replaced since the last frame commit.
+     * A replacement requires a full snapshot even when its geometry is
+     * unchanged. Protected by the display-level pending_frame.lock.
+     */
+    int pending_frame_buffer_replaced;
 
     /**
      * The Cairo context and surface containing the graphical data of the
@@ -817,6 +867,14 @@ struct guac_display {
      * FIFO is locked.
      */
     int frame_deferred;
+
+    /**
+     * Explicit source-frame gate. Guarded by pending_frame.lock so worker
+     * completion cannot snapshot partially received frames. A missing end
+     * expires at GUAC_DISPLAY_SOURCE_FRAME_TIMEOUT instead of freezing output.
+     */
+    int source_frame_open;
+    guac_timestamp source_frame_start;
 
     /**
      * The current state of the rendering process. Code that needs to be aware

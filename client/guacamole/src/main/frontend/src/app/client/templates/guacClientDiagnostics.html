@@ -3,4 +3,7 @@
     <div>{{'CLIENT.PERFORMANCE_RENDER_FPS' | translate}}: {{number(sample.clientFps)}} · {{'CLIENT.PERFORMANCE_DESKTOP_FPS' | translate}}: {{number(sample.desktopFps)}}</div>
     <div>{{'CLIENT.PERFORMANCE_PROCESSING' | translate}}: {{number(sample.processingLag)}} ms</div>
     <div title="{{'CLIENT.PERFORMANCE_THROUGHPUT_HELP' | translate}}">{{'CLIENT.PERFORMANCE_THROUGHPUT' | translate}}: {{number(sample.kibPerSecond)}} KiB/s</div>
+    <div>{{'CLIENT.PERFORMANCE_TILES' | translate}}: {{number(sample.tilesPerFrame)}} · {{'CLIENT.PERFORMANCE_IMAGE_BYTES' | translate}}: {{number(sample.imageKiBPerFrame)}} KiB</div>
+    <div>{{'CLIENT.PERFORMANCE_SYNC_GAP' | translate}}: {{number(sample.syncGapP50)}} / {{number(sample.syncGapP95)}} ms</div>
+    <div>{{'CLIENT.PERFORMANCE_PROCESSING_P95' | translate}}: {{number(sample.processingP95)}} ms · {{'CLIENT.PERFORMANCE_SOURCE_FRAMES' | translate}}: {{number(sample.sourceFramesPerFrame)}}</div>
 </div>

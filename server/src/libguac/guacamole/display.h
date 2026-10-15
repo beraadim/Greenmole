@@ -786,9 +786,32 @@ guac_display_render_thread* guac_display_render_thread_create(guac_display* disp
 void guac_display_render_thread_notify_modified(guac_display_render_thread* render_thread);
 
 /**
- * Notifies the given render thread that a frame boundary has been reached.
- * Further heuristic detection of frame boundaries by the render thread will
- * stop, and all further frames must be marked through calls to this function.
+ * Marks the beginning of a source frame. Rendering waits for its matching
+ * guac_display_render_thread_notify_frame(), including deferred worker flushes.
+ * An unmatched start expires after 100 ms. Duplicate starts do not extend
+ * that deadline. Call this before changing any pixels belonging to the frame.
+ *
+ * @param render_thread
+ *     The render thread to notify of an explicit source-frame start.
+ */
+void guac_display_render_thread_notify_frame_start(guac_display_render_thread* render_thread);
+
+/**
+ * Drops any unmatched source-frame start, for example before a display resize
+ * or graphics reset invalidates the current frame. Pending graphical changes
+ * are retained and processed normally. This function does not mark a frame as
+ * completed and must not be used as a substitute for a matching frame end.
+ *
+ * @param render_thread
+ *     The render thread whose source-frame expectation should be cleared.
+ */
+void guac_display_render_thread_reset_frame(guac_display_render_thread* render_thread);
+
+/**
+ * Notifies the given render thread that a frame boundary has been reached,
+ * closing any unmatched source-frame start. End-only protocols are supported.
+ * When no source frame is open, completed frames bypass heuristic batching;
+ * other updates continue using bounded heuristic detection.
  *
  * @param render_thread
  *     The render thread to notify of an explicit frame boundary.

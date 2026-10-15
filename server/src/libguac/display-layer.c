@@ -217,6 +217,11 @@ void guac_display_layer_close_raw(guac_display_layer* layer, guac_display_layer_
 
     guac_display* display = layer->display;
 
+    /* Remember replacements until the next frame commit, including multiple
+     * swaps which happen to restore the original address. */
+    if (context->buffer != layer->pending_frame.buffer)
+        layer->pending_frame_buffer_replaced = 1;
+
     /* Release any Cairo resources that were created around the external buffer,
      * in case the details of the buffer have now changed */
     if (context->buffer != layer->pending_frame.buffer) {

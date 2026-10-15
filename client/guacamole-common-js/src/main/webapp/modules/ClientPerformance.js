@@ -38,6 +38,7 @@ Guacamole.ClientPerformance = function ClientPerformance(display, tunnel) {
     var previousWindow;
     var previousStatistics;
     var instruction = tunnel.oninstruction;
+    var frames = new Guacamole.FrameMetrics();
 
     var now = function now() { return window.performance.now(); };
 
@@ -66,9 +67,11 @@ Guacamole.ClientPerformance = function ClientPerformance(display, tunnel) {
 
     tunnel.oninstruction = function measuredInstruction(opcode, args) {
         if (enabled) {
-            bytes += elementSize(opcode, true);
+            var size = elementSize(opcode, true);
             for (var i = 0; i < args.length; i++)
-                bytes += elementSize(args[i], opcode === 'blob');
+                size += elementSize(args[i], opcode === 'blob');
+            bytes += size;
+            frames.receive(opcode, args, size, now());
         }
         if (instruction)
             return instruction.apply(this, arguments);
@@ -77,6 +80,7 @@ Guacamole.ClientPerformance = function ClientPerformance(display, tunnel) {
     var statistics = function statistics(value) {
         latest = value;
         updated = now();
+        frames.rendered(value.processingLag, updated);
         if (previousStatistics)
             previousStatistics.apply(display, arguments);
     };
@@ -88,6 +92,7 @@ Guacamole.ClientPerformance = function ClientPerformance(display, tunnel) {
         enabled = true;
         bytes = 0;
         latest = null;
+        frames.reset();
         started = now();
         previousWindow = display.statisticWindow;
         previousStatistics = display.onstatistics;
@@ -102,6 +107,7 @@ Guacamole.ClientPerformance = function ClientPerformance(display, tunnel) {
         enabled = false;
         bytes = 0;
         latest = null;
+        frames.reset();
         if (display.onstatistics === statistics) {
             display.onstatistics = previousStatistics;
             display.statisticWindow = previousWindow;
@@ -129,6 +135,8 @@ Guacamole.ClientPerformance = function ClientPerformance(display, tunnel) {
             width: display.getWidth(),
             height: display.getHeight()
         };
+        var frameSample = frames.sample(current);
+        Object.keys(frameSample).forEach(function(key) { result[key] = frameSample[key]; });
         if (duration > 0 || !enabled) {
             bytes = 0;
             started = current;

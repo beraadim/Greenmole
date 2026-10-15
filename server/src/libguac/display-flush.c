@@ -97,6 +97,123 @@ static void* LFR_guac_display_broadcast_cursor_state(guac_user* user, void* data
 }
 
 /**
+ * Persists a layer's pending pixels in its last-frame buffer. Stable buffers
+ * need only the refined dirty rectangle copied; copying the entire desktop for
+ * each small update needlessly holds both frame locks and consumes bandwidth
+ * within memory. Buffer replacements and geometry changes still require a full
+ * copy so that pixels which become visible later are initialized correctly.
+ *
+ * @param layer
+ *     The layer whose pending pixels should be committed. Both frame locks
+ *     must be held for writing.
+ *
+ * @return
+ *     The number of bytes copied into the last-frame buffer.
+ */
+static size_t PFW_LFW_guac_display_layer_commit_buffer(guac_display_layer* layer) {
+
+    guac_display_layer_state* pending = &layer->pending_frame;
+    guac_display_layer_state* last = &layer->last_frame;
+
+    /* External buffers may be detached before their owner frees them. Keep
+     * the existing snapshot, and force a full copy if a buffer is reattached. */
+    if (pending->buffer == NULL) {
+        GUAC_ASSERT(pending->buffer_is_external);
+        last->dirty = (guac_rect) { 0 };
+        layer->pending_frame_buffer_replaced = 1;
+        return 0;
+    }
+
+    GUAC_ASSERT(pending->width >= 0 && pending->height >= 0);
+    GUAC_ASSERT(pending->buffer_width >= 0 && pending->buffer_height >= 0);
+    GUAC_ASSERT(pending->buffer_stride >= guac_mem_ckd_mul_or_die(
+                pending->buffer_width, GUAC_DISPLAY_LAYER_RAW_BPP));
+
+    /* Constrain all byte offsets before forming any buffer pointers. The
+     * visible layer can be smaller than its backing allocation, and external
+     * buffers may include row padding. Neither should extend a dirty copy. */
+    guac_rect bounds = {
+        .left = 0,
+        .top = 0,
+        .right = pending->width,
+        .bottom = pending->height
+    };
+    if (bounds.right > pending->buffer_width)
+        bounds.right = pending->buffer_width;
+    if (bounds.bottom > pending->buffer_height)
+        bounds.bottom = pending->buffer_height;
+
+    guac_rect dirty = pending->dirty;
+    guac_rect_constrain(&dirty, &bounds);
+    if (guac_rect_is_empty(&dirty))
+        dirty = (guac_rect) { 0 };
+
+    size_t buffer_size = guac_mem_ckd_mul_or_die(pending->buffer_height,
+            pending->buffer_stride);
+    size_t copied = 0;
+
+    /* Resize the snapshot before considering a partial copy. This must also
+     * work when the pending buffer was supplied by an external owner. */
+    if (last->buffer == NULL
+            || last->buffer_stride != pending->buffer_stride
+            || last->buffer_width != pending->buffer_width
+            || last->buffer_height != pending->buffer_height) {
+
+        guac_mem_free(last->buffer);
+        last->buffer = guac_mem_zalloc(buffer_size);
+        GUAC_ASSERT(buffer_size == 0 || last->buffer != NULL);
+        if (buffer_size != 0)
+            memcpy(last->buffer, pending->buffer, buffer_size);
+
+        last->buffer_stride = pending->buffer_stride;
+        last->buffer_width = pending->buffer_width;
+        last->buffer_height = pending->buffer_height;
+        copied = buffer_size;
+
+    }
+
+    /* A new source buffer or visible geometry can expose pixels outside the
+     * current dirty rectangle. Preserve a complete snapshot in those cases. */
+    else if (layer->pending_frame_buffer_replaced
+            || pending->width != last->width
+            || pending->height != last->height) {
+        copied = buffer_size;
+        if (copied != 0)
+            memcpy(last->buffer, pending->buffer, copied);
+    }
+
+    else if (!guac_rect_is_empty(&dirty)) {
+
+        size_t row_length = guac_mem_ckd_mul_or_die(guac_rect_width(&dirty),
+                GUAC_DISPLAY_LAYER_RAW_BPP);
+        size_t offset = guac_mem_ckd_add_or_die(
+                guac_mem_ckd_mul_or_die(dirty.top, pending->buffer_stride),
+                guac_mem_ckd_mul_or_die(dirty.left, GUAC_DISPLAY_LAYER_RAW_BPP));
+        const unsigned char* source = pending->buffer + offset;
+        unsigned char* destination = last->buffer + offset;
+        int rows = guac_rect_height(&dirty);
+        copied = guac_mem_ckd_mul_or_die(rows, row_length);
+
+        while (rows > 0) {
+            memcpy(destination, source, row_length);
+            /* Advancing a pointer beyond the last row could itself overflow
+             * the allocation when the dirty rectangle has a nonzero X offset. */
+            if (--rows > 0) {
+                source += pending->buffer_stride;
+                destination += last->buffer_stride;
+            }
+        }
+
+    }
+
+    last->dirty = dirty;
+    pending->dirty = (guac_rect) { 0 };
+    layer->pending_frame_buffer_replaced = 0;
+    return copied;
+
+}
+
+/**
  * Finalizes the current pending frame, storing that state as the copy of the
  * last frame. All layer properties that have changed since the last frame will
  * be sent out to connected clients.
@@ -113,6 +230,7 @@ static int PFW_LFW_guac_display_frame_complete(guac_display* display) {
 
     guac_client* client = display->client;
     int retval = 0;
+    size_t copied_bytes = 0;
 
     display->last_frame.layers = display->pending_frame.layers;
     for (guac_display_layer* current = display->pending_frame.layers;
@@ -122,72 +240,16 @@ static int PFW_LFW_guac_display_frame_complete(guac_display* display) {
         current->last_frame.prev = current->pending_frame.prev;
         current->last_frame.next = current->pending_frame.next;
 
-        /* Skip non-existential updates for any layer whose buffer has been
-         * replaced with NULL (this is intentionally allowed to ensure references
-         * to external buffers can be safely removed if necessary, even before
-         * guac_display is freed) */
+        /* Detached external buffers retain no graphical or property updates. */
         if (current->pending_frame.buffer == NULL) {
-            GUAC_ASSERT(current->pending_frame.buffer_is_external);
-            current->last_frame.dirty = (guac_rect) { 0 };
+            PFW_LFW_guac_display_layer_commit_buffer(current);
             continue;
         }
 
-        /* Always resize the last_frame buffer to match the pending_frame prior
-         * to copying over any changes (this is particularly important given
-         * that the pending_frame buffer can be replaced with an external
-         * buffer). Since this involves copying over all data from the
-         * pending frame, we can skip the later pending frame copy based on
-         * whether the pending frame is dirty. */
-        if (current->last_frame.buffer_stride != current->pending_frame.buffer_stride
-                || current->last_frame.buffer_width != current->pending_frame.buffer_width
-                || current->last_frame.buffer_height != current->pending_frame.buffer_height) {
-
-            size_t buffer_size = guac_mem_ckd_mul_or_die(current->pending_frame.buffer_height,
-                    current->pending_frame.buffer_stride);
-
-            guac_mem_free(current->last_frame.buffer);
-            current->last_frame.buffer = guac_mem_zalloc(buffer_size);
-            memcpy(current->last_frame.buffer, current->pending_frame.buffer, buffer_size);
-
-            current->last_frame.buffer_stride = current->pending_frame.buffer_stride;
-            current->last_frame.buffer_width = current->pending_frame.buffer_width;
-            current->last_frame.buffer_height = current->pending_frame.buffer_height;
-
-            current->last_frame.dirty = current->pending_frame.dirty;
-            current->pending_frame.dirty = (guac_rect) { 0 };
-
+        size_t copied = PFW_LFW_guac_display_layer_commit_buffer(current);
+        copied_bytes = guac_mem_ckd_add_or_die(copied_bytes, copied);
+        if (copied != 0)
             retval = 1;
-
-        }
-
-        /* Copy over pending frame contents if actually changed (this is not
-         * necessary if the last_frame buffer was resized to match
-         * pending_frame, as a copy from pending_frame to last_frame is
-         * inherently part of that) */
-        else if (!guac_rect_is_empty(&current->pending_frame.dirty)) {
-
-            unsigned char* pending_frame = current->pending_frame.buffer;
-            unsigned char* last_frame = current->last_frame.buffer;
-            size_t row_length = guac_mem_ckd_mul_or_die(current->pending_frame.width, 4);
-
-            for (int y = 0; y < current->pending_frame.height; y++) {
-                memcpy(last_frame, pending_frame, row_length);
-                last_frame += current->last_frame.buffer_stride;
-                pending_frame += current->pending_frame.buffer_stride;
-            }
-
-            current->last_frame.dirty = current->pending_frame.dirty;
-            current->pending_frame.dirty = (guac_rect) { 0 };
-
-            retval = 1;
-
-        }
-
-        /* Even if nothing has changed in the pending frame, we have to at
-         * least flush that fact to the last frame (otherwise, the last frame
-         * may contain stale dirty rects) */
-        else
-            current->last_frame.dirty = (guac_rect) { 0 };
 
         /* Commit any change in layer size */
         if (current->pending_frame.width != current->last_frame.width
@@ -258,6 +320,9 @@ static int PFW_LFW_guac_display_frame_complete(guac_display* display) {
 
     }
 
+    guac_client_log(client, GUAC_LOG_TRACE,
+            "Frame snapshot: %zu bytes copied.", copied_bytes);
+
     display->last_frame.timestamp = display->pending_frame.timestamp;
     display->last_frame.frames = display->pending_frame.frames;
 
@@ -308,6 +373,17 @@ void guac_display_end_multiple_frames(guac_display* display, int frames) {
 
     guac_rwlock_acquire_write_lock(&display->pending_frame.lock);
     display->pending_frame.frames += frames;
+
+    /* The render scheduler is not the only caller: workers also retry deferred
+     * flushes after finishing the previous frame. Keep this gate under the
+     * snapshot lock so neither path can expose an incomplete source frame.
+     * A lost end marker must not hold output indefinitely. */
+    if (display->source_frame_open) {
+        if (guac_timestamp_current() - display->source_frame_start
+                < GUAC_DISPLAY_SOURCE_FRAME_TIMEOUT)
+            goto finished_with_pending_frame_lock;
+        display->source_frame_open = 0;
+    }
 
     /* Defer rendering of further frames until after any in-progress frame has
      * finished. Graphical changes will meanwhile continue being accumulated in

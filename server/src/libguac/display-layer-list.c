@@ -404,8 +404,14 @@ void PFW_guac_display_layer_resize(guac_display_layer* layer, int width, int hei
 
     /* Skip resizing underlying buffer if it's the caller that's responsible
      * for resizing the buffer */
-    if (!layer->pending_frame.buffer_is_external)
+    if (!layer->pending_frame.buffer_is_external) {
+        int old_width = layer->pending_frame.buffer_width;
+        int old_height = layer->pending_frame.buffer_height;
         XFW_guac_display_layer_buffer_resize(&layer->pending_frame, width, height);
+        if (layer->pending_frame.buffer_width != old_width
+                || layer->pending_frame.buffer_height != old_height)
+            layer->pending_frame_buffer_replaced = 1;
+    }
 
     PFW_guac_display_layer_pending_frame_cells_resize(layer, width, height);
 
