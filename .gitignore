@@ -1,0 +1,8 @@
+# Private runtime/deployment material does not belong in source control.
+/.env
+/.env.*
+!/.env.example
+/local/
+/artifacts/
+/compose.override.yml
+/compose.override.yaml

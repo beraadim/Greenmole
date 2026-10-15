@@ -1,0 +1,27 @@
+{
+  "imported_at_utc": "2026-10-15T08:56:28+00:00",
+  "baseline": "unreleased Apache Guacamole staging/1.6.1",
+  "components": {
+    "server": {
+      "url": "https://github.com/apache/guacamole-server.git",
+      "branch": "staging/1.6.1",
+      "commit": "56a7a88cba86365e80fe418703b8422db72e35a4",
+      "tree": "9810073324045094c936a09a215ba4c34f21dde3",
+      "commit_date": "2026-10-13T07:34:58-04:00",
+      "path": "server"
+    },
+    "client": {
+      "url": "https://github.com/apache/guacamole-client.git",
+      "branch": "staging/1.6.1",
+      "commit": "84a1acea9f99f849d7e6ad95a3218d385b36c55a",
+      "tree": "68e05aa1e0665b89045e0fc2f3960c1ae5162409",
+      "commit_date": "2026-10-14T17:47:42-04:00",
+      "path": "client"
+    }
+  },
+  "required_server_fixes": [
+    "09a52b64a98992a9bee9d7287d960344d9ef6b16",
+    "1221b59fd12f28b1d2a5db49bd51b626d340568f",
+    "56a7a88cba86365e80fe418703b8422db72e35a4"
+  ]
+}
