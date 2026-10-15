@@ -53,14 +53,14 @@ Each upstream Dockerfile expects its own component directory as the build
 context. Use private/local tags, for example:
 
 ```sh
-docker build -t guacamole-private/guacd:1.6.1-private.3 server/
-docker build -t guacamole-private/web:1.6.1-private.3 client/
+docker build -t guacamole-private/guacd:1.6.1-private.4 server/
+docker build -t guacamole-private/web:1.6.1-private.4 client/
 ```
 
 For the reviewed internal release, use the pinned build inputs instead:
 
 ```sh
-python3 scripts/build-images.py releases/1.6.1-private.3.json --jobs 4
+python3 scripts/build-images.py releases/1.6.1-private.4.json --jobs 4
 ```
 
 The script uses local image tags and does not publish or deploy them. It pins
@@ -73,16 +73,23 @@ Preserve source file permissions when extracting that archive (`tar -xp`);
 the runtime entrypoints execute as unprivileged container users. The build
 driver rejects entrypoints whose permissions would prevent this.
 
-Native `make check` now gates the server image. The client build runs the Java
-and Firefox browser tests with `-DskipTests=false`. These checks do not replace
-testing a real remote desktop session.
+Native `make check` gates the server image. The client build runs the Java,
+Firefox browser, and frontend Node tests with `-DskipTests=false`. These checks
+do not replace testing a real remote desktop session.
 
 The current deployment and validation record is
-[`1.6.1-private.3`](releases/1.6.1-private.3.md), including source-frame
-boundaries, bounded grouping for jittered updates, dirty-region copies, the
-optional diagnostics overlay and rollback details. The frame-marker changes
-pair with macrdp 0.1.12; dirty-region copies and adaptive grouping also apply
-to existing servers.
+[`1.6.1-private.4`](releases/1.6.1-private.4.md), including ordered input during
+clipboard synchronization, complete-frame browser catch-up, bounded per-user
+display recovery, expanded diagnostics, configurable encoding workers, measured
+worker-pool tradeoffs, and rollback details. It retains private.3's source-frame
+boundaries, adaptive grouping, and dirty-region copies. Existing macrdp 0.1.12
+remains compatible; this Guacamole release requires no new Mac package.
+
+Worker selection remains automatic on Oberon (22 workers). The isolated
+benchmark found different preferred counts for text scrolling and large 4K
+updates, so it does not establish a new default. See the
+[worker configuration and benchmark method](docs/encoder-workers.md) and
+[sanitized measurements](releases/1.6.1-private.4-encoder-benchmark.json).
 
 This import does not include production configuration, credentials, database
 contents, logs, or any change to the running Guacamole containers. Keep local
