@@ -60,7 +60,7 @@ docker build -t guacamole-private/web:1.6.1-private.1 client/
 For the reviewed internal release, use the pinned build inputs instead:
 
 ```sh
-python3 scripts/build-images.py releases/1.6.1-private.1.json --jobs 4
+python3 scripts/build-images.py releases/1.6.1-private.2.json --jobs 4
 ```
 
 The script uses local image tags and does not publish or deploy them. It pins
@@ -76,6 +76,10 @@ driver rejects entrypoints whose permissions would prevent this.
 Native `make check` now gates the server image. The client build runs the Java
 and Firefox browser tests with `-DskipTests=false`. These checks do not replace
 testing a real remote desktop session.
+
+The current deployment and validation record is
+[`1.6.1-private.2`](releases/1.6.1-private.2.md), including performance changes,
+the optional diagnostics overlay and rollback details.
 
 This import does not include production configuration, credentials, database
 contents, logs, or any change to the running Guacamole containers. Keep local
