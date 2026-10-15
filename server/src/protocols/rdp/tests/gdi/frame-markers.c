@@ -17,6 +17,18 @@
  * under the License.
  */
 
+/* FreeRDP 2's inline color helpers expand WinPR logging macros containing
+ * __FUNCTION__, a GNU extension. Isolate that third-party header from the
+ * pedantic check; the included GDI implementation and tests remain strict. */
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+#include <freerdp/codec/color.h>
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
+
 /* Exercise the actual GDI callbacks with a deterministic render observer.
  * The rest of gdi.c is renamed so these callbacks do not replace the linked
  * RDP plugin's exported functions in this test process. */
