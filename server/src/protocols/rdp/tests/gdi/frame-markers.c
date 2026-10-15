@@ -25,6 +25,7 @@
 #pragma GCC diagnostic ignored "-Wpedantic"
 #endif
 #include <freerdp/codec/color.h>
+#include <winpr/shell.h>
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif
