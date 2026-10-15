@@ -40,6 +40,11 @@ void guac_rdp_gdi_mark_frame(rdpContext* context, int starting) {
     guac_client* client = ((rdp_freerdp_context*) context)->client;
     guac_rdp_client* rdp_client = (guac_rdp_client*) client->data;
 
+    /* PostConnect registers GDI callbacks before the render thread is created.
+     * Any markers received during that startup interval cannot yet be queued. */
+    if (rdp_client->render_thread == NULL)
+        return;
+
     /* Hold all updates between the matching start/end markers. Considering
      * only END allows timing heuristics to publish a partly received frame. */
     if (starting)
@@ -168,7 +173,8 @@ BOOL guac_rdp_gdi_desktop_resize(rdpContext* context) {
 
     /* A reactivation may discard an unfinished source frame. Its missing END
      * must not hold the resized display until the recovery deadline expires. */
-    guac_display_render_thread_reset_frame(rdp_client->render_thread);
+    if (rdp_client->render_thread != NULL)
+        guac_display_render_thread_reset_frame(rdp_client->render_thread);
 
 #if (FREERDP_VERSION_MAJOR < 3) || \
     (FREERDP_VERSION_MAJOR == 3 && FREERDP_VERSION_MINOR < 8)

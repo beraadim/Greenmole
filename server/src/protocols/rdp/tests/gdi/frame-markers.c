@@ -65,6 +65,8 @@ static void init_context(rdp_freerdp_context* context, guac_client* client,
     memset(update, 0, sizeof(*update));
     starts = ends = acknowledgements = 0;
     acknowledged_id = 0;
+    /* The scheduler is mocked and never dereferences this observer token. */
+    rdp_client->render_thread = (guac_display_render_thread*) rdp_client;
     client->data = rdp_client;
     context->client = client;
     context->_p.update = update;
@@ -124,5 +126,19 @@ void test_gdi__order_markers_forward_both_boundaries_without_surface_acks() {
     CU_ASSERT_TRUE(marker_test_surface(&context._p, &surface));
     CU_ASSERT_EQUAL(ends, 2);
     CU_ASSERT_EQUAL(acknowledgements, 0);
+    freerdp_settings_free(context._p.settings);
+}
+
+void test_gdi__startup_markers_do_not_access_an_uncreated_render_thread() {
+    rdp_freerdp_context context;
+    guac_client client;
+    guac_rdp_client rdp_client;
+    rdpUpdate update;
+    init_context(&context, &client, &rdp_client, &update, 0);
+    rdp_client.render_thread = NULL;
+    marker_test_mark_frame(&context._p, 1);
+    marker_test_mark_frame(&context._p, 0);
+    CU_ASSERT_EQUAL(starts, 0);
+    CU_ASSERT_EQUAL(ends, 0);
     freerdp_settings_free(context._p.settings);
 }
