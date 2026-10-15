@@ -64,6 +64,7 @@
     "CLIENT" : {
 
         "ACTION_SHOW_PERFORMANCE" : "Show performance statistics",
+        "ACTION_REFRESH_DISPLAY" : "Refresh display",
         "PERFORMANCE_RENDER_FPS" : "Guacamole frames/s",
         "PERFORMANCE_DESKTOP_FPS" : "Source frames/s",
         "PERFORMANCE_PROCESSING" : "Browser processing",
@@ -75,6 +76,11 @@
         "PERFORMANCE_SYNC_GAP" : "Update gap p50/p95",
         "PERFORMANCE_PROCESSING_P95" : "Browser processing p95",
         "PERFORMANCE_SOURCE_FRAMES" : "Source frames/update",
+        "PERFORMANCE_QUEUE" : "Queued frames",
+        "PERFORMANCE_QUEUE_AGE" : "Oldest frame",
+        "PERFORMANCE_WAITING_IMAGE" : "Waiting for image",
+        "PERFORMANCE_IMAGE_FAILURES" : "Image failures",
+        "PERFORMANCE_REFRESHES" : "Refresh requests",
 
         "ACTION_ACKNOWLEDGE"               : "@:APP.ACTION_ACKNOWLEDGE",
         "ACTION_CANCEL"                    : "@:APP.ACTION_CANCEL",

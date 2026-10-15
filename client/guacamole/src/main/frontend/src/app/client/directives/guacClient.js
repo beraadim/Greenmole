@@ -52,10 +52,12 @@ angular.module('client').directive('guacClient', [function guacClient() {
 
         // Required types
         const ManagedClient = $injector.get('ManagedClient');
+        const ClientInputQueue = $injector.get('ClientInputQueue');
             
         // Required services
         const $rootScope = $injector.get('$rootScope');
         const $window = $injector.get('$window');
+        const clipboardService = $injector.get('clipboardService');
             
         /**
          * Whether the local, hardware mouse cursor is in use.
@@ -133,11 +135,13 @@ angular.module('client').directive('guacClient', [function guacClient() {
         const touch = new Guacamole.Touch(displayContainer);
 
         /**
-         * Whether clipboard synchronization is currently in progress.
+         * Ordered input waiting for any in-progress clipboard synchronization.
+         * Cursor feedback is local and does not wait for this gate.
          *
-         * @type boolean
+         * @type ClientInputQueue
          */
-        let clipboardSyncInProgress = false;
+        const inputQueue = new ClientInputQueue();
+        inputQueue.setBlocked(clipboardService.isSyncInProgress());
 
         /**
          * Updates the scale of the attached Guacamole.Client based on current window
@@ -228,15 +232,17 @@ angular.module('client').directive('guacClient', [function guacClient() {
         };
 
         /**
-         * Handles a mouse event originating from the user's actual mouse.
-         * This differs from handleEmulatedMouseEvent() in that the
-         * software mouse cursor must be shown only if the user's browser
-         * does not support explicitly setting the hardware mouse cursor.
+         * Handles real and emulated mouse input. All remote input shares one
+         * clipboard gate so a pending click cannot be overtaken by its release,
+         * a keyboard modifier change, or a subsequent paste.
          *
          * @param {Guacamole.Mouse.MouseEvent} event
          *     The mouse event to handle.
+         *
+         * @param {boolean} emulated
+         *     Whether to display and scroll to the software cursor.
          */
-        const handleMouseEvent = function handleMouseEvent(event) {
+        const handleMouseInput = function handleMouseInput(event, emulated) {
 
             // Do not attempt to handle mouse state changes if the client
             // or display are not yet available
@@ -252,83 +258,34 @@ angular.module('client').directive('guacClient', [function guacClient() {
             event.stopPropagation();
             event.preventDefault();
 
-            // Wait for any in-progress clipboard synchronization to complete.
-            // This avoids the pasting of outdated clipboard content when guacamole
-            // window regains focus.
-            waitForClipboardSync().then(() => {
+            // Capture display coordinates now, before a zoom change or later
+            // event can alter how this pending input should be interpreted.
+            const targetClient = client;
+            const state = { ...event.state };
+            state.x /= display.getScale();
+            state.y /= display.getScale();
 
-                // Send mouse state, show cursor if necessary
-                display.showCursor(!localCursor);
-                client.sendMouseState(event.state, true);
+            display.showCursor(emulated || !localCursor);
+            display.moveCursor(Math.floor(state.x), Math.floor(state.y));
+            if (emulated)
+                scrollToMouse(event.state);
 
-                // Broadcast the mouse event
-                $rootScope.$broadcast(getMouseEventName(event), event, client);
+            // Only adjacent free movement may be replaced. Drag paths, wheel
+            // pulses, button transitions and interleaved keys remain ordered.
+            const freeMovement = event.type === 'mousemove'
+                && !state.left && !state.middle && !state.right
+                && !state.up && !state.down;
+            inputQueue.enqueue(() => targetClient.sendMouseState(state), freeMovement);
 
-            });
-
-        };
-
-        /**
-         * Returns a promise which resolves once any in-progress clipboard
-         * synchronization has completed.
-         *
-         * @returns {Promise}
-         *     A promise which resolves once any in-progress clipboard
-         *     synchronization has completed.
-         */
-        function waitForClipboardSync() {
-            return new Promise((resolve) => {
-                function checkClipboardSync() {
-                    if (!clipboardSyncInProgress) {
-                        resolve();
-                        return;
-                    }
-
-                    // Synchronization can take 8-10ms, so check again shortly
-                    // to not add slight latency in fast environments.
-                    setTimeout(checkClipboardSync, 10);
-                }
-
-                checkClipboardSync();
-            });
-        }
-
-        /**
-         * Handles a mouse event originating from one of Guacamole's mouse
-         * emulation objects. This differs from handleMouseState() in that
-         * the software mouse cursor must always be shown (as the emulated
-         * mouse device will not have its own cursor).
-         *
-         * @param {Guacamole.Mouse.MouseEvent} event
-         *     The mouse event to handle.
-         */
-        const handleEmulatedMouseEvent = function handleEmulatedMouseEvent(event) {
-
-            // Do not attempt to handle mouse state changes if the client
-            // or display are not yet available
-            if (!client || !display)
-                return;
-
-            // Broadcast mousedown event before sending so that modifiers
-            // inferred from its flags (especially Cmd+Click) are processed
-            // before the click that depends on them
-            if (event.type === 'mousedown')
-                $rootScope.$broadcast('guacBeforeClientMouseDown', event, client);
-
-            event.stopPropagation();
-            event.preventDefault();
-
-            // Ensure software cursor is shown
-            display.showCursor(true);
-
-            // Send mouse state, ensure cursor is visible
-            scrollToMouse(event.state);
-            client.sendMouseState(event.state, true);
-
-            // Broadcast the mouse event
+            // Process modifier observations when the event occurs. Any keys
+            // inferred by these listeners join the same input queue, after
+            // mouse-up or before mouse-down as appropriate.
             $rootScope.$broadcast(getMouseEventName(event), event, client);
 
         };
+
+        const handleMouseEvent = event => handleMouseInput(event, false);
+        const handleEmulatedMouseEvent = event => handleMouseInput(event, true);
 
         /**
          * Return the name of the angular event associated with the provided
@@ -369,7 +326,11 @@ angular.module('client').directive('guacClient', [function guacClient() {
 
             // Send touch state, hiding local cursor
             display.showCursor(false);
-            client.sendTouchState(event.state, true);
+            const targetClient = client;
+            const state = { ...event.state };
+            state.x /= display.getScale();
+            state.y /= display.getScale();
+            inputQueue.enqueue(() => targetClient.sendTouchState(state));
 
             // Broadcast the touch event
             $rootScope.$broadcast(getTouchEventName(event), event, client);
@@ -378,6 +339,12 @@ angular.module('client').directive('guacClient', [function guacClient() {
 
         // Attach any given managed client
         $scope.$watch('client', function attachManagedClient(managedClient) {
+
+            // Pending input belongs only to the client that received it.
+            inputQueue.clear();
+            client = null;
+            display = null;
+            displayElement = null;
 
             // Remove any existing display
             displayContainer.innerHTML = "";
@@ -608,53 +575,76 @@ angular.module('client').directive('guacClient', [function guacClient() {
         };
 
         // Ensure focus is regained via mousedown before forwarding event
-        mouse.on('mousedown', document.body.focus.bind(document.body));
+        const focusBody = document.body.focus.bind(document.body);
+        mouse.on('mousedown', focusBody);
 
         // Forward all mouse events
         mouse.onEach(['mousedown', 'mousemove', 'mouseup'], handleMouseEvent);
 
         // Hide software cursor when mouse leaves display
-        mouse.on('mouseout', function() {
+        const hideCursor = function hideCursor() {
             if (!display) return;
             display.showCursor(false);
-        });
+        };
+        mouse.on('mouseout', hideCursor);
 
         // Update remote clipboard if local clipboard changes
         $scope.$on('guacClipboard', function onClipboard(event, data) {
-            ManagedClient.setClipboard($scope.client, data);
+            if (client)
+                ManagedClient.setClipboard($scope.client, data);
         });
+
+        /** Adds keyboard input to the same ordered clipboard gate as clicks. */
+        const sendKey = function sendKey(pressed, keysym) {
+            const targetClient = client;
+            if (targetClient)
+                inputQueue.enqueue(() => targetClient.sendKeyEvent(pressed, keysym));
+        };
 
         // Translate local keydown events to remote keydown events if keyboard is enabled
         $scope.$on('guacKeydown', function keydownListener(event, keysym, keyboard) {
-            if ($scope.client.clientProperties.focused) {
-                client.sendKeyEvent(1, keysym);
+            if (client && $scope.client.clientProperties.focused) {
+                sendKey(1, keysym);
                 event.preventDefault();
             }
         });
         
         // Translate local keyup events to remote keyup events if keyboard is enabled
         $scope.$on('guacKeyup', function keyupListener(event, keysym, keyboard) {
-            if ($scope.client.clientProperties.focused) {
-                client.sendKeyEvent(0, keysym);
+            if (client && $scope.client.clientProperties.focused) {
+                sendKey(0, keysym);
                 event.preventDefault();
             }   
         });
 
         // Universally handle all synthetic keydown events
         $scope.$on('guacSyntheticKeydown', function syntheticKeydownListener(event, keysym) {
-            if ($scope.client.clientProperties.focused)
-                client.sendKeyEvent(1, keysym);
+            if (client && $scope.client.clientProperties.focused)
+                sendKey(1, keysym);
         });
         
         // Universally handle all synthetic keyup events
         $scope.$on('guacSyntheticKeyup', function syntheticKeyupListener(event, keysym) {
-            if ($scope.client.clientProperties.focused)
-                client.sendKeyEvent(0, keysym);
+            if (client && $scope.client.clientProperties.focused)
+                sendKey(0, keysym);
         });
 
         // Track clipboard synchronization status
-        $rootScope.$on('clipboardSyncInProgress', function clipboardSyncStatus(event, status) {
-            clipboardSyncInProgress = status;
+        const stopClipboardSyncListener = $rootScope.$on('clipboardSyncInProgress', function clipboardSyncStatus(event, status) {
+            inputQueue.setBlocked(status);
+        });
+
+        $scope.$on('$destroy', function destroyClientInput() {
+            stopClipboardSyncListener();
+            inputQueue.dispose();
+            client = null;
+            display = null;
+            mouse.off('mousedown', focusBody);
+            mouse.off('mouseout', hideCursor);
+            mouse.offEach(['mousedown', 'mousemove', 'mouseup'], handleMouseEvent);
+            touchScreen.offEach(['mousedown', 'mousemove', 'mouseup'], handleEmulatedMouseEvent);
+            touchPad.offEach(['mousedown', 'mousemove', 'mouseup'], handleEmulatedMouseEvent);
+            touch.offEach(['touchstart', 'touchmove', 'touchend'], handleTouchEvent);
         });
 
         /**

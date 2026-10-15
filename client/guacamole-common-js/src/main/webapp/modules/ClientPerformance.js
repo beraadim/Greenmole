@@ -27,8 +27,9 @@ var Guacamole = Guacamole || {};
  * @constructor
  * @param {!Guacamole.Display} display The client's display.
  * @param {!Guacamole.Tunnel} tunnel The client's tunnel.
+ * @param {function():object} [recoveryStatistics] Numeric recovery counters.
  */
-Guacamole.ClientPerformance = function ClientPerformance(display, tunnel) {
+Guacamole.ClientPerformance = function ClientPerformance(display, tunnel, recoveryStatistics) {
 
     var enabled = false;
     var bytes = 0;
@@ -135,6 +136,15 @@ Guacamole.ClientPerformance = function ClientPerformance(display, tunnel) {
             width: display.getWidth(),
             height: display.getHeight()
         };
+        var queue = enabled && connected && display.getQueueStatistics
+            ? display.getQueueStatistics() : null;
+        result.pendingFrames = queue ? queue.pendingFrames : null;
+        result.oldestFrameAge = queue ? queue.oldestFrameAge : null;
+        result.blocked = queue ? queue.blocked : false;
+        var recovery = enabled && connected && recoveryStatistics
+            ? recoveryStatistics() : null;
+        result.imageFailures = recovery ? recovery.imageFailures : null;
+        result.refreshRequests = recovery ? recovery.refreshRequests : null;
         var frameSample = frames.sample(current);
         Object.keys(frameSample).forEach(function(key) { result[key] = frameSample[key]; });
         if (duration > 0 || !enabled) {

@@ -90,6 +90,25 @@ describe('Guacamole.ClientPerformance', function() {
         expect(monitor.sample().kibPerSecond).toBe(0);
     });
 
+    it('samples queue and recovery counters only while enabled and connected', function() {
+        display.getQueueStatistics = jasmine.createSpy('queue').and.returnValue({
+            pendingFrames: 2, oldestFrameAge: 30, blocked: true
+        });
+        var recovery = jasmine.createSpy('recovery').and.returnValue({ imageFailures: 1, refreshRequests: 1 });
+        monitor = new Guacamole.ClientPerformance(display, tunnel, recovery);
+        monitor.sample();
+        expect(display.getQueueStatistics).not.toHaveBeenCalled();
+        expect(recovery).not.toHaveBeenCalled();
+        tunnel.setState(Guacamole.Tunnel.State.OPEN);
+        monitor.start();
+        expect(monitor.sample()).toEqual(jasmine.objectContaining({
+            pendingFrames: 2, oldestFrameAge: 30, blocked: true, imageFailures: 1, refreshRequests: 1
+        }));
+        expect(display.getQueueStatistics).toHaveBeenCalledTimes(1);
+        monitor.stop(); monitor.sample();
+        expect(display.getQueueStatistics).toHaveBeenCalledTimes(1);
+        expect(recovery).toHaveBeenCalledTimes(1);
+    });
     it('does not overwrite a statistics handler replaced by another consumer', function() {
         monitor.start();
         var replacement = display.onstatistics = jasmine.createSpy('replacement');

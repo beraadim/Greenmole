@@ -1,0 +1,106 @@
+<!doctype html>
+<!--
+Licensed to the Apache Software Foundation (ASF) under one or more contributor
+license agreements. See the NOTICE file distributed with this work for
+additional information regarding copyright ownership. The ASF licenses this
+file to you under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy at
+http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+-->
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Guacamole display refresh integration test</title>
+    <script src="../node_modules/angular/angular.js"></script>
+    <script src="../../../../../guacamole-common-js/src/main/webapp/modules/DisplayRecovery.js"></script>
+</head>
+<body>
+    <div id="fixture"></div>
+    <pre id="results">Pending</pre>
+    <script>
+    // Serve the repository root over HTTP and open this file. The real display
+    // menu is fetched and compiled using Angular; no remote desktop is opened.
+    (async function() {
+        const checks = [];
+        const check = function(name, value) {
+            checks.push({ name, passed: !!value });
+            if (!value) throw new Error(name);
+        };
+        try {
+            angular.module('refreshUITest', []).filter('translate', function() {
+                return function(key) {
+                    return key === 'CLIENT.ACTION_REFRESH_DISPLAY' ? 'Refresh display' : key;
+                };
+            });
+            const injector = angular.injector(['ng', 'refreshUITest']);
+            const root = injector.get('$rootScope');
+            const compile = injector.get('$compile');
+            const source = await (await fetch('../src/app/client/templates/client.html')).text();
+            const markup = new DOMParser().parseFromString(source, 'text/html')
+                .querySelector('#display-settings').outerHTML;
+            const scope = root.$new();
+            const element = compile(markup)(scope);
+            document.getElementById('fixture').appendChild(element[0]);
+            const button = function() {
+                return document.querySelector('#display-settings button');
+            };
+            const sent = [];
+            let connected = true;
+            const recovery = new Guacamole.DisplayRecovery({
+                sendMessage: (...args) => sent.push(args)
+            }, () => connected);
+            const supportedClient = {
+                client: {
+                    isDisplayRefreshSupported: () => recovery.isSupported(),
+                    requestDisplayRefresh: () => recovery.request()
+                },
+                clientProperties: {}
+            };
+
+            root.$digest();
+            check('No focused connection exposes no refresh action', !button());
+            scope.focusedClient = supportedClient;
+            root.$digest();
+            check('An older server that advertises no extension exposes no refresh action', !button());
+            recovery.handleInstruction(['2', 'ready']);
+            root.$digest();
+            check('An unsupported extension version exposes no refresh action', !button());
+            recovery.handleInstruction(['1', 'ready']);
+            root.$digest();
+            check('A negotiated server exposes the translated refresh action',
+                !!button() && button().textContent.trim() === 'Refresh display');
+            angular.element(button()).triggerHandler('click');
+            check('Clicking refresh invokes the negotiated request API',
+                JSON.stringify(sent) === JSON.stringify([['x-resync', '1', 'request']]));
+            angular.element(button()).triggerHandler('click');
+            check('Repeated clicks respect the recovery rate limit', sent.length === 1);
+            connected = false;
+            root.$digest();
+            check('A disconnected client exposes no refresh action', !button());
+            recovery.reset();
+            connected = true;
+            root.$digest();
+            check('A reused connection must negotiate support again', !button());
+            recovery.handleInstruction(['1', 'ready']);
+            root.$digest();
+            check('Fresh negotiation restores the refresh action', !!button());
+            scope.focusedClient = { client: { isDisplayRefreshSupported: () => false }, clientProperties: {} };
+            root.$digest();
+            check('Switching to an older server removes the refresh action', !button());
+            scope.$destroy();
+            element.remove();
+        }
+        catch (error) {
+            checks.push({ error: String(error), stack: error.stack });
+        }
+        document.getElementById('results').textContent = JSON.stringify(checks, null, 2);
+        document.documentElement.dataset.testStatus = checks.length === 10
+            && checks.every(check => check.passed) ? 'passed' : 'failed';
+    })();
+    </script>
+</body>
+</html>

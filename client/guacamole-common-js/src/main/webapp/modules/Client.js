@@ -98,6 +98,29 @@ Guacamole.Client = function(tunnel) {
      */
     var display = new Guacamole.Display();
 
+    var displayRecovery = new Guacamole.DisplayRecovery(tunnel, function connectedTransport() {
+        return isConnected() && tunnel.isConnected();
+    });
+    display.onimageerror = function imageFailed() {
+        displayRecovery.imageFailed();
+    };
+
+    /** Requests a negotiated snapshot without reconnecting the RDP session. */
+    this.requestDisplayRefresh = function requestDisplayRefresh() {
+        return displayRecovery.request();
+    };
+
+    /** Whether the connected peer supports the private snapshot extension. */
+    this.isDisplayRefreshSupported = function isDisplayRefreshSupported() {
+        return displayRecovery.isSupported();
+    };
+
+    /** Numeric image recovery diagnostics for this connection. */
+    this.getDisplayRecoveryStatistics = function getDisplayRecoveryStatistics() {
+        return displayRecovery.getStatistics();
+    };
+
+
     /**
      * All available layers and buffers
      *
@@ -1058,6 +1081,11 @@ Guacamole.Client = function(tunnel) {
      */
     var instructionHandlers = {
 
+        "x-resync": function(parameters) {
+            displayRecovery.handleInstruction(parameters);
+        },
+
+
         "ack": function(parameters) {
 
             var stream_index = parseInt(parameters[0]);
@@ -1857,6 +1885,8 @@ Guacamole.Client = function(tunnel) {
 
             // Stop sending keep-alive messages
             stopKeepAlive();
+            displayRecovery.reset();
+            display.cancel();
 
             // Send disconnect message and disconnect
             tunnel.sendMessage("disconnect");
@@ -1880,6 +1910,7 @@ Guacamole.Client = function(tunnel) {
      */
     this.connect = function(data) {
 
+        displayRecovery.reset();
         setState(Guacamole.Client.State.CONNECTING);
 
         try {

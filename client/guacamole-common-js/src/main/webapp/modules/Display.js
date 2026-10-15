@@ -186,11 +186,67 @@ Guacamole.Display = function() {
     var frames = [];
 
     /**
-     * Flushes all pending frames synchronously. This function will block until
-     * all pending frames have rendered. If a frame is currently blocked by an
-     * asynchronous operation like an image load, this function will return
-     * after reaching that operation and the flush operation will
-     * automamtically resume after that operation completes.
+     * The frame currently being rendered, if any. This frame is removed from
+     * the pending queue before rendering to prevent reentrant flushes from
+     * rendering or acknowledging it twice.
+     *
+     * @private
+     * @type {?Frame}
+     */
+    var activeFrame = null;
+
+    /**
+     * Whether a rendering slice is currently in progress.
+     *
+     * @private
+     * @type {!boolean}
+     */
+    var flushing = false;
+
+    /**
+     * The timer scheduled to continue a partially rendered queue, or null if
+     * no continuation is pending. A timer is used instead of animation frames
+     * so rendering and acknowledgements also progress in background tabs.
+     *
+     * @private
+     * @type {?number}
+     */
+    var flushTimer = null;
+
+    /**
+     * Returns a monotonic timestamp where available. This clock is used only
+     * to bound work within a rendering slice, independently of wall-clock
+     * adjustments.
+     *
+     * @private
+     * @returns {!number}
+     *     The current timestamp, in milliseconds.
+     */
+    var renderTimestamp = function renderTimestamp() {
+        return window.performance && window.performance.now
+                ? window.performance.now() : new Date().getTime();
+    };
+
+    /**
+     * Schedules another rendering slice. At most one continuation may be
+     * pending, even if additional image loads or sync instructions arrive.
+     *
+     * @private
+     */
+    var scheduleFlush = function scheduleFlush() {
+        if (flushTimer === null) {
+            flushTimer = window.setTimeout(function continueFlush() {
+                flushTimer = null;
+                syncFlush();
+            }, 0);
+        }
+    };
+
+    /**
+     * Renders ready frames in order, yielding after eight milliseconds or
+     * sixteen complete frames, whichever comes first. A single frame remains
+     * atomic even if rendering it exceeds the time budget. A blocked frame
+     * will resume flushing when its asynchronous operation completes.
      *
      * @private
      */
@@ -201,25 +257,50 @@ Guacamole.Display = function() {
 
         var renderedLogicalFrames = 0;
         var rendered_frames = 0;
+        var started = renderTimestamp();
 
-        // Draw all pending frames, if ready
-        while (rendered_frames < frames.length) {
+        flushing = true;
+        try {
 
-            var frame = frames[rendered_frames];
-            if (!frame.isReady())
-                break;
+            // Draw complete frames only. Do not allow a later ready frame to
+            // overtake a frame waiting for image decoding.
+            while (frames.length && frames[0].isReady()) {
 
-            frame.flush();
+                var frame = frames.shift();
+                activeFrame = frame;
+                frame.flush();
+                activeFrame = null;
 
-            localTimestamp = frame.localTimestamp;
-            remoteTimestamp = frame.remoteTimestamp;
-            renderedLogicalFrames += frame.logicalFrames;
-            rendered_frames++;
+                localTimestamp = frame.localTimestamp;
+                remoteTimestamp = frame.remoteTimestamp;
+                renderedLogicalFrames += frame.logicalFrames;
+                rendered_frames++;
 
-        } 
+                // The frame-count cap also bounds catch-up when the browser's
+                // timer resolution is too coarse to measure short frames.
+                if (rendered_frames >= 16 || renderTimestamp() - started >= 8)
+                    break;
 
-        // Remove rendered frames from array
-        frames.splice(0, rendered_frames);
+            }
+
+        }
+        catch (e) {
+            // The failed frame was already removed from the queue. Release
+            // resources held by operations that could not be executed.
+            if (activeFrame)
+                activeFrame.cancel();
+            throw e;
+        }
+        finally {
+            activeFrame = null;
+            flushing = false;
+
+            // Continue even if a drawing callback throws. The failed frame
+            // must not be replayed, as earlier operations may already have
+            // modified the display or acknowledged the remote frame.
+            if (frames.length && frames[0].isReady())
+                scheduleFlush();
+        }
 
         if (rendered_frames)
             notifyFlushed(localTimestamp, remoteTimestamp, renderedLogicalFrames);
@@ -326,7 +407,8 @@ Guacamole.Display = function() {
      * @private
      */
     function __flush_frames() {
-        syncFlush();
+        if (!flushing && flushTimer === null)
+            syncFlush();
     }
 
     /**
@@ -586,6 +668,8 @@ Guacamole.Display = function() {
             completed = true;
             image = decoded || null;
             task.unblock();
+            if (!decoded && guac_display.onimageerror)
+                guac_display.onimageerror();
         };
 
     }
@@ -618,6 +702,27 @@ Guacamole.Display = function() {
      */
     this.getHeight = function() {
         return displayHeight;
+    };
+
+    /**
+     * Returns a snapshot of the pending rendering queue. These values describe
+     * complete frames received by flush(), excluding any frame currently
+     * rendering and tasks not yet assigned to a frame. No image contents or
+     * historical samples are retained for these statistics.
+     *
+     * @returns {!Object}
+     *     An object containing pendingFrames (the number of queued frames),
+     *     oldestFrameAge (the age of the oldest queued frame in milliseconds,
+     *     or zero if the queue is empty), and blocked (whether the oldest frame
+     *     is waiting for an asynchronous drawing operation).
+     */
+    this.getQueueStatistics = function getQueueStatistics() {
+        return {
+            pendingFrames : frames.length,
+            oldestFrameAge : frames.length
+                    ? Math.max(0, new Date().getTime() - frames[0].localTimestamp) : 0,
+            blocked : frames.length ? !frames[0].isReady() : false
+        };
     };
 
     /**
@@ -708,6 +813,16 @@ Guacamole.Display = function() {
      * if any, are not invoked.
      */
     this.cancel = function cancel() {
+
+        if (flushTimer !== null) {
+            window.clearTimeout(flushTimer);
+            flushTimer = null;
+        }
+
+        if (activeFrame) {
+            activeFrame.cancel();
+            activeFrame = null;
+        }
 
         frames.forEach(function cancelFrame(frame) {
             frame.cancel();
@@ -902,6 +1017,13 @@ Guacamole.Display = function() {
      * @param {!Blob} blob
      *     The Blob containing the image data to draw.
      */
+    /**
+     * Fired after an image decode fails and its drawing task is released.
+     * Cancellation does not fire this event. No image/error data is exposed.
+     * @event
+     */
+    this.onimageerror = null;
+
     this.drawBlob = function(layer, x, y, blob) {
 
         var task;
@@ -932,7 +1054,9 @@ Guacamole.Display = function() {
             var url = URL.createObjectURL(blob);
             var image = new Image();
 
+            var finished = false;
             var releaseURL = function releaseURL() {
+                finished = true;
                 image.onload = image.onerror = null;
                 if (url) {
                     URL.revokeObjectURL(url);
@@ -956,7 +1080,13 @@ Guacamole.Display = function() {
 
             // Load image from URL
             image.onload = task.unblock;
-            image.onerror = task.unblock;
+            image.onerror = function imageFailed() {
+                if (!finished) {
+                    task.unblock();
+                    if (guac_display.onimageerror)
+                        guac_display.onimageerror();
+                }
+            };
             image.src = url;
 
         }
@@ -1049,8 +1179,60 @@ Guacamole.Display = function() {
         // Lacking ImageDecoder, fall back to data URIs and the Image object
         else {
             var reader = new Guacamole.DataURIReader(stream, mimetype);
+            var image = null;
+            var finished = false;
+
+            var detachReader = function detachReader() {
+                reader.onend = null;
+                stream.onblob = null;
+                stream.onend = null;
+            };
+
+            var releaseStreamImage = function releaseStreamImage() {
+                finished = true;
+                detachReader();
+                if (image) {
+                    image.onload = image.onerror = null;
+                    image = null;
+                }
+            };
+
+            // Reserve the image's position before any bytes arrive. A later
+            // stream may finish first, and cancellation must cover streams
+            // that have not yet reached EOF as well as pending image loads.
+            var task = scheduleTask(function drawStreamImage() {
+                try {
+                    if (image && image.width && image.height)
+                        layer.drawImage(x, y, image);
+                }
+                finally {
+                    releaseStreamImage();
+                }
+            }, true, releaseStreamImage);
+
+            var imageFailed = function imageFailed() {
+                if (!finished) {
+                    task.unblock();
+                    if (guac_display.onimageerror)
+                        guac_display.onimageerror();
+                }
+            };
+
             reader.onend = function drawImageDataURI() {
-                guac_display.draw(layer, x, y, reader.getURI());
+                if (finished)
+                    return;
+
+                var uri = reader.getURI();
+                detachReader();
+                try {
+                    image = new Image();
+                    image.onload = task.unblock;
+                    image.onerror = imageFailed;
+                    image.src = uri;
+                }
+                catch (e) {
+                    imageFailed();
+                }
             };
         }
 
@@ -1075,17 +1257,30 @@ Guacamole.Display = function() {
      */
     this.draw = function(layer, x, y, url) {
 
-        var task = scheduleTask(function __display_draw() {
-
-            // Draw the image only if it loaded without errors
-            if (image.width && image.height)
-                layer.drawImage(x, y, image);
-
-        }, true);
-
         var image = new Image();
+        var finished = false;
+        var releaseImage = function releaseImage() {
+            finished = true;
+            image.onload = image.onerror = null;
+        };
+        var task = scheduleTask(function __display_draw() {
+            try {
+                if (image.width && image.height)
+                    layer.drawImage(x, y, image);
+            }
+            finally {
+                releaseImage();
+            }
+        }, true, releaseImage);
+
         image.onload = task.unblock;
-        image.onerror = task.unblock;
+        image.onerror = function imageFailed() {
+            if (!finished) {
+                task.unblock();
+                if (guac_display.onimageerror)
+                    guac_display.onimageerror();
+            }
+        };
         image.src = url;
 
     };

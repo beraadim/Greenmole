@@ -200,11 +200,16 @@ static void verify_refresh_snapshot(refresh_sink* sink, guac_composite_mode mode
     while (offset < sink->length) {
         guac_parser* parser = guac_parser_alloc();
         CU_ASSERT_PTR_NOT_NULL_FATAL(parser);
-        int consumed = guac_parser_append(parser, sink->buffer + offset,
-                sink->length - offset);
-        CU_ASSERT_TRUE_FATAL(consumed > 0);
-        CU_ASSERT_EQUAL_FATAL(parser->state, GUAC_PARSE_COMPLETE);
-        offset += consumed;
+        /* append() advances one element at a time, even if the full
+         * instruction is already present. Continue until its semicolon. */
+        while (parser->state != GUAC_PARSE_COMPLETE) {
+            CU_ASSERT_TRUE_FATAL(offset < sink->length);
+            int consumed = guac_parser_append(parser, sink->buffer + offset,
+                    sink->length - offset);
+            CU_ASSERT_TRUE_FATAL(consumed > 0);
+            CU_ASSERT_NOT_EQUAL_FATAL(parser->state, GUAC_PARSE_ERROR);
+            offset += consumed;
+        }
         if (!strcmp(parser->opcode, "size")) {
             CU_ASSERT_EQUAL_FATAL(parser->argc, 3);
             CU_ASSERT_STRING_EQUAL(parser->argv[1], "2");

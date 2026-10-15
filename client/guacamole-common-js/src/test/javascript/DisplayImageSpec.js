@@ -53,6 +53,7 @@ describe("Guacamole.Display image decoding", function() {
 
     beforeEach(function() {
         display = new Guacamole.Display();
+        display.onimageerror = jasmine.createSpy('image error');
         layer = { drawImage: jasmine.createSpy('drawImage') };
         originalBitmap = window.createImageBitmap;
         originalDecoder = window.ImageDecoder;
@@ -84,7 +85,10 @@ describe("Guacamole.Display image decoding", function() {
             display.drawBlob(layer, 1, 2, new Blob());
             var verify = drawAfterFailure();
             pending.reject(new Error('invalid bitmap'));
-            return pending.promise.catch(verify);
+            return pending.promise.catch(function() {
+                verify();
+                expect(display.onimageerror).toHaveBeenCalledTimes(1);
+            });
         });
 
         it("unblocks following drawing after a synchronous decode failure", function() {
@@ -104,6 +108,7 @@ describe("Guacamole.Display image decoding", function() {
                 expect(decoded.close).toHaveBeenCalledTimes(1);
                 expect(layer.drawImage).not.toHaveBeenCalled();
                 expect(flushed).not.toHaveBeenCalled();
+                expect(display.onimageerror).not.toHaveBeenCalled();
             });
         });
 
@@ -174,6 +179,7 @@ describe("Guacamole.Display image decoding", function() {
             return pending.promise.catch(function() {
                 verify();
                 expect(decoder.close).toHaveBeenCalledTimes(1);
+                expect(display.onimageerror).toHaveBeenCalledTimes(1);
             });
         });
 
@@ -190,6 +196,7 @@ describe("Guacamole.Display image decoding", function() {
                 expect(decoded.close).toHaveBeenCalledTimes(1);
                 expect(layer.drawImage).not.toHaveBeenCalled();
                 expect(flushed).not.toHaveBeenCalled();
+                expect(display.onimageerror).not.toHaveBeenCalled();
             });
         });
 
@@ -337,6 +344,7 @@ describe("Guacamole.Display image decoding", function() {
             blobImage.onerror();
             verify();
             expect(URL.revokeObjectURL).toHaveBeenCalledOnceWith('blob:test');
+            expect(display.onimageerror).toHaveBeenCalledTimes(1);
         });
 
     });

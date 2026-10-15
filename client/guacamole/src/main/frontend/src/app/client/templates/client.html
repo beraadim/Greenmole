@@ -189,6 +189,8 @@
                         <div id="zoom-settings">
                             <guac-client-zoom client="focusedClient"></guac-client-zoom>
                         </div>
+                        <button type="button" ng-if="focusedClient.client.isDisplayRefreshSupported()"
+                                ng-click="focusedClient.client.requestDisplayRefresh()">{{'CLIENT.ACTION_REFRESH_DISPLAY' | translate}}</button>
                         <label><input type="checkbox" ng-model="focusedClient.clientProperties.showStatistics"> {{'CLIENT.ACTION_SHOW_PERFORMANCE' | translate}}</label>
                     </div>
                 </div>
