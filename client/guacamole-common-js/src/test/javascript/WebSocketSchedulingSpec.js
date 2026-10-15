@@ -56,6 +56,7 @@ describe('Guacamole.WebSocketTunnel receive scheduling', function() {
                 break;
             var id = ready[0];
             var timer = timers[id];
+            now += timer.due - wallTime;
             wallTime = timer.due;
             if (timer.interval)
                 timer.due += timer.interval;
@@ -63,6 +64,7 @@ describe('Guacamole.WebSocketTunnel receive scheduling', function() {
                 delete timers[id];
             timer.callback();
         }
+        now += target - wallTime;
         wallTime = target;
     }
 

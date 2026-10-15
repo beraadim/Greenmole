@@ -2,8 +2,11 @@
 """Compare the real Guacamole planner/FIFO/encoder path without a live desktop."""
 
 import argparse
+import hashlib
 import json
+import math
 from pathlib import Path
+import re
 import shlex
 import subprocess
 
@@ -11,7 +14,8 @@ ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "scripts/benchmarks/display-production.c"
 CASES = ["small-text", "scroll-text", "partial-text-redraw", "mixed-4k-desktop",
          "wallpaper-4k", "partial-photo-on-4k", "small-photo-on-4k",
-         "window-1920x944", "window-2560x1304"]
+         "window-1920x944", "window-2560x1304", "solid-color-4k", "no-copy-hit",
+         "early-copy-hit", "late-copy-hit", "planner-reuse-alternating"]
 
 
 def bounded(minimum, maximum):
@@ -23,22 +27,38 @@ def bounded(minimum, maximum):
     return parse
 
 
-def run(image, mode, samples, warmup, workers, cpuset, selected_cases):
+def revision(text):
+    if not re.fullmatch(r"[0-9a-fA-F]{40}", text):
+        raise argparse.ArgumentTypeError("expected a full 40-character Git revision")
+    return text.lower()
+
+
+def run(image, mode, samples, warmup, workers, cpuset, selected_cases,
+        verify_frames, expected_revision):
+    details = json.loads(subprocess.check_output(["docker", "image", "inspect", image], text=True))[0]
+    source_revision = (details.get("Config", {}).get("Labels") or {}).get("org.opencontainers.image.revision")
+    if expected_revision and source_revision != expected_revision:
+        raise RuntimeError(f"{image}: source revision {source_revision!r} does not match {expected_revision}")
     binary_mode = "adaptive" if mode.startswith("adaptive") else mode
+    # The private setter uses 1 to enable its shipped default (currently 12),
+    # not a one-worker cap. Only values greater than 1 override that default.
     cap = int(mode.split("-")[1]) if "-" in mode else 1
-    compile_flags = "-DBENCH_CONCURRENCY_FIELDS" if binary_mode != "baseline" else ""
     command = r"""set -eu
 export TMPDIR=/run/encoderbench
 export LD_LIBRARY_PATH=/opt/guacamole/lib
 cd /run/encoderbench
-cc -O2 -std=gnu11 -Wall -Werror -pedantic -pthread EXTRA_FLAGS \
-    -I/tmp/guacamole-server/src/libguac $(pkg-config --cflags cairo) \
+extra_flags=
+if grep -q worker_active_limit /tmp/guacamole-server/src/libguac/display-priv.h; then
+    extra_flags=-DBENCH_CONCURRENCY_FIELDS
+fi
+cc -O2 -std=gnu11 -Wall -Werror -pedantic -pthread $extra_flags \
+    -I/tmp/guacamole-server/src/libguac $(pkg-config --cflags cairo libwebp) \
     /bench/display-production.c -L/opt/guacamole/lib \
     -Wl,-rpath,/opt/guacamole/lib -Wl,-z,stack-size=8388608 \
-    -lguac -ldl $(pkg-config --libs cairo) -o /run/encoderbench/benchmark
-exec /run/encoderbench/benchmark MODE SAMPLES WARMUP ACTIVE_CAP CASE_FILTER
+    -lguac -ldl $(pkg-config --libs cairo libwebp) -o /run/encoderbench/benchmark
+exec /run/encoderbench/benchmark MODE SAMPLES WARMUP ACTIVE_CAP CASE_FILTER VERIFY_FRAMES
 """.replace("MODE", shlex.quote(binary_mode)).replace("SAMPLES", str(samples)).replace("WARMUP", str(warmup)).replace(
-        "ACTIVE_CAP", str(cap)).replace("CASE_FILTER", shlex.quote(",".join(selected_cases))).replace("EXTRA_FLAGS", compile_flags)
+        "ACTIVE_CAP", str(cap)).replace("CASE_FILTER", shlex.quote(",".join(selected_cases))).replace("VERIFY_FRAMES", str(verify_frames))
     docker = ["docker", "run", "--rm", "--pull=never", "--network=none",
               "--read-only", "--tmpfs", "/run/encoderbench:rw,exec,size=128m",
               "--cap-drop=ALL", "--security-opt", "no-new-privileges",
@@ -47,14 +67,25 @@ exec /run/encoderbench/benchmark MODE SAMPLES WARMUP ACTIVE_CAP CASE_FILTER
               f"type=bind,src={SOURCE},dst=/bench/display-production.c,readonly"]
     if cpuset:
         docker += ["--cpuset-cpus", cpuset]
-    docker += [image, "/bin/sh", "-c", command]
+    # Run the inspected immutable identity so a tag change cannot invalidate
+    # the recorded source/image provenance between inspection and execution.
+    docker += [details["Id"], "/bin/sh", "-c", command]
     result = subprocess.run(docker, text=True, stdout=subprocess.PIPE, check=True)
     cases = [json.loads(line) for line in result.stdout.splitlines() if line]
     if len(cases) != len(selected_cases) or any(case["mode"] != binary_mode for case in cases):
         raise RuntimeError(f"expected {len(selected_cases)} complete {mode} cases")
-    details = json.loads(subprocess.check_output(["docker", "image", "inspect", image], text=True))[0]
+    if {case["scenario"] for case in cases} != set(selected_cases):
+        raise RuntimeError("benchmark returned missing or unexpected scenarios")
+    if verify_frames and any(case["verification"]["frames"] != verify_frames for case in cases):
+        raise RuntimeError("lossless protocol/pixel verification did not finish")
+    for case in cases:
+        p50, p95, cpu = case["frame_p50_ms"], case["frame_p95_ms"], case["cpu_ms_per_frame"]
+        if not all(math.isfinite(value) and value > 0 for value in (p50, p95, cpu)) or p50 > p95:
+            raise RuntimeError(f"invalid timing summaries for {case['scenario']}")
     return {"image": image, "image_id": details["Id"], "mode": mode,
-            "source_revision": (details.get("Config", {}).get("Labels") or {}).get("org.opencontainers.image.revision"),
+            "source_revision": source_revision,
+            "expected_source_revision": expected_revision,
+            "source_revision_verified": bool(expected_revision),
             "cases": cases}
 
 
@@ -62,25 +93,41 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baseline-image", required=True)
     parser.add_argument("--candidate-image", required=True)
+    parser.add_argument("--baseline-revision", type=revision,
+                        help="require the baseline image's OCI label to match this build source")
+    parser.add_argument("--candidate-revision", type=revision,
+                        help="require the candidate image's OCI label to match this build source")
     parser.add_argument("--samples", type=bounded(2, 1000), default=30)
     parser.add_argument("--warmup", type=bounded(0, 100), default=5)
     parser.add_argument("--workers", type=bounded(1, 64), default=22)
+    parser.add_argument("--verify-frames", type=bounded(0, 10), default=4,
+                        help="untimed lossless protocol/pixel checks per case (0 disables)")
     parser.add_argument("--cpuset-cpus")
     parser.add_argument("--modes", nargs="+", choices=["baseline", "fixed", "adaptive", "adaptive-8", "adaptive-12", "adaptive-16"],
-                        default=["baseline", "fixed", "adaptive"])
+                        default=["baseline", "adaptive"],
+                        help="baseline keeps its library's shipped admission policy; fixed is diagnostic only")
     parser.add_argument("--cases", nargs="+", choices=CASES, default=CASES)
     parser.add_argument("--reverse", action="store_true", help="reverse mode order to check host drift")
     args = parser.parse_args()
+    if len(set(args.cases)) != len(args.cases):
+        parser.error("--cases must not contain duplicates")
     modes = [(args.baseline_image if mode == "baseline" else args.candidate_image, mode)
              for mode in args.modes]
     if args.reverse:
         modes.reverse()
-    runs = [run(image, mode, args.samples, args.warmup, args.workers, args.cpuset_cpus, args.cases)
+    runs = [run(image, mode, args.samples, args.warmup, args.workers, args.cpuset_cpus, args.cases,
+                args.verify_frames, args.baseline_revision if mode == "baseline" else args.candidate_revision)
             for image, mode in modes]
     print(json.dumps({
+        "schema_version": 2,
         "measurement": "production display planner, copy search, FIFO, workers, codecs and serialization to a shared discard socket",
         "limitations": "synthetic fixtures; no capture, RDP transport, browser, Wi-Fi, physical input or frame pacing; copied pixels/planner/encoding included, fixture generation excluded",
-        "fixture_note": "scroll-text translates existing text; partial-text-redraw changes glyph contents; full-window cases preserve actual non-4K dimensions",
+        "fixture_note": "original nine scenarios preserved; added all-solid, zero-copy-hit, early/late exact-copy-hit and alternating-size planner-reuse fixtures",
+        "policy_note": "baseline never calls the setter and preserves its shipped policy (including private.6 default12); adaptive passes setter value1, enabling the candidate default12 rather than limiting it to one worker; only values greater than1 override the adaptive cap; fixed passes0 as a separate full-pool diagnostic; test_active_cap is the legacy setter-control value, not necessarily an observed worker count",
+        "verification": "separate untimed strict ASCII protocol replay with real PNG/lossless WebP decoding and exact RGB comparison of every fixture pixel after each checked frame; timing/RSS captured before verification; opaque fixed-size fixtures only, not a general browser or alpha/resize validator",
+        "harness_sha256": hashlib.sha256(SOURCE.read_bytes()).hexdigest(),
+        "verification_frames": args.verify_frames,
+        "statistics_note": "planner counter deltas cover measured frames only; scratch bytes are retained-capacity gauges; unavailable baseline counters are null, not zero",
         "worker_pool": args.workers, "cpuset_cpus": args.cpuset_cpus,
         "samples": args.samples, "warmup": args.warmup, "runs": runs,
     }, indent=2))

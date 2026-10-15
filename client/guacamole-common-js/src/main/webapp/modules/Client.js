@@ -49,22 +49,31 @@ Guacamole.Client = function(tunnel) {
     var KEEP_ALIVE_FREQUENCY = 5000;
 
     /**
-     * The current keep-alive ping timeout ID, if any. This will only be set
-     * upon connecting.
+     * The one-shot keep-alive deadline. Repeated received instructions retain
+     * the same timeout until that deadline changes or the connection stops.
      *
      * @private
-     * @type {number}
+     * @type {!Guacamole.DeadlineTimer}
      */
-    var keepAliveTimeout = null;
+    var keepAliveTimer = new Guacamole.DeadlineTimer(Guacamole.DeadlineTimer.now, function keepAliveDue() {
+        if (keepAliveActive)
+            sendKeepAlive();
+    });
+
+    /** Whether keep-alive scheduling belongs to an active connection attempt. */
+    var keepAliveActive = false;
+
+    /** Rejects work from instruction/state callbacks that replace a connection. */
+    var keepAliveGeneration = 0;
 
     /**
-     * The timestamp of the point in time that the last keep-live ping was
-     * sent, in milliseconds elapsed since midnight of January 1, 1970 UTC.
+     * Elapsed-time timestamp of the last keep-alive attempt, or null if no
+     * keep-alive has been attempted. Scheduling does not use the wall clock.
      *
      * @private
-     * @type {!number}
+     * @type {?number}
      */
-    var lastSentKeepAlive = 0;
+    var lastSentKeepAlive = null;
 
     /**
      * Translation from Guacamole protocol line caps to Layer line caps.
@@ -1821,8 +1830,13 @@ Guacamole.Client = function(tunnel) {
      * @private
      */
     var sendKeepAlive = function sendKeepAlive() {
+        if (!keepAliveActive)
+            return;
+
+        // Record the attempt before sending, as a custom tunnel may deliver
+        // another instruction synchronously from sendMessage().
+        lastSentKeepAlive = Guacamole.DeadlineTimer.now();
         tunnel.sendMessage('nop');
-        lastSentKeepAlive = new Date().getTime();
     };
 
     /**
@@ -1834,19 +1848,22 @@ Guacamole.Client = function(tunnel) {
      * @private
      */
     var scheduleKeepAlive = function scheduleKeepAlive() {
+        if (!keepAliveActive)
+            return;
 
-        window.clearTimeout(keepAliveTimeout);
-
-        var currentTime = new Date().getTime();
-        var keepAliveDelay = Math.max(lastSentKeepAlive + KEEP_ALIVE_FREQUENCY - currentTime, 0);
+        var currentTime = Guacamole.DeadlineTimer.now();
+        var deadline = lastSentKeepAlive === null ? currentTime
+                : lastSentKeepAlive + KEEP_ALIVE_FREQUENCY;
 
         // Ping server regularly to keep connection alive, but send the ping
         // immediately if enough time has elapsed that it should have already
         // been sent
-        if (keepAliveDelay > 0)
-            keepAliveTimeout = window.setTimeout(sendKeepAlive, keepAliveDelay);
-        else
+        if (deadline > currentTime)
+            keepAliveTimer.schedule(deadline);
+        else {
+            keepAliveTimer.cancel();
             sendKeepAlive();
+        }
 
     };
 
@@ -1857,10 +1874,14 @@ Guacamole.Client = function(tunnel) {
      * @private
      */
     var stopKeepAlive = function stopKeepAlive() {
-        window.clearTimeout(keepAliveTimeout);
+        keepAliveActive = false;
+        keepAliveGeneration++;
+        keepAliveTimer.cancel();
     };
 
     tunnel.oninstruction = function(opcode, parameters) {
+
+        var generation = keepAliveGeneration;
 
         var handler = instructionHandlers[opcode];
         if (handler)
@@ -1868,7 +1889,8 @@ Guacamole.Client = function(tunnel) {
 
         // Leverage network activity to ensure the next keep-alive ping is
         // sent, even if the browser is currently throttling timers
-        scheduleKeepAlive();
+        if (generation === keepAliveGeneration)
+            scheduleKeepAlive();
 
     };
 
@@ -1881,17 +1903,23 @@ Guacamole.Client = function(tunnel) {
         if (currentState != Guacamole.Client.State.DISCONNECTED
                 && currentState != Guacamole.Client.State.DISCONNECTING) {
 
-            setState(Guacamole.Client.State.DISCONNECTING);
-
             // Stop sending keep-alive messages
             stopKeepAlive();
+            var generation = keepAliveGeneration;
+            setState(Guacamole.Client.State.DISCONNECTING);
+            if (generation !== keepAliveGeneration)
+                return;
+
             displayRecovery.reset();
             display.cancel();
 
             // Send disconnect message and disconnect
             tunnel.sendMessage("disconnect");
+            if (generation !== keepAliveGeneration)
+                return;
             tunnel.disconnect();
-            setState(Guacamole.Client.State.DISCONNECTED);
+            if (generation === keepAliveGeneration)
+                setState(Guacamole.Client.State.DISCONNECTED);
 
         }
 
@@ -1910,22 +1938,34 @@ Guacamole.Client = function(tunnel) {
      */
     this.connect = function(data) {
 
+        stopKeepAlive();
+        keepAliveActive = true;
+        var generation = keepAliveGeneration;
         displayRecovery.reset();
         setState(Guacamole.Client.State.CONNECTING);
+        if (generation !== keepAliveGeneration)
+            return;
 
         try {
             tunnel.connect(data);
         }
         catch (status) {
-            setState(Guacamole.Client.State.IDLE);
+            if (generation === keepAliveGeneration) {
+                stopKeepAlive();
+                setState(Guacamole.Client.State.IDLE);
+            }
             throw status;
         }
+
+        if (generation !== keepAliveGeneration)
+            return;
 
         // Regularly send keep-alive ping to ensure the server knows we're
         // still here, even if not active
         scheduleKeepAlive();
 
-        setState(Guacamole.Client.State.WAITING);
+        if (generation === keepAliveGeneration)
+            setState(Guacamole.Client.State.WAITING);
     };
 
 };

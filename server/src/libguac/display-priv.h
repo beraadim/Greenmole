@@ -810,6 +810,12 @@ struct guac_display {
      */
     guac_display_layer* pending_frame_removed_layers;
 
+    /** Idle or active reusable plan, protected by pending_frame.lock. */
+    guac_display_plan* plan_cache;
+
+    /** Numeric diagnostics only; protected by pending_frame.lock. */
+    uint64_t planner_statistics[GUAC_DISPLAY_PLANNER_STATISTIC_COUNT];
+
     /* ---------------- WELL-KNOWN LAYERS / BUFFERS ---------------- */
 
     /**

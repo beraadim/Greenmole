@@ -1,0 +1,628 @@
+{
+  "method": "Actual WebSocketTunnel, Parser, Client and Display with synchronous ready-frame protocol bursts and real canvas copies/fills. WebSocket delivery is simulated locally; ACK order and final canvas pixels are checked.",
+  "limitations": "Foreground headless Chrome API/ACK completion and synthetic browser-task opportunity; not physical paint/FPS, physical input latency, live networking, Wi-Fi, image decoding, or background throttling.",
+  "browser": "Chrome/155.0.8059.41",
+  "platform": "darwin-arm64",
+  "samples_per_version": 4,
+  "sources": [
+    {
+      "version": "1.6.1-private.6",
+      "revision": "6b8b0c25e175afd144cbd42630e29bb0c0294f3f",
+      "working_tree_modified": false,
+      "modules": [
+        "Parser.js",
+        "Status.js",
+        "Display.js",
+        "DisplayRecovery.js",
+        "IntegerPool.js",
+        "InstructionPump.js",
+        "Tunnel.js",
+        "Client.js"
+      ],
+      "module_bundle_sha256": "a9c91884259dbefeb4fbc837b2031f8356ec347421ba9f0ed2c26aa6a6c781e4"
+    },
+    {
+      "version": "working-tree",
+      "revision": "d285b9a2a4df14d4977e6c763afd81bbcc707fb3",
+      "working_tree_modified": true,
+      "modules": [
+        "Parser.js",
+        "Status.js",
+        "Display.js",
+        "DisplayRecovery.js",
+        "IntegerPool.js",
+        "InstructionPump.js",
+        "DeadlineTimer.js",
+        "Tunnel.js",
+        "Client.js"
+      ],
+      "module_bundle_sha256": "4c294902b9503d687744844d6030cb4a6365432dc4f0697b8ad776a77329f0c1"
+    }
+  ],
+  "modules": [
+    "Parser.js",
+    "Status.js",
+    "Display.js",
+    "DisplayRecovery.js",
+    "IntegerPool.js",
+    "InstructionPump.js",
+    "DeadlineTimer.js",
+    "Tunnel.js",
+    "Client.js"
+  ],
+  "layer_sha256": "b9f1d73b2e975d7944f9e66c545d24e16ad3a61af559db8d3075ae629711c26b",
+  "summary": [
+    {
+      "version": "1.6.1-private.6",
+      "scenario": "small-copy-burst",
+      "completion_median_ms": 88.90000009536743,
+      "input_task_delay_median_ms": 9,
+      "maximum_ack_gap_median_ms": 3.8499999046325684
+    },
+    {
+      "version": "1.6.1-private.6",
+      "scenario": "window-copy-burst",
+      "completion_median_ms": 62.50000023841858,
+      "input_task_delay_median_ms": 9.250000238418579,
+      "maximum_ack_gap_median_ms": 1.6499998569488525
+    },
+    {
+      "version": "1.6.1-private.6",
+      "scenario": "mixed-1080p-burst",
+      "completion_median_ms": 71.25,
+      "input_task_delay_median_ms": 13.049999952316284,
+      "maximum_ack_gap_median_ms": 5.249999761581421
+    },
+    {
+      "version": "working-tree",
+      "scenario": "small-copy-burst",
+      "completion_median_ms": 78.5,
+      "input_task_delay_median_ms": 9.149999856948853,
+      "maximum_ack_gap_median_ms": 3.6500000953674316
+    },
+    {
+      "version": "working-tree",
+      "scenario": "window-copy-burst",
+      "completion_median_ms": 56.75,
+      "input_task_delay_median_ms": 9.600000143051147,
+      "maximum_ack_gap_median_ms": 1.7999999523162842
+    },
+    {
+      "version": "working-tree",
+      "scenario": "mixed-1080p-burst",
+      "completion_median_ms": 61.549999952316284,
+      "input_task_delay_median_ms": 9.099999904632568,
+      "maximum_ack_gap_median_ms": 5.5
+    }
+  ],
+  "samples": [
+    {
+      "version": "1.6.1-private.6",
+      "iteration": 0,
+      "scenarios": [
+        {
+          "scenario": "small-copy-burst",
+          "frames": 22000,
+          "canvas_width": 128,
+          "canvas_height": 128,
+          "copies_per_frame": 1,
+          "wire_text_code_units": 1399001,
+          "packets": 1,
+          "completion_ms": 97.40000009536743,
+          "input_task_delay_ms": 9,
+          "input_task_completed_frames": 829,
+          "maximum_ack_gap_ms": 5.099999904632568,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "window-copy-burst",
+          "frames": 6000,
+          "canvas_width": 1280,
+          "canvas_height": 720,
+          "copies_per_frame": 4,
+          "wire_text_code_units": 1284000,
+          "packets": 1,
+          "completion_ms": 63.09999990463257,
+          "input_task_delay_ms": 9.199999809265137,
+          "input_task_completed_frames": 484,
+          "maximum_ack_gap_ms": 1.9000000953674316,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "mixed-1080p-burst",
+          "frames": 3000,
+          "canvas_width": 1920,
+          "canvas_height": 1080,
+          "copies_per_frame": 8,
+          "wire_text_code_units": 1471682,
+          "packets": 1,
+          "completion_ms": 67.7999997138977,
+          "input_task_delay_ms": 9.699999809265137,
+          "input_task_completed_frames": 355,
+          "maximum_ack_gap_ms": 2.1000003814697266,
+          "final_pixel": [
+            184,
+            80,
+            120,
+            255
+          ],
+          "acknowledgements_in_order": true
+        }
+      ]
+    },
+    {
+      "version": "working-tree",
+      "iteration": 0,
+      "scenarios": [
+        {
+          "scenario": "small-copy-burst",
+          "frames": 22000,
+          "canvas_width": 128,
+          "canvas_height": 128,
+          "copies_per_frame": 1,
+          "wire_text_code_units": 1399001,
+          "packets": 1,
+          "completion_ms": 75.2999997138977,
+          "input_task_delay_ms": 9.099999904632568,
+          "input_task_completed_frames": 1683,
+          "maximum_ack_gap_ms": 1.4000000953674316,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "window-copy-burst",
+          "frames": 6000,
+          "canvas_width": 1280,
+          "canvas_height": 720,
+          "copies_per_frame": 4,
+          "wire_text_code_units": 1284000,
+          "packets": 1,
+          "completion_ms": 64,
+          "input_task_delay_ms": 9.600000381469727,
+          "input_task_completed_frames": 673,
+          "maximum_ack_gap_ms": 9.900000095367432,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "mixed-1080p-burst",
+          "frames": 3000,
+          "canvas_width": 1920,
+          "canvas_height": 1080,
+          "copies_per_frame": 8,
+          "wire_text_code_units": 1471682,
+          "packets": 1,
+          "completion_ms": 55.90000009536743,
+          "input_task_delay_ms": 8.800000190734863,
+          "input_task_completed_frames": 372,
+          "maximum_ack_gap_ms": 1.8000001907348633,
+          "final_pixel": [
+            184,
+            80,
+            120,
+            255
+          ],
+          "acknowledgements_in_order": true
+        }
+      ]
+    },
+    {
+      "version": "working-tree",
+      "iteration": 1,
+      "scenarios": [
+        {
+          "scenario": "small-copy-burst",
+          "frames": 22000,
+          "canvas_width": 128,
+          "canvas_height": 128,
+          "copies_per_frame": 1,
+          "wire_text_code_units": 1399001,
+          "packets": 1,
+          "completion_ms": 80.19999980926514,
+          "input_task_delay_ms": 9.199999809265137,
+          "input_task_completed_frames": 1597,
+          "maximum_ack_gap_ms": 3.8000001907348633,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "window-copy-burst",
+          "frames": 6000,
+          "canvas_width": 1280,
+          "canvas_height": 720,
+          "copies_per_frame": 4,
+          "wire_text_code_units": 1284000,
+          "packets": 1,
+          "completion_ms": 54.80000019073486,
+          "input_task_delay_ms": 9.400000095367432,
+          "input_task_completed_frames": 654,
+          "maximum_ack_gap_ms": 1.799999713897705,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "mixed-1080p-burst",
+          "frames": 3000,
+          "canvas_width": 1920,
+          "canvas_height": 1080,
+          "copies_per_frame": 8,
+          "wire_text_code_units": 1471682,
+          "packets": 1,
+          "completion_ms": 61.30000019073486,
+          "input_task_delay_ms": 9.099999904632568,
+          "input_task_completed_frames": 372,
+          "maximum_ack_gap_ms": 5.599999904632568,
+          "final_pixel": [
+            184,
+            80,
+            120,
+            255
+          ],
+          "acknowledgements_in_order": true
+        }
+      ]
+    },
+    {
+      "version": "1.6.1-private.6",
+      "iteration": 1,
+      "scenarios": [
+        {
+          "scenario": "small-copy-burst",
+          "frames": 22000,
+          "canvas_width": 128,
+          "canvas_height": 128,
+          "copies_per_frame": 1,
+          "wire_text_code_units": 1399001,
+          "packets": 1,
+          "completion_ms": 87.40000009536743,
+          "input_task_delay_ms": 8.900000095367432,
+          "input_task_completed_frames": 1439,
+          "maximum_ack_gap_ms": 3.6999998092651367,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "window-copy-burst",
+          "frames": 6000,
+          "canvas_width": 1280,
+          "canvas_height": 720,
+          "copies_per_frame": 4,
+          "wire_text_code_units": 1284000,
+          "packets": 1,
+          "completion_ms": 62,
+          "input_task_delay_ms": 9.300000190734863,
+          "input_task_completed_frames": 566,
+          "maximum_ack_gap_ms": 1.5999999046325684,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "mixed-1080p-burst",
+          "frames": 3000,
+          "canvas_width": 1920,
+          "canvas_height": 1080,
+          "copies_per_frame": 8,
+          "wire_text_code_units": 1471682,
+          "packets": 1,
+          "completion_ms": 71.90000009536743,
+          "input_task_delay_ms": 13,
+          "input_task_completed_frames": 312,
+          "maximum_ack_gap_ms": 4.199999809265137,
+          "final_pixel": [
+            184,
+            80,
+            120,
+            255
+          ],
+          "acknowledgements_in_order": true
+        }
+      ]
+    },
+    {
+      "version": "1.6.1-private.6",
+      "iteration": 2,
+      "scenarios": [
+        {
+          "scenario": "small-copy-burst",
+          "frames": 22000,
+          "canvas_width": 128,
+          "canvas_height": 128,
+          "copies_per_frame": 1,
+          "wire_text_code_units": 1399001,
+          "packets": 1,
+          "completion_ms": 85.69999980926514,
+          "input_task_delay_ms": 9.099999904632568,
+          "input_task_completed_frames": 1446,
+          "maximum_ack_gap_ms": 1.299999713897705,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "window-copy-burst",
+          "frames": 6000,
+          "canvas_width": 1280,
+          "canvas_height": 720,
+          "copies_per_frame": 4,
+          "wire_text_code_units": 1284000,
+          "packets": 1,
+          "completion_ms": 62.60000038146973,
+          "input_task_delay_ms": 9.200000286102295,
+          "input_task_completed_frames": 532,
+          "maximum_ack_gap_ms": 1.6999998092651367,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "mixed-1080p-burst",
+          "frames": 3000,
+          "canvas_width": 1920,
+          "canvas_height": 1080,
+          "copies_per_frame": 8,
+          "wire_text_code_units": 1471682,
+          "packets": 1,
+          "completion_ms": 72.59999990463257,
+          "input_task_delay_ms": 13.099999904632568,
+          "input_task_completed_frames": 315,
+          "maximum_ack_gap_ms": 6.299999713897705,
+          "final_pixel": [
+            184,
+            80,
+            120,
+            255
+          ],
+          "acknowledgements_in_order": true
+        }
+      ]
+    },
+    {
+      "version": "working-tree",
+      "iteration": 2,
+      "scenarios": [
+        {
+          "scenario": "small-copy-burst",
+          "frames": 22000,
+          "canvas_width": 128,
+          "canvas_height": 128,
+          "copies_per_frame": 1,
+          "wire_text_code_units": 1399001,
+          "packets": 1,
+          "completion_ms": 78.19999980926514,
+          "input_task_delay_ms": 9.099999904632568,
+          "input_task_completed_frames": 1715,
+          "maximum_ack_gap_ms": 4.099999904632568,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "window-copy-burst",
+          "frames": 6000,
+          "canvas_width": 1280,
+          "canvas_height": 720,
+          "copies_per_frame": 4,
+          "wire_text_code_units": 1284000,
+          "packets": 1,
+          "completion_ms": 58.30000019073486,
+          "input_task_delay_ms": 9.600000381469727,
+          "input_task_completed_frames": 626,
+          "maximum_ack_gap_ms": 1.8000001907348633,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "mixed-1080p-burst",
+          "frames": 3000,
+          "canvas_width": 1920,
+          "canvas_height": 1080,
+          "copies_per_frame": 8,
+          "wire_text_code_units": 1471682,
+          "packets": 1,
+          "completion_ms": 67,
+          "input_task_delay_ms": 9.199999809265137,
+          "input_task_completed_frames": 372,
+          "maximum_ack_gap_ms": 10.400000095367432,
+          "final_pixel": [
+            184,
+            80,
+            120,
+            255
+          ],
+          "acknowledgements_in_order": true
+        }
+      ]
+    },
+    {
+      "version": "working-tree",
+      "iteration": 3,
+      "scenarios": [
+        {
+          "scenario": "small-copy-burst",
+          "frames": 22000,
+          "canvas_width": 128,
+          "canvas_height": 128,
+          "copies_per_frame": 1,
+          "wire_text_code_units": 1399001,
+          "packets": 1,
+          "completion_ms": 78.80000019073486,
+          "input_task_delay_ms": 10.199999809265137,
+          "input_task_completed_frames": 1671,
+          "maximum_ack_gap_ms": 3.5,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "window-copy-burst",
+          "frames": 6000,
+          "canvas_width": 1280,
+          "canvas_height": 720,
+          "copies_per_frame": 4,
+          "wire_text_code_units": 1284000,
+          "packets": 1,
+          "completion_ms": 55.19999980926514,
+          "input_task_delay_ms": 9.599999904632568,
+          "input_task_completed_frames": 682,
+          "maximum_ack_gap_ms": 1.6999998092651367,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "mixed-1080p-burst",
+          "frames": 3000,
+          "canvas_width": 1920,
+          "canvas_height": 1080,
+          "copies_per_frame": 8,
+          "wire_text_code_units": 1471682,
+          "packets": 1,
+          "completion_ms": 61.799999713897705,
+          "input_task_delay_ms": 9.099999904632568,
+          "input_task_completed_frames": 372,
+          "maximum_ack_gap_ms": 5.400000095367432,
+          "final_pixel": [
+            184,
+            80,
+            120,
+            255
+          ],
+          "acknowledgements_in_order": true
+        }
+      ]
+    },
+    {
+      "version": "1.6.1-private.6",
+      "iteration": 3,
+      "scenarios": [
+        {
+          "scenario": "small-copy-burst",
+          "frames": 22000,
+          "canvas_width": 128,
+          "canvas_height": 128,
+          "copies_per_frame": 1,
+          "wire_text_code_units": 1399001,
+          "packets": 1,
+          "completion_ms": 90.40000009536743,
+          "input_task_delay_ms": 9,
+          "input_task_completed_frames": 1237,
+          "maximum_ack_gap_ms": 4,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "window-copy-burst",
+          "frames": 6000,
+          "canvas_width": 1280,
+          "canvas_height": 720,
+          "copies_per_frame": 4,
+          "wire_text_code_units": 1284000,
+          "packets": 1,
+          "completion_ms": 62.40000009536743,
+          "input_task_delay_ms": 9.400000095367432,
+          "input_task_completed_frames": 588,
+          "maximum_ack_gap_ms": 1.5999999046325684,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "mixed-1080p-burst",
+          "frames": 3000,
+          "canvas_width": 1920,
+          "canvas_height": 1080,
+          "copies_per_frame": 8,
+          "wire_text_code_units": 1471682,
+          "packets": 1,
+          "completion_ms": 70.59999990463257,
+          "input_task_delay_ms": 13.300000190734863,
+          "input_task_completed_frames": 315,
+          "maximum_ack_gap_ms": 6.300000190734863,
+          "final_pixel": [
+            184,
+            80,
+            120,
+            255
+          ],
+          "acknowledgements_in_order": true
+        }
+      ]
+    }
+  ]
+}

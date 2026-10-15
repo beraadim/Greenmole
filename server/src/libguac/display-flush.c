@@ -390,6 +390,10 @@ void guac_display_end_multiple_frames(guac_display* display, int frames) {
      * the pending frame. */
 
     guac_fifo_lock(&display->ops);
+    if (!guac_fifo_is_valid(&display->ops)) {
+        guac_fifo_unlock(&display->ops);
+        goto finished_with_pending_frame_lock;
+    }
     int defer_frame = display->frame_deferred =
         (display->ops.state.value & GUAC_FIFO_STATE_NONEMPTY) || display->active_workers;
     guac_fifo_unlock(&display->ops);
@@ -410,6 +414,15 @@ void guac_display_end_multiple_frames(guac_display* display, int frames) {
     GUAC_DISPLAY_PLAN_BEGIN_PHASE();
     plan = PFW_LFR_guac_display_plan_create(display);
     GUAC_DISPLAY_PLAN_END_PHASE(display, "draft", 1, 5);
+
+    /* Allocation failure aborts the client. Do not commit a frame for which
+     * no complete plan could be constructed. */
+    if (display->client->state != GUAC_CLIENT_RUNNING) {
+        if (plan != NULL)
+            guac_display_plan_free(plan);
+        guac_rwlock_release_lock(&display->last_frame.lock);
+        goto finished_with_pending_frame_lock;
+    }
 
     if (plan != NULL) {
 

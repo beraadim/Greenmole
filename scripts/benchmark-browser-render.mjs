@@ -27,22 +27,22 @@ import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { protocolReplay } from './benchmarks/protocol-replay.mjs';
+import { protocolReplay, timerReplay } from './benchmarks/protocol-replay.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const modulePath = 'client/guacamole-common-js/src/main/webapp/modules/';
-const options = { samples: 4, browser: process.env.CHROME_BIN, output: null, scenario: 'render' };
+const options = { samples: 4, browser: process.env.CHROME_BIN, output: null, scenario: 'render', baseline: null };
 for (let i = 2; i < process.argv.length; i++) {
     const argument = process.argv[i];
-    if (!['--samples', '--browser', '--output', '--scenario'].includes(argument) || !process.argv[i + 1])
-        throw new Error('Usage: benchmark-browser-render.mjs [--samples 1..20] [--browser executable] [--output result.json] [--scenario render|protocol]');
+    if (!['--samples', '--browser', '--output', '--scenario', '--baseline'].includes(argument) || !process.argv[i + 1])
+        throw new Error('Usage: benchmark-browser-render.mjs [--samples 1..20] [--browser executable] [--output result.json] [--scenario render|protocol|timers] [--baseline ref]');
     options[argument.slice(2)] = process.argv[++i];
 }
 options.samples = Number(options.samples);
 if (!Number.isInteger(options.samples) || options.samples < 1 || options.samples > 20)
     throw new Error('--samples must be an integer from 1 through 20');
-if (!['render', 'protocol'].includes(options.scenario))
-    throw new Error('--scenario must be render or protocol');
+if (!['render', 'protocol', 'timers'].includes(options.scenario))
+    throw new Error('--scenario must be render, protocol, or timers');
 
 if (!options.browser) {
     const candidates = ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'];
@@ -61,14 +61,21 @@ if (!options.browser)
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
 const layer = await readFile(path.join(root, modulePath, 'Layer.js'), 'utf8');
 const versions = [];
-const modules = options.scenario === 'protocol'
-    ? ['Parser.js', 'Status.js', 'Display.js', 'DisplayRecovery.js', 'IntegerPool.js', 'InstructionPump.js', 'Tunnel.js', 'Client.js']
+const protocol = options.scenario !== 'render';
+const modules = protocol
+    ? ['Parser.js', 'Status.js', 'Display.js', 'DisplayRecovery.js', 'IntegerPool.js', 'InstructionPump.js', 'DeadlineTimer.js', 'Tunnel.js', 'Client.js']
     : ['Display.js'];
-const tags = options.scenario === 'protocol' ? ['1.6.1-private.5'] : ['1.6.1-private.3', '1.6.1-private.4'];
+const tags = options.baseline ? [options.baseline] : options.scenario === 'timers'
+    ? ['1.6.1-private.6'] : protocol ? ['1.6.1-private.5'] : ['1.6.1-private.3', '1.6.1-private.4'];
 for (const tag of tags) {
+    const available = new Set(git('ls-tree', '--name-only', tag, '--',
+        ...modules.map(name => modulePath + name)).trim().split('\n'));
+    const present = modules.filter(name => available.has(modulePath + name));
+    if (modules.some(name => !present.includes(name) && !['InstructionPump.js', 'DeadlineTimer.js'].includes(name)))
+        throw new Error('Baseline is missing a required replay module');
     versions.push({ name: tag, revision: git('rev-parse', tag + '^{}').trim(),
-        source: modules.filter(name => name !== 'InstructionPump.js')
-            .map(name => git('show', tag + ':' + modulePath + name)).join('\n') });
+        modules: present,
+        source: present.map(name => git('show', tag + ':' + modulePath + name)).join('\n') });
 }
 versions.push({ name: 'working-tree', revision: git('rev-parse', 'HEAD').trim(),
     modified: git('diff', 'HEAD', '--', ...modules.map(name => modulePath + name)).length !== 0,
@@ -129,7 +136,7 @@ window.__renderReplay = (async function() {
     return scenarios;
 })();`;
 
-const replay = options.scenario === 'protocol' ? protocolReplay : renderReplay;
+const replay = options.scenario === 'timers' ? timerReplay : protocol ? protocolReplay : renderReplay;
 
 const temporary = await mkdtemp(path.join(tmpdir(), 'guacamole-browser-render-'));
 let browser;
@@ -213,22 +220,30 @@ try {
         return { version: version.name, scenario: scenario.scenario,
             completion_median_ms: median(cases.map(value => value.completion_ms)),
             input_task_delay_median_ms: median(cases.map(value => value.input_task_delay_ms)),
-            maximum_ack_gap_median_ms: median(cases.map(value => value.maximum_ack_gap_ms)) };
+            maximum_ack_gap_median_ms: median(cases.map(value => value.maximum_ack_gap_ms)),
+            ...(options.scenario === 'timers' ? {
+                timeouts_created_median: median(cases.map(value => value.timeouts_created)),
+                timeouts_cleared_median: median(cases.map(value => value.timeouts_cleared)),
+                peak_pending_timeouts_median: median(cases.map(value => value.peak_pending_timeouts))
+            } : {}) };
     }));
     const result = {
-        method: options.scenario === 'protocol'
+        method: protocol
             ? 'Actual WebSocketTunnel, Parser, Client and Display with synchronous ready-frame protocol bursts and real canvas copies/fills. WebSocket delivery is simulated locally; ACK order and final canvas pixels are checked.'
             : 'Actual Display.js with synthetic per-frame drawing cost and one initial asynchronous blocker; real browser event loop, no virtual time.',
-        limitations: options.scenario === 'protocol'
+        limitations: protocol
             ? 'Foreground headless Chrome API/ACK completion and synthetic browser-task opportunity; not physical paint/FPS, physical input latency, live networking, Wi-Fi, image decoding, or background throttling.'
             : 'Synthetic tasks and ACK callbacks, not physical input latency, canvas throughput, a live RDP connection, Wi-Fi, or background-tab throttling.',
         browser: browserVersion.Browser, platform: process.platform + '-' + process.arch,
         samples_per_version: options.samples,
+        ...(options.scenario === 'timers' ? { timer_instrumentation:
+            'Both versions wrap native setTimeout/clearTimeout to count allocations/cancellations during each burst. These wrappers add overhead, especially to versions creating many timers.' } : {}),
         sources: versions.map(version => ({ version: version.name, revision: version.revision,
             working_tree_modified: !!version.modified,
-            [options.scenario === 'protocol' ? 'module_bundle_sha256' : 'display_sha256']:
+            ...(protocol ? { modules: version.modules || modules } : {}),
+            [protocol ? 'module_bundle_sha256' : 'display_sha256']:
                 createHash('sha256').update(version.source).digest('hex') })),
-        ...(options.scenario === 'protocol' ? { modules: modules, layer_sha256: createHash('sha256').update(layer).digest('hex') } : {}),
+        ...(protocol ? { modules: modules, layer_sha256: createHash('sha256').update(layer).digest('hex') } : {}),
         summary, samples
     };
     const output = JSON.stringify(result, null, 2) + '\n';

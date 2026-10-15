@@ -135,6 +135,13 @@ void guac_display_free(guac_display* display) {
     guac_display_free_removed_layers(display, display->pending_frame_removed_layers);
     display->pending_frame_removed_layers = NULL;
 
+    /* Stop alone cannot release scratch: a protocol producer may still be
+     * finishing a plan. Display destruction already requires all producers to
+     * have finished, just as it does for the layer buffers and locks. */
+    guac_rwlock_acquire_write_lock(&display->pending_frame.lock);
+    PFW_guac_display_plan_destroy_storage(display);
+    guac_rwlock_release_lock(&display->pending_frame.lock);
+
     guac_rwlock_destroy(&display->last_frame.lock);
     guac_rwlock_destroy(&display->pending_frame.lock);
 

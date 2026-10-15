@@ -144,6 +144,7 @@ libguac_la_SOURCES =          \
     display-plan-combine.c    \
     display-plan-rect.c       \
     display-plan-search.c     \
+    display-plan-storage.c    \
     display-render-thread.c   \
     display-concurrency.c     \
     display-worker.c          \

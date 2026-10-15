@@ -21,12 +21,35 @@
 export const protocolReplay = String.raw`
 window.__renderReplay = (async function() {
     const originalSocket = window.WebSocket;
+    const originalTimeout = window.setTimeout;
+    const originalClearTimeout = window.clearTimeout;
+    const pendingTimeouts = new Set();
+    let counters = null;
+    if (window.__measureTimers) {
+        window.setTimeout = function(callback, delay, ...args) {
+            if (counters) counters.created++;
+            const id = originalTimeout.call(window, function(...values) {
+                pendingTimeouts.delete(id);
+                callback(...values);
+            }, delay, ...args);
+            pendingTimeouts.add(id);
+            if (counters) counters.peak = Math.max(counters.peak, pendingTimeouts.size);
+            return id;
+        };
+        window.clearTimeout = function(id) {
+            if (counters) counters.cleared++;
+            pendingTimeouts.delete(id);
+            return originalClearTimeout.call(window, id);
+        };
+    }
     const scenarios = [];
     const packet = values => Guacamole.Parser.toInstruction(values);
     for (const scenario of [
         { name: 'small-copy-burst', frames: 22000, copies: 1, width: 128, height: 128, fill: false },
         { name: 'window-copy-burst', frames: 6000, copies: 4, width: 1280, height: 720, fill: false },
-        { name: 'mixed-1080p-burst', frames: 3000, copies: 8, width: 1920, height: 1080, fill: true }
+        { name: 'mixed-1080p-burst', frames: 3000, copies: 8, width: 1920, height: 1080, fill: true },
+        ...(window.__measureTimers ? [{ name: 'packetized-copy-burst', frames: 6000, copies: 4,
+            width: 1280, height: 720, fill: false, packetFrames: 6 }] : [])
     ]) {
         let socket;
         let initial;
@@ -67,6 +90,8 @@ window.__renderReplay = (async function() {
         if (failure) throw Error('Initialization failed: ' + failure.message);
 
         let burst = '';
+        const packets = [];
+        let wireLength = 0;
         for (let frame = 1; frame <= scenario.frames; frame++) {
             for (let copy = 0; copy < scenario.copies; copy++)
                 burst += packet(['copy', -1, 0, 0, scenario.width, scenario.height, 12, 0, 0, 0]);
@@ -74,7 +99,13 @@ window.__renderReplay = (async function() {
                 burst += packet(['rect', 0, 0, 0, 64, 64])
                     + packet(['cfill', 12, 0, frame % 256, 80, 120, 255]);
             burst += packet(['sync', 1000 + frame]);
+            if (scenario.packetFrames && frame % scenario.packetFrames === 0) {
+                packets.push(burst);
+                wireLength += burst.length;
+                burst = '';
+            }
         }
+        if (burst) { packets.push(burst); wireLength += burst.length; }
         let inputTask;
         const inputChannel = new MessageChannel();
         const inputComplete = new Promise(resolve => {
@@ -84,8 +115,9 @@ window.__renderReplay = (async function() {
             };
         });
         started = performance.now();
+        counters = window.__measureTimers ? { created: 0, cleared: 0, peak: pendingTimeouts.size } : null;
         inputChannel.port2.postMessage(null);
-        socket.onmessage({ data: burst });
+        for (const text of packets) socket.onmessage({ data: text });
         await Promise.all([complete, inputComplete]);
         if (failure) throw Error('Replay failed: ' + failure.message);
         if (acknowledgements.length !== scenario.frames
@@ -98,15 +130,22 @@ window.__renderReplay = (async function() {
         const times = acknowledgements.map(ack => ack.time);
         scenarios.push({ scenario: scenario.name, frames: scenario.frames,
             canvas_width: scenario.width, canvas_height: scenario.height,
-            copies_per_frame: scenario.copies, wire_text_code_units: burst.length,
+            copies_per_frame: scenario.copies, wire_text_code_units: wireLength, packets: packets.length,
             completion_ms: times[times.length - 1] - started,
             input_task_delay_ms: inputTask.delay, input_task_completed_frames: inputTask.completed,
             maximum_ack_gap_ms: Math.max(...times.slice(1).map((time, index) => time - times[index])),
-            final_pixel: pixel, acknowledgements_in_order: true });
+            final_pixel: pixel, acknowledgements_in_order: true,
+            ...(counters ? { timeouts_created: counters.created, timeouts_cleared: counters.cleared,
+                peak_pending_timeouts: counters.peak } : {}) });
+        counters = null;
         client.disconnect();
         display.getElement().remove();
         await new Promise(resolve => setTimeout(resolve, 20));
     }
     window.WebSocket = originalSocket;
+    window.setTimeout = originalTimeout;
+    window.clearTimeout = originalClearTimeout;
     return scenarios;
 })();`;
+
+export const timerReplay = 'window.__measureTimers = true;\n' + protocolReplay;

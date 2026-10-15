@@ -787,29 +787,39 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
     var socketEnded = false;
 
     /**
-     * The current receive timeout ID, if any.
+     * Receive deadline, extended by raw network activity without allocating
+     * another timeout for every WebSocket message.
      *
      * @private
-     * @type {number}
+     * @type {!Guacamole.DeadlineTimer}
      */
-    var receive_timeout = null;
+    var receiveTimer = new Guacamole.DeadlineTimer(Guacamole.DeadlineTimer.now, function receiveDue() {
+        if (socket && !socketEnded)
+            close_tunnel(new Guacamole.Status(Guacamole.Status.Code.UPSTREAM_TIMEOUT, "Server timeout."));
+    });
 
     /**
-     * The current connection stability timeout ID, if any.
+     * Deadline for marking the current connection unstable.
      *
      * @private
-     * @type {number}
+     * @type {!Guacamole.DeadlineTimer}
      */
-    var unstableTimeout = null;
+    var unstableTimer = new Guacamole.DeadlineTimer(Guacamole.DeadlineTimer.now, function unstableDue() {
+        if (socket && !socketEnded)
+            tunnel.setState(Guacamole.Tunnel.State.UNSTABLE);
+    });
 
     /**
-     * The current connection stability test ping timeout ID, if any. This
-     * will only be set upon successful connection.
+     * One-shot connection stability ping deadline. Activity after a ping
+     * schedules the next deadline, preserving the existing keepalive policy.
      *
      * @private
-     * @type {number}
+     * @type {!Guacamole.DeadlineTimer}
      */
-    var pingTimeout = null;
+    var pingTimer = new Guacamole.DeadlineTimer(Guacamole.DeadlineTimer.now, function pingDue() {
+        if (socket && !socketEnded)
+            sendPing();
+    });
 
     /**
      * The WebSocket protocol corresponding to the protocol used for the current
@@ -834,14 +844,13 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
     var PING_FREQUENCY = 500;
 
     /**
-     * The timestamp of the point in time that the last connection stability
-     * test ping was sent, in milliseconds elapsed since midnight of January 1,
-     * 1970 UTC.
+     * Elapsed-time timestamp of the last stability ping attempt. The timestamp
+     * sent in the protocol payload remains a wall-clock timestamp.
      *
      * @private
-     * @type {!number}
+     * @type {?number}
      */
-    var lastSentPing = 0;
+    var lastSentPing = null;
 
     // Transform current URL to WebSocket URL
 
@@ -885,9 +894,13 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
      * @private
      */
     var sendPing = function sendPing() {
-        var currentTime = new Date().getTime();
-        tunnel.sendMessage(Guacamole.Tunnel.INTERNAL_DATA_OPCODE, 'ping', currentTime);
-        lastSentPing = currentTime;
+        if (!socket || socketEnded)
+            return;
+
+        // Record before sending to keep synchronous custom socket callbacks
+        // from sending the same due ping again or overwriting a reconnect.
+        lastSentPing = Guacamole.DeadlineTimer.now();
+        tunnel.sendMessage(Guacamole.Tunnel.INTERNAL_DATA_OPCODE, 'ping', new Date().getTime());
     };
 
     /**
@@ -903,43 +916,31 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
     var resetTimers = function resetTimers() {
 
         var generation = connectionGeneration;
-
-        // Get rid of old timeouts (if any)
-        window.clearTimeout(receive_timeout);
-        window.clearTimeout(unstableTimeout);
-        window.clearTimeout(pingTimeout);
+        var activityTime = Guacamole.DeadlineTimer.now();
 
         // Clear unstable status
         if (tunnel.state === Guacamole.Tunnel.State.UNSTABLE)
             tunnel.setState(Guacamole.Tunnel.State.OPEN);
 
-        if (generation !== connectionGeneration)
+        if (generation !== connectionGeneration || !socket || socketEnded)
             return;
 
-        // Set new timeout for tracking overall connection timeout
-        receive_timeout = window.setTimeout(function () {
-            if (generation === connectionGeneration && !socketEnded)
-                close_tunnel(new Guacamole.Status(Guacamole.Status.Code.UPSTREAM_TIMEOUT, "Server timeout."));
-        }, tunnel.receiveTimeout);
+        // Activity extends these deadlines. Existing timeouts check the latest
+        // value when they wake instead of being recreated for every packet.
+        receiveTimer.schedule(activityTime + tunnel.receiveTimeout);
+        unstableTimer.schedule(activityTime + tunnel.unstableThreshold);
 
-        // Set new timeout for tracking suspected connection instability
-        unstableTimeout = window.setTimeout(function() {
-            if (generation === connectionGeneration && !socketEnded)
-                tunnel.setState(Guacamole.Tunnel.State.UNSTABLE);
-        }, tunnel.unstableThreshold);
-
-        var currentTime = new Date().getTime();
-        var pingDelay = Math.max(lastSentPing + PING_FREQUENCY - currentTime, 0);
+        var currentTime = Guacamole.DeadlineTimer.now();
+        var deadline = lastSentPing === null ? currentTime : lastSentPing + PING_FREQUENCY;
 
         // Ping tunnel endpoint regularly to test connection stability, sending
         // the ping immediately if enough time has already elapsed
-        if (pingDelay > 0)
-            pingTimeout = window.setTimeout(function pingIfCurrent() {
-                if (generation === connectionGeneration && !socketEnded)
-                    sendPing();
-            }, pingDelay);
-        else
+        if (deadline > currentTime)
+            pingTimer.schedule(deadline);
+        else {
+            pingTimer.cancel();
             sendPing();
+        }
 
     };
 
@@ -955,9 +956,9 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
     function close_tunnel(status) {
 
         // Get rid of old timeouts (if any)
-        window.clearTimeout(receive_timeout);
-        window.clearTimeout(unstableTimeout);
-        window.clearTimeout(pingTimeout);
+        receiveTimer.cancel();
+        unstableTimer.cancel();
+        pingTimer.cancel();
 
         // Ignore if already closed
         if (tunnel.state === Guacamole.Tunnel.State.CLOSED && !socket && !receiver)
@@ -1017,9 +1018,9 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
             socket = null;
         }
 
-        window.clearTimeout(receive_timeout);
-        window.clearTimeout(unstableTimeout);
-        window.clearTimeout(pingTimeout);
+        receiveTimer.cancel();
+        unstableTimer.cancel();
+        pingTimer.cancel();
         tunnel.uuid = null;
 
         // Mark the tunnel as connecting
@@ -1078,9 +1079,9 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
                 return;
 
             socketEnded = true;
-            window.clearTimeout(receive_timeout);
-            window.clearTimeout(unstableTimeout);
-            window.clearTimeout(pingTimeout);
+            receiveTimer.cancel();
+            unstableTimer.cancel();
+            pingTimer.cancel();
 
             var status;
 

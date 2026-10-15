@@ -44,6 +44,8 @@ test_libguac_SOURCES =               \
     display/concurrency.c            \
     display/flush.c                  \
     display/image-format.c           \
+    display/planner.c                \
+    display/planner-alloc.c          \
     display/refresh.c                \
     display/render-thread.c          \
     display/source-frame.c           \

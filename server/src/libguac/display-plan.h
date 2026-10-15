@@ -103,6 +103,24 @@
  */
 #define GUAC_DISPLAY_PLAN_OPERATION_INDEX_SIZE 0x10000
 
+/** Maximum operation capacity retained between frames by each display. */
+#define GUAC_DISPLAY_PLAN_CACHED_OPS 4096
+
+/** Private, cumulative planner diagnostics, protected by pending_frame.lock. */
+typedef enum guac_display_planner_statistic {
+    GUAC_DISPLAY_PLANNER_PLAN_ALLOCATIONS,
+    GUAC_DISPLAY_PLANNER_PLAN_REUSES,
+    GUAC_DISPLAY_PLANNER_OP_ALLOCATIONS,
+    GUAC_DISPLAY_PLANNER_BUCKETS_CLEARED,
+    GUAC_DISPLAY_PLANNER_CANDIDATES_INDEXED,
+    GUAC_DISPLAY_PLANNER_SEARCH_WINDOWS,
+    GUAC_DISPLAY_PLANNER_COPY_MATCHES,
+    GUAC_DISPLAY_PLANNER_EMPTY_SEARCHES,
+    GUAC_DISPLAY_PLANNER_EXHAUSTED_SEARCHES,
+    GUAC_DISPLAY_PLANNER_RETAINED_BYTES,
+    GUAC_DISPLAY_PLANNER_STATISTIC_COUNT
+} guac_display_planner_statistic;
+
 /**
  * Hash function which hashes a larger, 64-bit hash into a 16-bit hash that
  * will fit within GUAC_DISPLAY_PLAN_OPERATION_INDEX_SIZE. Note that the random
@@ -278,6 +296,19 @@ typedef struct guac_display_plan {
      */
     size_t length;
 
+    /** Allocated operation capacity, possibly retained for the next frame. */
+    size_t capacity;
+
+    /** Whether this plan is currently owned by a caller. */
+    int in_use;
+
+    /** Number of indexed operations that can still be found by copy search. */
+    size_t indexed_count;
+
+    /** Unique buckets written during indexing, including consumed entries. */
+    uint16_t touched_indices[GUAC_DISPLAY_PLAN_OPERATION_INDEX_SIZE];
+    size_t touched_count;
+
     /**
      * Index of operations in the plan by their image contents. Only operations
      * that can be easily stored without collisions will be represented here.
@@ -311,7 +342,7 @@ typedef struct guac_display_plan {
  *     The guac_display to create a plan for.
  *
  * @return
- *     A newly-allocated guac_display_plan representing the changes necessary
+ *     A guac_display_plan representing the changes necessary
  *     to transform the current remote display state to that of the local
  *     guac_display, or NULL if no plan could be created. If non-NULL, this
  *     value must eventually be freed by a call to guac_display_plan_free().
@@ -319,12 +350,30 @@ typedef struct guac_display_plan {
 guac_display_plan* PFW_LFR_guac_display_plan_create(guac_display* display);
 
 /**
- * Frees all memory associated with the given guac_display_plan.
+ * Releases a plan and clears its index. A bounded amount of storage may be
+ * retained until display destruction. The pending frame write lock must be held.
  *
  * @param plan
  *     The plan to free.
  */
 void guac_display_plan_free(guac_display_plan* plan);
+
+/** Allocates/reuses a plan while the pending frame write lock is held. */
+guac_display_plan* PFW_guac_display_plan_alloc(guac_display* display, size_t length);
+
+/** Clears only buckets touched by the current plan's index. */
+void guac_display_plan_reset_index(guac_display_plan* plan);
+
+/** Frees idle retained storage while the pending frame write lock is held. */
+void PFW_guac_display_plan_destroy_storage(guac_display* display);
+
+/**
+ * Copies private planner diagnostics into exactly STATISTIC_COUNT values.
+ * Slots 0-8 are cumulative; slot 9 is the current retained-memory gauge.
+ * Returns zero for invalid arguments. Acquires the pending frame read lock.
+ */
+int guac_display_get_planner_statistics(guac_display* display,
+        uint64_t* values, size_t count);
 
 /**
  * Walks through all operations currently in the given guac_display_plan,

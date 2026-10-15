@@ -304,11 +304,10 @@ guac_display_plan* PFW_LFR_guac_display_plan_create(guac_display* display) {
     if (!op_count)
         return NULL;
 
-    guac_display_plan* plan = guac_mem_alloc(sizeof(guac_display_plan));
-    plan->display = display;
+    guac_display_plan* plan = PFW_guac_display_plan_alloc(display, op_count);
+    if (plan == NULL)
+        return NULL;
     plan->frame_end = frame_end;
-    plan->length = op_count;
-    plan->ops = guac_mem_alloc(plan->length, sizeof(guac_display_plan_operation));
 
     /* Convert the dirty rectangles stored in each layer's cells to individual
      * image operations for later optimization */
@@ -363,11 +362,6 @@ guac_display_plan* PFW_LFR_guac_display_plan_create(guac_display* display) {
 
     return plan;
 
-}
-
-void guac_display_plan_free(guac_display_plan* plan) {
-    guac_mem_free(plan->ops);
-    guac_mem_free(plan);
 }
 
 void guac_display_plan_apply(guac_display_plan* plan) {
