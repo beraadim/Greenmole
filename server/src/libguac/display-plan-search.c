@@ -98,65 +98,39 @@ static guac_display_plan_operation* guac_display_plan_remove_indexed_op(guac_dis
 }
 
 /**
- * Callback invoked by guac_hash_foreach_image_rect() for each 64x64 rectangle
- * of image data.
- *
- * @param plan
- *     The display plan related to the call to guac_hash_foreach_image_rect().
- *
- * @param x
- *     The X coordinate of the upper-left corner of the current 64x64 rectangle
- *     within the search region.
- *
- * @param y
- *     The Y coordinate of the upper-left corner of the current 64x64 rectangle
- *     within the search region.
- *
- * @param hash
- *     The hash value that applies to the current 64x64 rectangle.
- *
- * @param closure
- *     The closure value that was originally provided to the call to 
- *     guac_hash_foreach_image_rect().
+ * Hashes one complete 64x64 cell. This is the same polynomial as the final
+ * window of the rolling search, but needs only two accumulators. In particular,
+ * indexing a single cell does not clear the full-width rolling-hash array.
+ * The caller must constrain the cell to a complete in-bounds 64x64 rectangle.
  */
-typedef void guac_hash_callback(guac_display_plan* plan, int x, int y, uint64_t hash, void* closure);
+static uint64_t guac_hash_cell(const guac_display_layer_state* layer_state,
+        const guac_rect* cell) {
+    const unsigned char* data = GUAC_DISPLAY_LAYER_STATE_CONST_BUFFER(*layer_state, *cell);
+    uint64_t cell_hash = 0;
+    for (int y = 0; y < GUAC_DISPLAY_CELL_SIZE; y++) {
+        const uint32_t* row = (const uint32_t*) data;
+        uint64_t row_hash = 0;
+        for (int x = 0; x < GUAC_DISPLAY_CELL_SIZE; x++)
+            row_hash = ((row_hash * 31) << 1) + row[x];
+        cell_hash = ((cell_hash * 31) << 1) + row_hash;
+        data += layer_state->buffer_stride;
+    }
+    return cell_hash;
+}
+
+static void PFR_LFR_guac_display_plan_find_copies(guac_display_plan* plan,
+        int x, int y, uint64_t hash, guac_display_layer* copy_from_layer);
 
 /**
- * Iterates through each 64x64 subrectangle within the given rectangular region
- * of the underlying buffer of the given layer state, invoking the given
- * callback for each such subrectangle. Each 64x64 subrectangle within the
- * rectangular region is evaluated by sliding a 64x64 window over each pixel of
- * the region such that every 64x64 subrectangle in the region is eventually
- * covered.
- *
- * @param plan
- *     The display plan related to the search/indexing operation being
- *     performed.
- *
- * @param layer_state
- *     The layer state containing the image buffer to hash.
- *
- * @param rect
- *     The rectangular region within the image buffer that should be hashed.
- *
- * @param callback
- *     The callback to invoke for each 64x64 subrectangle of the given region.
- *
- * @param closure
- *     The arbitrary value to pass the given callback each time it is invoked
- *     through this function call.
- *
- * @param stop_on_empty
- *     Whether to stop after the current row if all indexed candidates have
- *     been consumed. Indexing must pass zero. Checking at row boundaries keeps
- *     the stop condition out of the per-pixel rolling-hash loop.
- *
- * @return
- *     The number of complete 64x64 windows passed to the callback.
+ * Searches each 64x64 window of the given layer's committed image for indexed
+ * candidates. Windows are visited in the original row-major order. A candidate
+ * exhaustion check after each row keeps the stop condition out of the per-pixel
+ * rolling-hash loop. Returns the number of complete windows examined.
  */
-static size_t guac_hash_foreach_image_rect(guac_display_plan* plan,
-        const guac_display_layer_state* layer_state, const guac_rect* rect,
-        guac_hash_callback* callback, void* closure, int stop_on_empty) {
+static size_t PFR_LFR_guac_display_plan_search_layer(guac_display_plan* plan,
+        guac_display_layer* layer, const guac_rect* rect) {
+
+    const guac_display_layer_state* layer_state = &layer->last_frame;
 
     /* A smaller region cannot contain a complete hash window. */
     if (guac_rect_width(rect) < GUAC_DISPLAY_CELL_SIZE
@@ -174,10 +148,10 @@ static size_t guac_hash_foreach_image_rect(guac_display_plan* plan,
      * coordinates here by the relative location of the bottom-right corner
      * (GUAC_DISPLAY_CELL_SIZE - 1) so that we have easy access to the
      * coordinates of the upper-left corner of the sliding window, as required
-     * by the callback being invoked.
+     * by the copy lookup.
      *
      * This also allows us to easily determine when the hash is valid and it's
-     * safe to invoke the callback. Once the coordinates are within the given
+     * safe to look for copies. Once the coordinates are within the given
      * rect, we have evaluated a full 64x64 rectangle and have a valid hash. */
 
     int start_x = rect->left   - GUAC_DISPLAY_CELL_SIZE + 1;
@@ -207,15 +181,15 @@ static size_t guac_hash_foreach_image_rect(guac_display_plan* plan,
             uint64_t cell_hash = ((*current_cell_hash * 31) << 1) + row_hash;
             *(current_cell_hash++) = cell_hash;
 
-            /* Invoke the callback for every complete window in this row. */
+            /* Check every complete window in this row directly. */
             if (y >= rect->top && x >= rect->left)
-                callback(plan, x, y, cell_hash, closure);
+                PFR_LFR_guac_display_plan_find_copies(plan, x, y, cell_hash, layer);
 
         }
 
         /* Empty buckets cannot produce more copies. Finish this row before
          * stopping so misses do not pay an extra branch for every window. */
-        if (stop_on_empty && y >= rect->top && plan->indexed_count == 0)
+        if (y >= rect->top && plan->indexed_count == 0)
             return (size_t) (y - rect->top + 1) * (end_x - rect->left);
 
     } /* end for each row */
@@ -243,33 +217,6 @@ static void guac_display_cell_init_rect(guac_rect* rect, int x, int y) {
     guac_rect_init(rect, x, y, GUAC_DISPLAY_CELL_SIZE, GUAC_DISPLAY_CELL_SIZE);
 }
 
-/**
- * Callback for guac_hash_foreach_image_rect() which stores the given operation
- * in the ops_by_hash table of the given display plan.
- *
- * @param plan
- *     The display plan to store the given operation in.
- *
- * @param x
- *     The X coordinate of the upper-left corner of the 64x64 rectangle
- *     modified by the given operation.
- *
- * @param y
- *     The Y coordinate of the upper-left corner of the 64x64 rectangle
- *     modified by the given operation.
- *
- * @param hash
- *     The hash value that applies to the 64x64 rectangle at the given
- *     coordinates.
- *
- * @param closure
- *     A pointer to the guac_display_plan_operation that should be stored
- *     within the ops_by_hash table of the given display plan.
- */
-static void guac_display_plan_index_op_for_cell(guac_display_plan* plan, int x, int y, uint64_t hash, void* closure) {
-    guac_display_plan_store_indexed_op(plan, hash, (guac_display_plan_operation*) closure);
-}
-
 void PFR_guac_display_plan_index_dirty_cells(guac_display_plan* plan) {
 
     guac_display_plan_reset_index(plan);
@@ -290,8 +237,8 @@ void PFR_guac_display_plan_index_dirty_cells(guac_display_plan* plan) {
             guac_rect_constrain(&cell, &layer_bounds);
             if (guac_rect_width(&cell) == GUAC_DISPLAY_CELL_SIZE
                     && guac_rect_height(&cell) == GUAC_DISPLAY_CELL_SIZE) {
-                guac_hash_foreach_image_rect(plan, &layer->pending_frame,
-                        &cell, guac_display_plan_index_op_for_cell, op, 0);
+                guac_display_plan_store_indexed_op(plan,
+                        guac_hash_cell(&layer->pending_frame, &cell), op);
             }
 
         }
@@ -367,8 +314,8 @@ static int guac_image_cmp(const unsigned char* restrict data_a, int width_a, int
 }
 
 /**
- * Callback for guac_hash_foreach_image_rect() which searches the ops_by_hash
- * table of the given display plan for occurrences of the given hash, replacing
+ * Searches the ops_by_hash table of the given display plan for occurrences of
+ * the given hash, replacing
  * the matching operation with a copy operation if a match is found.
  *
  * NOTE: While this function will search for and optimize operations that copy
@@ -392,13 +339,11 @@ static int guac_image_cmp(const unsigned char* restrict data_a, int width_a, int
  *     The hash value that applies to the 64x64 rectangle at the given
  *     coordinates.
  *
- * @param closure
- *     A pointer to the guac_display_layer that is being searched.
+ * @param copy_from_layer
+ *     The layer that is being searched.
  */
 static void PFR_LFR_guac_display_plan_find_copies(guac_display_plan* plan,
-        int x, int y, uint64_t hash, void* closure) {
-
-    guac_display_layer* copy_from_layer = (guac_display_layer*) closure;
+        int x, int y, uint64_t hash, guac_display_layer* copy_from_layer) {
 
     /* Transform the matching operation into a copy of the current region if
      * any operations match, banning the underlying hash from further checks if
@@ -455,8 +400,7 @@ void PFR_LFR_guac_display_plan_rewrite_as_copies(guac_display_plan* plan) {
             guac_rect_constrain(&search_region, &current->pending_frame.dirty);
 
             display->planner_statistics[GUAC_DISPLAY_PLANNER_SEARCH_WINDOWS]
-                += guac_hash_foreach_image_rect(plan, &current->last_frame, &search_region,
-                    PFR_LFR_guac_display_plan_find_copies, current, 1);
+                += PFR_LFR_guac_display_plan_search_layer(plan, current, &search_region);
             if (plan->indexed_count == 0) {
                 display->planner_statistics[GUAC_DISPLAY_PLANNER_EXHAUSTED_SEARCHES]++;
                 break;

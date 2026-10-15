@@ -39,13 +39,19 @@ candidate, and the existing full pixel comparison still decides whether the
 operation can become a copy. A pixel mismatch keeps the image operation and
 bans that candidate, preserving the previous collision behavior.
 
+Indexing computes each complete 64×64 cell's hash directly with row and cell
+accumulators. It uses the same unsigned 64-bit polynomial as the final window of
+the rolling search, without allocating or clearing that search's full-width
+hash array for every indexed cell. The rolling walker is used only for search
+and calls the typed copy lookup directly, without a callback dispatch.
+
 A frame with no indexed candidates skips rolling copy search. After the last
 candidate is consumed, search finishes the current row and stops before later
 rows or layers because no later window could rewrite another operation. This
 permits at most the remainder of one row of redundant hashing and keeps the
 candidate-count check out of the per-window loop. Misses still examine the
 complete original search region.
-The rolling hash, scan order, exact collision checks, image fallback, operation
+The hash values, scan order, exact collision checks, image fallback, operation
 combining, codec policy, frame markers, and worker admission policy are unchanged.
 
 ## Validation and private diagnostics
@@ -56,6 +62,10 @@ frame dimensions, simultaneous transient plans, the 4,096/4,097 boundary,
 retained-storage cleanup, stopped queues, and the locked diagnostic getter.
 Isolated allocation-failure tests verify session abort, unchanged cached storage
 after failed growth, and release of every partially allocated object.
+Hash tests use an independent weighted-sum reference for zero, white, maximum,
+high-bit, sparse, random, repeated-row and repeated-column pixels. Copy tests
+match fixed-cell index hashes to rolling search at nonzero source/destination
+offsets with unequal padded strides.
 
 The private `guac_display_get_planner_statistics()` entrypoint accepts exactly ten
 `uint64_t` values and acquires the pending-frame read lock. It exposes numeric

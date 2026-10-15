@@ -227,6 +227,99 @@ void test_display__planner_hash_match_requires_identical_pixels() {
     planner_display_free(display);
 }
 
+/** Independent weighted-sum form of the original rolling polynomial. */
+static uint64_t planner_reference_hash(const uint32_t* pixels, size_t stride,
+        int left, int top) {
+    uint64_t powers[127];
+    powers[0] = 1;
+    for (size_t i = 1; i < 127; i++)
+        powers[i] = powers[i - 1] * 62;
+    uint64_t hash = 0;
+    for (int y = 0; y < 64; y++)
+        for (int x = 0; x < 64; x++)
+            hash += (uint64_t) pixels[(top + y) * stride + left + x]
+                * powers[126 - x - y];
+    return hash;
+}
+
+/** Fixed-cell hashing preserves high bits, offsets, padding, and polynomial. */
+void test_display__planner_fixed_cell_hash_matches_reference() {
+    uint32_t pixels[96 * 96];
+    for (int pattern = 0; pattern < 8; pattern++) {
+        planner_fill(pixels, 96 * 96, 123);
+        int left = pattern + 3, top = pattern + 5;
+        for (int y = 0; y < 64; y++) {
+            for (int x = 0; x < 64; x++) {
+                uint32_t* pixel = &pixels[(top + y) * 96 + left + x];
+                switch (pattern) {
+                    case 0: *pixel = 0; break;
+                    case 1: *pixel = 0x00FFFFFFU; break;
+                    case 2: *pixel = UINT32_MAX; break;
+                    case 3: /* Retain deterministic random pixels, including alpha. */ break;
+                    case 4: *pixel = y == 0 || y == 63
+                                ? (x == 0 || x == 63 ? UINT32_MAX - x - y : 0)
+                                : (x == 47 && y == 51 ? 0x87654321U : 0); break;
+                    case 5: *pixel = (uint32_t) x * 2654435761U; break;
+                    case 6: *pixel = (uint32_t) y * 2246822519U; break;
+                    case 7: *pixel = 0x80000000U | (uint32_t) (x + y); break;
+                }
+            }
+        }
+        guac_display_layer_state state = {
+            .buffer = (unsigned char*) pixels, .buffer_stride = 96 * 4
+        };
+        guac_rect cell = { left, top, left + 64, top + 64 };
+        CU_ASSERT_EQUAL(guac_hash_cell(&state, &cell),
+                planner_reference_hash(pixels, 96, left, top));
+    }
+}
+
+/** Fixed indexing hashes find the same rolling windows with unequal strides. */
+void test_display__planner_fixed_index_matches_offset_rolling_copies() {
+    guac_display* display = planner_display_alloc();
+    for (int fixture = 0; fixture < 3; fixture++) {
+        size_t source_stride = 136 + fixture * 4;
+        size_t target_stride = 148 + fixture * 4;
+        uint32_t* previous = guac_mem_alloc(128, source_stride, sizeof(uint32_t));
+        uint32_t* pending = guac_mem_alloc(128, target_stride, sizeof(uint32_t));
+        planner_fill(previous, 128 * source_stride, 123 + fixture);
+        planner_fill(pending, 128 * target_stride, 456 + fixture);
+        int source_x = fixture == 0 ? 17 : fixture == 1 ? 63 : 0;
+        int source_y = fixture == 0 ? 9 : fixture == 1 ? 47 : 64;
+        int target_x = fixture == 1 ? 0 : 64;
+        int target_y = fixture == 2 ? 0 : 64;
+        for (int y = 0; y < 64; y++)
+            memcpy(pending + (target_y + y) * target_stride + target_x,
+                    previous + (source_y + y) * source_stride + source_x, 64 * 4);
+        guac_display_layer layer;
+        planner_layer_init(display, &layer, pending, previous, 128, 128);
+        layer.last_frame.buffer_stride = source_stride * sizeof(uint32_t);
+        layer.pending_frame.buffer_stride = target_stride * sizeof(uint32_t);
+        display->last_frame.layers = &layer;
+        guac_display_plan* plan = PFW_guac_display_plan_alloc(display, 1);
+        plan->ops[0] = (guac_display_plan_operation) {
+            .layer = &layer, .type = GUAC_DISPLAY_PLAN_OPERATION_IMG,
+            .dest = { target_x, target_y, target_x + 64, target_y + 64 }
+        };
+        uint64_t hash = planner_reference_hash(pending, target_stride, target_x, target_y);
+        planner_test_index_dirty_cells(plan);
+        CU_ASSERT_EQUAL(plan->indexed_count, 1);
+        CU_ASSERT_EQUAL(plan->ops_by_hash[GUAC_DISPLAY_PLAN_OPERATION_HASH(hash)].hash, hash);
+        planner_test_rewrite_as_copies(plan);
+        CU_ASSERT_EQUAL(plan->ops[0].type, GUAC_DISPLAY_PLAN_OPERATION_COPY);
+        CU_ASSERT_EQUAL(plan->ops[0].src.layer_rect.rect.left, source_x);
+        CU_ASSERT_EQUAL(plan->ops[0].src.layer_rect.rect.top, source_y);
+        CU_ASSERT_EQUAL(plan->ops[0].dest.left, target_x);
+        CU_ASSERT_EQUAL(plan->ops[0].dest.top, target_y);
+        CU_ASSERT_EQUAL(plan->indexed_count, 0);
+        guac_display_plan_free(plan);
+        guac_mem_free(previous);
+        guac_mem_free(pending);
+    }
+    display->last_frame.layers = NULL;
+    planner_display_free(display);
+}
+
 /** Repeated resized plans replace every cell reference before using scratch. */
 void test_display__planner_reuses_storage_across_resized_frames() {
     guac_display* display = planner_display_alloc();
