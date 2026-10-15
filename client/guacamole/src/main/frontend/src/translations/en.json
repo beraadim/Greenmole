@@ -63,6 +63,14 @@
 
     "CLIENT" : {
 
+        "ACTION_SHOW_PERFORMANCE" : "Show performance statistics",
+        "PERFORMANCE_RENDER_FPS" : "Rendered FPS",
+        "PERFORMANCE_DESKTOP_FPS" : "Desktop FPS",
+        "PERFORMANCE_PROCESSING" : "Browser processing",
+        "PERFORMANCE_THROUGHPUT" : "Protocol download",
+        "PERFORMANCE_THROUGHPUT_HELP" : "Decoded protocol text throughput. Excludes transport headers, TLS, and compression. Browser processing is not network or input latency.",
+        "PERFORMANCE_DISCONNECTED" : "Disconnected",
+
         "ACTION_ACKNOWLEDGE"               : "@:APP.ACTION_ACKNOWLEDGE",
         "ACTION_CANCEL"                    : "@:APP.ACTION_CANCEL",
         "ACTION_CLEAR_CLIENT_MESSAGES"     : "@:APP.ACTION_CLEAR",

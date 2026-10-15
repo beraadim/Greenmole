@@ -72,6 +72,9 @@ angular.module('client').factory('ClientProperties', ['$injector', function defi
          */
         this.focused = template.focused || false;
 
+        /** Whether the optional performance overlay is visible. */
+        this.showStatistics = !!template.showStatistics;
+
         /**
          * The relative Y coordinate of the scroll offset of the display within
          * the client element.

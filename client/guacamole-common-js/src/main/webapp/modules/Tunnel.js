@@ -100,6 +100,12 @@ Guacamole.Tunnel = function() {
     };
 
     /**
+     * Returns the active transport name, or null if unknown or not committed.
+     * @returns {?string} "websocket", "http", or null.
+     */
+    this.getTransport = function getTransport() { return null; };
+
+    /**
      * The current state of this tunnel.
      * 
      * @type {!number}
@@ -249,6 +255,8 @@ Guacamole.Tunnel.State = {
  *     be added.
  */
 Guacamole.HTTPTunnel = function(tunnelURL, crossDomain, extraTunnelHeaders) {
+
+    this.getTransport = function getTransport() { return 'http'; };
 
     /**
      * Reference to this HTTP tunnel.
@@ -741,6 +749,8 @@ Guacamole.HTTPTunnel.prototype = new Guacamole.Tunnel();
  */
 Guacamole.WebSocketTunnel = function(tunnelURL) {
 
+    this.getTransport = function getTransport() { return 'websocket'; };
+
     /**
      * Reference to this WebSocket tunnel.
      *
@@ -1076,6 +1086,16 @@ Guacamole.ChainedTunnel = function(tunnelChain) {
      * @type {Guacamole.Tunnel}
      */
     var committedTunnel = null;
+
+    this.getTransport = function getTransport() {
+        return committedTunnel ? committedTunnel.getTransport() : null;
+    };
+
+    // State events are forwarded directly by this wrapper; its own state field
+    // does not track the committed transport's connection state.
+    this.isConnected = function isConnected() {
+        return !!committedTunnel && committedTunnel.isConnected();
+    };
 
     // Load all tunnels into array
     for (var i=0; i<arguments.length; i++)

@@ -72,7 +72,7 @@ static void* guac_display_render_loop(void* data) {
 
     for (;;) {
 
-        guac_display_render_thread_cursor_state cursor_state = render_thread->cursor_state;
+        guac_display_render_thread_cursor_state cursor_state;
 
         /* Wait indefinitely for any change to the frame state */
         guac_flag_wait_and_lock(&render_thread->state,
@@ -86,6 +86,9 @@ static void* guac_display_render_loop(void* data) {
             return NULL;
         }
 
+        /* Read cursor state only while holding the state lock. */
+        cursor_state = render_thread->cursor_state;
+
         int rendered_frames = 0;
 
         /* Lacking explicit frame boundaries, handle the change in frame state,
@@ -93,6 +96,12 @@ static void* guac_display_render_loop(void* data) {
          * heuristically determined frame boundaries */
         guac_timestamp frame_start = guac_timestamp_current();
         do {
+
+            /* Shutdown also interrupts batching and client lag compensation. */
+            if (render_thread->state.value & GUAC_DISPLAY_RENDER_THREAD_STATE_STOPPING) {
+                guac_flag_unlock(&render_thread->state);
+                return NULL;
+            }
 
             /* Continue processing messages for up to a reasonable
              * minimum framerate without an explicit frame boundary
@@ -125,31 +134,48 @@ static void* guac_display_render_loop(void* data) {
             int processing_lag = guac_client_get_processing_lag(client);
             int required_wait = processing_lag - time_since_last_frame;
 
-            /* Do not exceed a reasonable maximum framerate without an
-             * explicit frame boundary terminating the frame early */
-            int minimum_wait = GUAC_DISPLAY_RENDER_THREAD_MIN_FRAME_DURATION - frame_duration;
-            if (minimum_wait > required_wait)
-                required_wait = minimum_wait;
-
             /* Ensure we don't wait without bound when compensating for
              * client-side processing delays */
-            else if (required_wait > GUAC_DISPLAY_MAX_LAG_COMPENSATION)
+            if (required_wait > GUAC_DISPLAY_MAX_LAG_COMPENSATION)
                 required_wait = GUAC_DISPLAY_MAX_LAG_COMPENSATION;
 
-            /* Wait for client to catch up, if necessary. Note that we don't do
-             * this via guac_flag_timedwait_and_lock() to avoid causing
-             * contention around the render_thread state lock. */
+            /* Explicit frame boundaries must not bypass client backpressure.
+             * Only shutdown interrupts this wait. The condition wait releases
+             * the state lock while sleeping, allowing protocol handlers to
+             * continue reporting modifications and completed frames. */
             if (required_wait > 0) {
                 guac_client_log(client, GUAC_LOG_TRACE,
                         "Waiting %ims to compensate for client-side "
                         "processing delays.\n", required_wait);
-                guac_timestamp_msleep(required_wait);
+                if (guac_flag_timedwait_and_lock(&render_thread->state,
+                            GUAC_DISPLAY_RENDER_THREAD_STATE_STOPPING,
+                            required_wait)) {
+                    guac_flag_unlock(&render_thread->state);
+                    return NULL;
+                }
             }
 
-            /* Use explicit frame boundaries whenever available */
-            if (guac_flag_timedwait_and_lock(&render_thread->state,
-                        GUAC_DISPLAY_RENDER_THREAD_STATE_FRAME_READY, 0)) {
+            /* Batch small updates only while no explicit frame boundary has
+             * been received. A ready frame returns immediately, including when
+             * it arrives during this wait. Account for any time already spent
+             * compensating for client lag rather than adding both delays. */
+            int minimum_wait = GUAC_DISPLAY_RENDER_THREAD_MIN_FRAME_DURATION
+                - (guac_timestamp_current() - frame_start);
+            if (minimum_wait < 0)
+                minimum_wait = 0;
 
+            if (guac_flag_timedwait_and_lock(&render_thread->state,
+                          GUAC_DISPLAY_RENDER_THREAD_STATE_STOPPING
+                        | GUAC_DISPLAY_RENDER_THREAD_STATE_FRAME_READY,
+                        minimum_wait)) {
+
+                if (render_thread->state.value & GUAC_DISPLAY_RENDER_THREAD_STATE_STOPPING) {
+                    guac_flag_unlock(&render_thread->state);
+                    return NULL;
+                }
+
+                /* Use explicit frame boundaries whenever available */
+                cursor_state = render_thread->cursor_state;
                 rendered_frames += render_thread->frames;
                 render_thread->frames = 0;
 

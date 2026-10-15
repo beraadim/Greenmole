@@ -446,8 +446,11 @@ Guacamole.Display = function() {
      *
      * @param {boolean} [blocked]
      *     Whether this task should start blocked.
+     *
+     * @param {function} [cancelHandler]
+     *     Releases resources associated with a task that is cancelled.
      */
-    function Task(taskHandler, blocked) {
+    function Task(taskHandler, blocked, cancelHandler) {
 
         /**
          * Reference to this Task.
@@ -472,6 +475,11 @@ Guacamole.Display = function() {
         this.cancel = function cancel() {
             task.blocked = false;
             taskHandler = null;
+            if (cancelHandler) {
+                var handler = cancelHandler;
+                cancelHandler = null;
+                handler();
+            }
         };
 
         /**
@@ -511,13 +519,75 @@ Guacamole.Display = function() {
      * @param {boolean} [blocked]
      *     Whether the task should start blocked.
      *
+     * @param {function} [cancelHandler]
+     *     Releases resources associated with a task that is cancelled.
+     *
      * @returns {!Task}
      *     The Task created and added to the queue for future running.
      */
-    function scheduleTask(handler, blocked) {
-        var task = new Task(handler, blocked);
+    function scheduleTask(handler, blocked, cancelHandler) {
+        var task = new Task(handler, blocked, cancelHandler);
         tasks.push(task);
         return task;
+    }
+
+    /**
+     * Schedules drawing of an asynchronously decoded image. The returned
+     * function must be called with the decoded image, or without an argument
+     * if decoding fails. Ownership of the image is transferred to this task,
+     * including when decoding completes after the task has been cancelled.
+     *
+     * @private
+     * @param {!Guacamole.Layer} layer
+     *     The destination layer.
+     * @param {!number} x
+     *     The destination X coordinate.
+     * @param {!number} y
+     *     The destination Y coordinate.
+     * @param {function} [cancelHandler]
+     *     Cancels any decoding operation that is still in progress.
+     * @returns {!function(?CanvasImageSource=)}
+     *     A function that completes the pending image operation.
+     */
+    function scheduleDecodedImage(layer, x, y, cancelHandler) {
+
+        var image = null;
+        var completed = false;
+
+        var releaseImage = function releaseImage() {
+            if (image) {
+                image.close();
+                image = null;
+            }
+        };
+
+        var task = scheduleTask(function drawDecodedImage() {
+            try {
+                if (image)
+                    layer.drawImage(x, y, image);
+            }
+            finally {
+                releaseImage();
+            }
+        }, true, function cancelDecodedImage() {
+            completed = true;
+            releaseImage();
+            if (cancelHandler)
+                cancelHandler();
+        });
+
+        return function imageDecoded(decoded) {
+            if (completed) {
+                if (decoded)
+                    decoded.close();
+                return;
+            }
+
+            completed = true;
+            image = decoded || null;
+            task.unblock();
+        };
+
     }
 
     /**
@@ -839,18 +909,18 @@ Guacamole.Display = function() {
         // Prefer createImageBitmap() over blob URLs if available
         if (window.createImageBitmap) {
 
-            var bitmap;
+            var imageDecoded = scheduleDecodedImage(layer, x, y);
 
-            // Draw image once loaded
-            task = scheduleTask(function drawImageBitmap() {
-                layer.drawImage(x, y, bitmap);
-            }, true);
-
-            // Load image from provided blob
-            window.createImageBitmap(blob).then(function bitmapLoaded(decoded) {
-                bitmap = decoded;
-                task.unblock();
-            });
+            // A failed decode must still release this task so that later
+            // drawing and sync acknowledgements can continue.
+            try {
+                window.createImageBitmap(blob).then(imageDecoded, function bitmapFailed() {
+                    imageDecoded();
+                });
+            }
+            catch (e) {
+                imageDecoded();
+            }
 
         }
 
@@ -860,21 +930,31 @@ Guacamole.Display = function() {
 
             // Create URL for blob
             var url = URL.createObjectURL(blob);
+            var image = new Image();
+
+            var releaseURL = function releaseURL() {
+                image.onload = image.onerror = null;
+                if (url) {
+                    URL.revokeObjectURL(url);
+                    url = null;
+                }
+            };
 
             // Draw and free blob URL when ready
             task = scheduleTask(function __display_drawBlob() {
 
-                // Draw the image only if it loaded without errors
-                if (image.width && image.height)
-                    layer.drawImage(x, y, image);
+                try {
+                    // Draw the image only if it loaded without errors
+                    if (image.width && image.height)
+                        layer.drawImage(x, y, image);
+                }
+                finally {
+                    releaseURL();
+                }
 
-                // Blob URL no longer needed
-                URL.revokeObjectURL(url);
-
-            }, true);
+            }, true, releaseURL);
 
             // Load image from URL
-            var image = new Image();
             image.onload = task.unblock;
             image.onerror = task.unblock;
             image.src = url;
@@ -913,22 +993,49 @@ Guacamole.Display = function() {
         // caused by waiting for the full image to be received
         if (window.ImageDecoder && window.ReadableStream) {
 
-            var imageDecoder = new ImageDecoder({
-                type: mimetype,
-                data: stream.toReadableStream()
-            });
+            var imageDecoder = null;
+            var readableStream = null;
 
-            var decodedFrame = null;
+            var closeDecoder = function closeDecoder() {
+                if (imageDecoder) {
+                    var decoder = imageDecoder;
+                    imageDecoder = null;
+                    decoder.close();
+                }
+            };
 
-            // Draw image once loaded
-            var task = scheduleTask(function drawImageBitmap() {
-                layer.drawImage(x, y, decodedFrame);
-            }, true);
+            var imageDecoded = scheduleDecodedImage(layer, x, y, closeDecoder);
 
-            imageDecoder.decode({ completeFramesOnly: true }).then(function bitmapLoaded(result) {
-                decodedFrame = result.image;
-                task.unblock();
-            });
+            try {
+                readableStream = stream.toReadableStream();
+                imageDecoder = new ImageDecoder({
+                    type: mimetype,
+                    data: readableStream
+                });
+
+                // Closing the decoder may reject these promises independently
+                // of decode(), including before image tracks are available.
+                imageDecoder.completed.catch(function decodingStopped() {});
+                imageDecoder.tracks.ready.catch(function tracksStopped() {});
+
+                imageDecoder.decode({ completeFramesOnly: true }).then(function bitmapLoaded(result) {
+                    closeDecoder();
+                    imageDecoded(result.image);
+                }, function bitmapFailed() {
+                    closeDecoder();
+                    imageDecoded();
+                });
+            }
+            catch (e) {
+                closeDecoder();
+
+                // A constructor failure occurs before the decoder takes
+                // ownership of the input. Stop retaining incoming bytes.
+                if (readableStream && !readableStream.locked)
+                    readableStream.cancel().catch(function streamStopped() {});
+
+                imageDecoded();
+            }
 
         }
 
@@ -1668,87 +1775,149 @@ Guacamole.Display = function() {
 
     /**
      * Returns a canvas element containing the entire display, with all child
-     * layers composited within.
+     * layers composited within. If a scale is supplied, layers are composited
+     * directly at that scale without first allocating a full-size screenshot.
+     *
+     * @param {!number} [scale=1]
+     *     The scale of the returned canvas relative to the display. This must
+     *     be a finite, positive number.
      *
      * @return {!HTMLCanvasElement}
      *     A new canvas element containing a copy of the display.
      */
-    this.flatten = function() {
-       
-        // Get destination canvas
-        var canvas = document.createElement("canvas");
-        canvas.width = default_layer.width;
-        canvas.height = default_layer.height;
+    this.flatten = function(scale) {
 
-        var context = canvas.getContext("2d");
+        if (scale === undefined)
+            scale = 1;
+
+        if (!isFinite(scale) || scale <= 0)
+            throw new RangeError("Display scale must be finite and positive.");
+
+        // Keep even extremely narrow displays visible after downscaling.
+        var width = default_layer.width > 0
+                ? Math.max(1, Math.floor(default_layer.width * scale)) : 0;
+        var height = default_layer.height > 0
+                ? Math.max(1, Math.floor(default_layer.height * scale)) : 0;
+
+        // All temporary canvases, including opacity groups, use the requested
+        // output size rather than the full resolution of the remote display.
+        function create_canvas() {
+            var canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            return canvas;
+        }
+
+        var canvas = create_canvas();
+        if (!width || !height)
+            return canvas;
 
         // Returns sorted array of children
         function get_children(layer) {
 
-            // Build array of children
             var children = [];
             for (var index in layer.children)
                 children.push(layer.children[index]);
 
-            // Sort
             children.sort(function children_comparator(a, b) {
 
-                // Compare based on Z order
                 var diff = a.z - b.z;
                 if (diff !== 0)
                     return diff;
 
-                // If Z order identical, use document order
                 var a_element = a.getElement();
                 var b_element = b.getElement();
                 var position = b_element.compareDocumentPosition(a_element);
 
                 if (position & Node.DOCUMENT_POSITION_PRECEDING) return -1;
                 if (position & Node.DOCUMENT_POSITION_FOLLOWING) return  1;
-
-                // Otherwise, assume same
                 return 0;
 
             });
 
-            // Done
             return children;
 
         }
 
-        // Draws the contents of the given layer at the given coordinates
-        function draw_layer(layer, x, y) {
+        // Compose each CSS transform around the layer's center (the default
+        // transform origin of its containing div), including its translation.
+        function transform_layer(parent, layer) {
+            var matrix = layer.matrix;
+            var origin_x = layer.width / 2;
+            var origin_y = layer.height / 2;
+            var x = layer.x + matrix[4] + origin_x
+                    - matrix[0] * origin_x - matrix[2] * origin_y;
+            var y = layer.y + matrix[5] + origin_y
+                    - matrix[1] * origin_x - matrix[3] * origin_y;
 
-            // Draw layer
-            if (layer.width > 0 && layer.height > 0) {
+            return [
+                parent[0] * matrix[0] + parent[2] * matrix[1],
+                parent[1] * matrix[0] + parent[3] * matrix[1],
+                parent[0] * matrix[2] + parent[2] * matrix[3],
+                parent[1] * matrix[2] + parent[3] * matrix[3],
+                parent[0] * x + parent[2] * y + parent[4],
+                parent[1] * x + parent[3] * y + parent[5]
+            ];
+        }
 
-                // Save and update alpha
-                var initial_alpha = context.globalAlpha;
-                context.globalAlpha *= layer.alpha / 255.0;
+        // Render an entire layer subtree, preserving its DOM stacking order,
+        // clipping, affine transform, and group opacity.
+        function draw_layer(layer, context, parent_transform) {
 
-                // Copy data
-                context.drawImage(layer.getCanvas(), x, y);
+            if (layer.width <= 0 || layer.height <= 0 || !layer.alpha)
+                return;
 
-                // Draw all children
-                var children = get_children(layer);
-                for (var i=0; i<children.length; i++) {
-                    var child = children[i];
-                    draw_layer(child, x + child.x, y + child.y);
-                }
+            var transform = transform_layer(parent_transform, layer);
+            var children = get_children(layer);
 
-                // Restore alpha
-                context.globalAlpha = initial_alpha;
+            context.save();
+            context.setTransform.apply(context, transform);
 
+            // CSS opacity applies to the composed subtree as one image. Apply
+            // it only once, so overlapping descendants do not become darker.
+            var group = null;
+            var destination = context;
+            if (layer.alpha < 255 && children.length) {
+                group = create_canvas();
+                destination = group.getContext("2d");
+                destination.setTransform.apply(destination, transform);
             }
+            else
+                destination.globalAlpha = layer.alpha / 255.0;
+
+            destination.beginPath();
+            destination.rect(0, 0, layer.width, layer.height);
+            destination.clip();
+
+            // Negative Z children occur behind the layer's own canvas.
+            var i = 0;
+            while (i < children.length && children[i].z < 0)
+                draw_layer(children[i++], destination, transform);
+
+            destination.drawImage(layer.getCanvas(),
+                    0, 0, layer.width, layer.height,
+                    0, 0, layer.width, layer.height);
+
+            while (i < children.length)
+                draw_layer(children[i++], destination, transform);
+
+            if (group) {
+                context.setTransform(1, 0, 0, 1, 0, 0);
+                context.globalAlpha = layer.alpha / 255.0;
+                context.drawImage(group, 0, 0);
+            }
+
+            context.restore();
 
         }
 
-        // Draw default layer and all children
-        draw_layer(default_layer, 0, 0);
+        draw_layer(default_layer, canvas.getContext("2d"), [
+            width / default_layer.width, 0, 0,
+            height / default_layer.height, 0, 0
+        ]);
 
-        // Return new canvas copy
         return canvas;
-        
+
     };
 
 };

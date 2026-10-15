@@ -95,6 +95,11 @@ Guacamole.InputStream = function(client, index) {
      *     by the Guacamole server.
      */
     this.toReadableStream = function toReadableStream() {
+
+        // Cancelling a decoder must discard further protocol blobs instead
+        // of attempting to enqueue into a closed ReadableStream.
+        var active = true;
+
         return new ReadableStream({
             type: 'bytes',
             start: function startStream(controller) {
@@ -106,17 +111,20 @@ Guacamole.InputStream = function(client, index) {
                 // consuming the ReadableStream
                 reader.ondata = function dataReceived(data) {
 
+                    if (!active || !data.byteLength)
+                        return;
+
                     if (controller.byobRequest) {
 
                         var view = controller.byobRequest.view;
                         var length = Math.min(view.byteLength, data.byteLength);
                         var byobBlock = new Uint8Array(data, 0, length);
 
-                        view.buffer.set(byobBlock);
+                        new Uint8Array(view.buffer, view.byteOffset, length).set(byobBlock);
                         controller.byobRequest.respond(length);
 
                         if (length < data.byteLength) {
-                            controller.enqueue(data.slice(length));
+                            controller.enqueue(new Uint8Array(data, length));
                         }
 
                     }
@@ -130,9 +138,23 @@ Guacamole.InputStream = function(client, index) {
                 // Notify the ReadableStream when the end of the stream is
                 // reached
                 reader.onend = function dataComplete() {
+                    if (!active)
+                        return;
+
+                    active = false;
+                    var pendingRequest = controller.byobRequest;
                     controller.close();
+
+                    // A BYOB read remains pending at EOF unless its request
+                    // is explicitly completed after closing the controller.
+                    if (pendingRequest)
+                        pendingRequest.respond(0);
                 };
 
+            },
+            cancel: function cancelStream() {
+                active = false;
+                guac_stream.onblob = guac_stream.onend = null;
             }
         });
 

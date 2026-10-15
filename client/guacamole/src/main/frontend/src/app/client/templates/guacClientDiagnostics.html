@@ -1,0 +1,6 @@
+<div class="client-diagnostics" ng-if="sample">
+    <div>{{sample.width}} × {{sample.height}} · {{sample.connected ? (sample.transport === 'websocket' ? 'WebSocket' : (sample.transport === 'http' ? 'HTTP' : '—')) : ('CLIENT.PERFORMANCE_DISCONNECTED' | translate)}}</div>
+    <div>{{'CLIENT.PERFORMANCE_RENDER_FPS' | translate}}: {{number(sample.clientFps)}} · {{'CLIENT.PERFORMANCE_DESKTOP_FPS' | translate}}: {{number(sample.desktopFps)}}</div>
+    <div>{{'CLIENT.PERFORMANCE_PROCESSING' | translate}}: {{number(sample.processingLag)}} ms</div>
+    <div title="{{'CLIENT.PERFORMANCE_THROUGHPUT_HELP' | translate}}">{{'CLIENT.PERFORMANCE_THROUGHPUT' | translate}}: {{number(sample.kibPerSecond)}} KiB/s</div>
+</div>

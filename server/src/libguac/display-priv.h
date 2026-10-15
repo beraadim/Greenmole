@@ -896,6 +896,36 @@ void PFW_guac_display_layer_resize(guac_display_layer* layer,
         int width, int height);
 
 /**
+ * Image formats that may be selected for encoding a dirty display rectangle.
+ */
+typedef enum guac_display_image_format {
+    GUAC_DISPLAY_IMAGE_FORMAT_PNG,
+    GUAC_DISPLAY_IMAGE_FORMAT_JPEG,
+    GUAC_DISPLAY_IMAGE_FORMAT_WEBP
+} guac_display_image_format;
+
+/**
+ * Chooses an image format for the given region of a layer's last frame. Pixel
+ * data is examined at most once and only when a format other than PNG is
+ * eligible. The display's last_frame.lock must be held for reading.
+ *
+ * @param layer
+ *     The layer containing the image data.
+ *
+ * @param rect
+ *     The region to encode.
+ *
+ * @param framerate
+ *     The region's historical update rate, in frames per second.
+ *
+ * @return
+ *     The preferred image format, considering content, client capabilities,
+ *     transparency, and the lossless requirement.
+ */
+guac_display_image_format LFR_guac_display_layer_image_format(
+        guac_display_layer* layer, const guac_rect* rect, int framerate);
+
+/**
  * Worker thread that continuously pulls operations from the operation FIFO of
  * the given guac_display, applying those operations by seding corresponding
  * instructions to connected clients.

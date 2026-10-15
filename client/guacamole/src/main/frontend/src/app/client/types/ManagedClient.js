@@ -38,7 +38,6 @@ angular.module('client').factory('ManagedClient', ['$rootScope', '$injector',
     const ManagedShareLink       = $injector.get('ManagedShareLink');
 
     // Required services
-    const $document               = $injector.get('$document');
     const $q                      = $injector.get('$q');
     const $window                 = $injector.get('$window');
     const activeConnectionService = $injector.get('activeConnectionService');
@@ -98,6 +97,9 @@ angular.module('client').factory('ManagedClient', ['$rootScope', '$injector',
          * @type Guacamole.Tunnel
          */
         this.tunnel = template.tunnel;
+
+        /** Opt-in sampled diagnostics, attached before the tunnel connects. */
+        this.performance = template.performance;
 
         /**
          * The display associated with the underlying Guacamole client.
@@ -387,7 +389,8 @@ angular.module('client').factory('ManagedClient', ['$rootScope', '$injector',
         var managedClient = new ManagedClient({
             id     : id,
             client : client,
-            tunnel : tunnel
+            tunnel : tunnel,
+            performance : new Guacamole.ClientPerformance(client.getDisplay(), tunnel)
         });
 
         // Fire events for tunnel errors
@@ -973,23 +976,11 @@ angular.module('client').factory('ManagedClient', ['$rootScope', '$injector',
         // Update stored thumbnail of previous connection
         if (display && display.getWidth() > 0 && display.getHeight() > 0) {
 
-            // Get screenshot
-            var canvas = display.flatten();
-
-            // Calculate scale of thumbnail (max 320x240, max zoom 100%)
-            var scale = Math.min(320 / canvas.width, 240 / canvas.height, 1);
-
-            // Create thumbnail canvas
-            var thumbnail = $document[0].createElement("canvas");
-            thumbnail.width  = canvas.width*scale;
-            thumbnail.height = canvas.height*scale;
-
-            // Scale screenshot to thumbnail
-            var context = thumbnail.getContext("2d");
-            context.drawImage(canvas,
-                0, 0, canvas.width, canvas.height,
-                0, 0, thumbnail.width, thumbnail.height
-            );
+            // Composite directly at thumbnail resolution (max 320x240,
+            // without enlarging small displays) to avoid a full-size copy.
+            var scale = Math.min(320 / display.getWidth(),
+                    240 / display.getHeight(), 1);
+            var thumbnail = display.flatten(scale);
 
             // Store updated thumbnail within client
             managedClient.thumbnail = new ManagedClientThumbnail({
