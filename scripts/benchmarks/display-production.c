@@ -286,6 +286,8 @@ typedef struct sink {
     verifier* verify;
     size_t plan_images;
     uint64_t plan_pixels;
+    int planning_phase_ms[5];
+    unsigned int planning_phase_mask;
 } sink;
 
 typedef struct scenario {
@@ -348,16 +350,31 @@ static ssize_t complete_frame(guac_socket* socket) {
 static void planning_statistics(guac_client* client, guac_client_log_level level,
         const char* format, va_list arguments) {
     (void) level;
-    if (strcmp(format, "Encoder batch: active-limit=%i pool=%i images=%zu pixels=%" PRIu64 "."))
-        return;
     sink* output = client->data;
     va_list copy;
-    va_copy(copy, arguments);
-    (void) va_arg(copy, int);
-    (void) va_arg(copy, int);
-    output->plan_images = va_arg(copy, size_t);
-    output->plan_pixels = va_arg(copy, uint64_t);
-    va_end(copy);
+    if (!strcmp(format, "Encoder batch: active-limit=%i pool=%i images=%zu pixels=%" PRIu64 ".")) {
+        va_copy(copy, arguments);
+        (void) va_arg(copy, int);
+        (void) va_arg(copy, int);
+        output->plan_images = va_arg(copy, size_t);
+        output->plan_pixels = va_arg(copy, uint64_t);
+        va_end(copy);
+    }
+    else if (!strcmp(format, "Render planning phase %i/%i (%s): %ims")) {
+        va_copy(copy, arguments);
+        int phase = va_arg(copy, int);
+        int total = va_arg(copy, int);
+        (void) va_arg(copy, const char*);
+        int duration = va_arg(copy, int);
+        va_end(copy);
+        if (phase < 1 || phase > 5 || total != 5 || duration < 0) {
+            fprintf(stderr, "Invalid numeric planning phase log.\n"); exit(1);
+        }
+        /* The existing producer log already measures this phase. Capturing
+         * five integers adds no per-pixel work or additional clock reads. */
+        output->planning_phase_ms[phase - 1] = duration;
+        output->planning_phase_mask |= 1U << (phase - 1);
+    }
 }
 
 static int wait_frame(sink* output, guac_display* display, unsigned int expected) {
@@ -552,6 +569,8 @@ static double percentile(const double* values, int count, int percent) {
 }
 
 static int run_case(int index, const char* mode, int samples, int warmup, int active_cap, int verify_frames) {
+    /* Failures terminate this isolated child before any worker can outlive
+     * its stack-owned output state, including on a completion timeout. */
     const scenario* item = &scenarios[index];
     sink output = { 0 };
     pthread_mutex_init(&output.socket_lock, NULL);
@@ -561,8 +580,9 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
     guac_socket* socket = guac_socket_alloc();
     uint32_t* pixels = malloc((size_t) item->dirty_width * item->dirty_height * sizeof(uint32_t));
     double* elapsed = malloc((size_t) samples * sizeof(double));
-    if (!client || !socket || !pixels || !elapsed) {
-        fprintf(stderr, "Unable to allocate production benchmark.\n"); return 1;
+    double* phases = malloc((size_t) samples * 5 * sizeof(double));
+    if (!client || !socket || !pixels || !elapsed || !phases) {
+        fprintf(stderr, "Unable to allocate production benchmark.\n"); exit(1);
     }
     guac_socket_free(client->socket);
     client->data = &output;
@@ -574,7 +594,7 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
     socket->unlock_handler = unlock_socket;
     socket->flush_handler = complete_frame;
     guac_display* display = guac_display_alloc(client);
-    if (!display || display->worker_thread_count == 0) return 1;
+    if (!display || display->worker_thread_count == 0) exit(1);
 
     union { void* pointer; void (*function)(guac_display*, int); } policy;
     policy.pointer = dlsym(RTLD_DEFAULT, "guac_display_set_worker_policy");
@@ -582,7 +602,7 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
      * default twelve-worker admission. Symbol presence is not a version test.
      * Setter value 1 enables the library default, not a one-worker limit. */
     if (strcmp(mode, "baseline")) {
-        if (!policy.pointer) { fprintf(stderr, "candidate policy symbol unavailable\n"); return 1; }
+        if (!policy.pointer) { fprintf(stderr, "candidate policy symbol unavailable\n"); exit(1); }
         policy.function(display, !strcmp(mode, "adaptive") ? active_cap : 0);
     }
     union { void* pointer; int (*function)(guac_display*, uint64_t*, size_t); } statistics;
@@ -594,7 +614,7 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
     guac_display_layer_resize(layer, item->width, item->height);
     if (item->pattern == 3 || item->pattern == 4) {
         uint32_t* background = malloc((size_t) item->width * item->height * sizeof(uint32_t));
-        if (!background) return 1;
+        if (!background) exit(1);
         seed_background(background, item);
         guac_rect full = { 0, 0, item->width, item->height };
         guac_display_layer_raw_context* initial = guac_display_layer_open_raw(layer);
@@ -604,7 +624,7 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
     /* Initial allocation/full snapshot is excluded from measured steady-state
      * frames. It exercises the exact same completion path as measured frames. */
     guac_display_end_multiple_frames(display, 1);
-    if (!wait_frame(&output, display, 1)) return 1;
+    if (!wait_frame(&output, display, 1)) exit(1);
 
     double cpu = 0;
     uint64_t bytes = 0;
@@ -619,6 +639,7 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
             bytes = output.bytes;
             if (statistics.pointer) stats_available = statistics.function(display, stats_start, 10);
         }
+        output.planning_phase_mask = 0;
         double cpu_started = now(CLOCK_PROCESS_CPUTIME_ID);
         double started = now(CLOCK_MONOTONIC);
         guac_display_layer_raw_context* context = guac_display_layer_open_raw(layer);
@@ -626,12 +647,18 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
                 (size_t) item->dirty_width * sizeof(uint32_t));
         guac_display_layer_close_raw(layer, context);
         guac_display_end_multiple_frames(display, 1);
-        if (!wait_frame(&output, display, ++expected)) return 1;
+        if (!wait_frame(&output, display, ++expected)) exit(1);
         if (i >= 0) {
             elapsed[i] = now(CLOCK_MONOTONIC) - started;
             cpu += now(CLOCK_PROCESS_CPUTIME_ID) - cpu_started;
+            if (output.planning_phase_mask != 31U) {
+                fprintf(stderr, "Incomplete planning phases for %s, sample %i.\n", item->name, i);
+                exit(1);
+            }
+            for (int phase = 0; phase < 5; phase++)
+                phases[(size_t) phase * samples + i] = output.planning_phase_ms[phase];
             if (stats_available) {
-                if (!statistics.function(display, stats_end, 10)) return 1;
+                if (!statistics.function(display, stats_end, 10)) exit(1);
                 if (stats_end[9] > scratch_peak) scratch_peak = stats_end[9];
             }
             if (output.plan_pixels < pixels_min) pixels_min = output.plan_pixels;
@@ -654,6 +681,14 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
      * their backing samples before allocating its image buffers. */
     double frame_p50 = percentile(elapsed, samples, 50);
     double frame_p95 = percentile(elapsed, samples, 95);
+    double phase_mean[5] = { 0 }, phase_p95[5];
+    for (int phase = 0; phase < 5; phase++) {
+        double* values = phases + (size_t) phase * samples;
+        for (int i = 0; i < samples; i++) phase_mean[phase] += values[i];
+        phase_mean[phase] /= samples;
+        qsort(values, (size_t) samples, sizeof(double), compare_double);
+        phase_p95[phase] = percentile(values, samples, 95);
+    }
     struct rusage usage;
     getrusage(RUSAGE_SELF, &usage);
     long rss = usage.ru_maxrss;
@@ -663,9 +698,9 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
     int committed_width = layer->last_frame.width, committed_height = layer->last_frame.height;
     guac_display_free(display);
     guac_client_free(client);
-    free(pixels); free(elapsed);
+    free(pixels); free(elapsed); free(phases);
     verification_result verification = { 0 };
-    if (!verify_case(item, mode, active_cap, verify_frames, &verification)) return 1;
+    if (!verify_case(item, mode, active_cap, verify_frames, &verification)) exit(1);
     printf("{\"scenario\":\"%s\",\"mode\":\"%s\",\"pool_workers\":%d,"
             "\"samples\":%d,\"warmup_frames\":%d,\"width\":%d,\"height\":%d,"
             "\"dirty_width\":%d,\"dirty_height\":%d,\"frame_p50_ms\":%.3f,"
@@ -689,7 +724,12 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
     printf("\"policy_setter_value\":");
     if (!strcmp(mode, "baseline")) printf("null");
     else printf("%d", !strcmp(mode, "adaptive") ? active_cap : 0);
-    printf(",");
+    printf(",\"planning_phase_ms\":{");
+    static const char* phase_names[5] = { "draft", "rects", "search", "combine", "commit" };
+    for (int phase = 0; phase < 5; phase++)
+        printf("%s\"%s\":{\"samples\":%d,\"mean\":%.3f,\"p95\":%.3f}",
+                phase ? "," : "", phase_names[phase], samples, phase_mean[phase], phase_p95[phase]);
+    printf("},");
     printf("\"planner_statistics\":");
     if (stats_available) {
         static const char* names[9] = { "plan_allocations", "plan_reuses", "op_array_allocations",
@@ -697,7 +737,7 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
             "exact_copy_matches", "empty_searches_skipped", "exhausted_searches_stopped" };
         printf("{");
         for (int i = 0; i < 9; i++) {
-            if (stats_end[i] < stats_start[i]) return 1;
+            if (stats_end[i] < stats_start[i]) exit(1);
             printf("%s\"%s\":%" PRIu64, i ? "," : "", names[i], stats_end[i] - stats_start[i]);
         }
         printf(",\"scratch_bytes_final\":%" PRIu64 ",\"scratch_bytes_peak\":%" PRIu64 "}",

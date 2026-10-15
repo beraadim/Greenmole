@@ -79,6 +79,22 @@ Copy-window counts include complete 64×64 windows, not rolling-hash warm-up
 pixels. Changed operation mixing can affect encoding work, so compare counters,
 CPU, bytes, and frame times together.
 
+`planning_phase_ms` additionally records mean and p95 for each of the existing
+numeric TRACE phases: draft, rects, search, combine, and commit. The handler
+captures five fixed integers per frame without formatting messages, retaining
+strings, or adding clock reads. Each measured frame must provide all five
+phases. Both versions use this same harness, and the full-frame interval remains
+unchanged. Its log capture cost is included in that interval; sample copying,
+sorting, and summaries occur afterward.
+
+These phase durations are **integer-millisecond wall times**, including any
+scheduling delay during the phase, rather than process CPU measurements. Zero
+is valid for short phases. In particular phase 3 (`search`) includes candidate
+indexing **and** rolling copy search. The phase ends before worker encoding and
+serialization, which helps distinguish planning work from downstream tails.
+Independent p95 values cannot be subtracted to derive an encoder p95, and these
+coarse values cannot establish sub-millisecond differences.
+
 ## Independent correctness replay
 
 After recording timing/RSS and freeing the measured display, the harness creates

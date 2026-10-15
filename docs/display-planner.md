@@ -39,9 +39,12 @@ candidate, and the existing full pixel comparison still decides whether the
 operation can become a copy. A pixel mismatch keeps the image operation and
 bans that candidate, preserving the previous collision behavior.
 
-A frame with no indexed candidates skips rolling copy search. Search ends after
-the last candidate is consumed because no later window or layer could rewrite
-another operation. Misses still examine the complete original search region.
+A frame with no indexed candidates skips rolling copy search. After the last
+candidate is consumed, search finishes the current row and stops before later
+rows or layers because no later window could rewrite another operation. This
+permits at most the remainder of one row of redundant hashing and keeps the
+candidate-count check out of the per-window loop. Misses still examine the
+complete original search region.
 The rolling hash, scan order, exact collision checks, image fallback, operation
 combining, codec policy, frame markers, and worker admission policy are unchanged.
 

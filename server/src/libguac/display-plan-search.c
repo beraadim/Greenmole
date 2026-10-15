@@ -119,7 +119,7 @@ static guac_display_plan_operation* guac_display_plan_remove_indexed_op(guac_dis
  *     The closure value that was originally provided to the call to 
  *     guac_hash_foreach_image_rect().
  */
-typedef int guac_hash_callback(guac_display_plan* plan, int x, int y, uint64_t hash, void* closure);
+typedef void guac_hash_callback(guac_display_plan* plan, int x, int y, uint64_t hash, void* closure);
 
 /**
  * Iterates through each 64x64 subrectangle within the given rectangular region
@@ -145,10 +145,18 @@ typedef int guac_hash_callback(guac_display_plan* plan, int x, int y, uint64_t h
  * @param closure
  *     The arbitrary value to pass the given callback each time it is invoked
  *     through this function call.
+ *
+ * @param stop_on_empty
+ *     Whether to stop after the current row if all indexed candidates have
+ *     been consumed. Indexing must pass zero. Checking at row boundaries keeps
+ *     the stop condition out of the per-pixel rolling-hash loop.
+ *
+ * @return
+ *     The number of complete 64x64 windows passed to the callback.
  */
 static size_t guac_hash_foreach_image_rect(guac_display_plan* plan,
         const guac_display_layer_state* layer_state, const guac_rect* rect,
-        guac_hash_callback* callback, void* closure) {
+        guac_hash_callback* callback, void* closure, int stop_on_empty) {
 
     /* A smaller region cannot contain a complete hash window. */
     if (guac_rect_width(rect) < GUAC_DISPLAY_CELL_SIZE
@@ -199,14 +207,16 @@ static size_t guac_hash_foreach_image_rect(guac_display_plan* plan,
             uint64_t cell_hash = ((*current_cell_hash * 31) << 1) + row_hash;
             *(current_cell_hash++) = cell_hash;
 
-            /* Invoke callback for every hash generated, breaking out early if
-             * requested */
-            if (y >= rect->top && x >= rect->left
-                    && !callback(plan, x, y, cell_hash, closure))
-                return (size_t) (y - rect->top) * (end_x - rect->left)
-                    + (x - rect->left) + 1;
+            /* Invoke the callback for every complete window in this row. */
+            if (y >= rect->top && x >= rect->left)
+                callback(plan, x, y, cell_hash, closure);
 
         }
+
+        /* Empty buckets cannot produce more copies. Finish this row before
+         * stopping so misses do not pay an extra branch for every window. */
+        if (stop_on_empty && y >= rect->top && plan->indexed_count == 0)
+            return (size_t) (y - rect->top + 1) * (end_x - rect->left);
 
     } /* end for each row */
 
@@ -256,9 +266,8 @@ static void guac_display_cell_init_rect(guac_rect* rect, int x, int y) {
  *     A pointer to the guac_display_plan_operation that should be stored
  *     within the ops_by_hash table of the given display plan.
  */
-static int guac_display_plan_index_op_for_cell(guac_display_plan* plan, int x, int y, uint64_t hash, void* closure) {
+static void guac_display_plan_index_op_for_cell(guac_display_plan* plan, int x, int y, uint64_t hash, void* closure) {
     guac_display_plan_store_indexed_op(plan, hash, (guac_display_plan_operation*) closure);
-    return 1;
 }
 
 void PFR_guac_display_plan_index_dirty_cells(guac_display_plan* plan) {
@@ -282,7 +291,7 @@ void PFR_guac_display_plan_index_dirty_cells(guac_display_plan* plan) {
             if (guac_rect_width(&cell) == GUAC_DISPLAY_CELL_SIZE
                     && guac_rect_height(&cell) == GUAC_DISPLAY_CELL_SIZE) {
                 guac_hash_foreach_image_rect(plan, &layer->pending_frame,
-                        &cell, guac_display_plan_index_op_for_cell, op);
+                        &cell, guac_display_plan_index_op_for_cell, op, 0);
             }
 
         }
@@ -386,7 +395,7 @@ static int guac_image_cmp(const unsigned char* restrict data_a, int width_a, int
  * @param closure
  *     A pointer to the guac_display_layer that is being searched.
  */
-static int PFR_LFR_guac_display_plan_find_copies(guac_display_plan* plan,
+static void PFR_LFR_guac_display_plan_find_copies(guac_display_plan* plan,
         int x, int y, uint64_t hash, void* closure) {
 
     guac_display_layer* copy_from_layer = (guac_display_layer*) closure;
@@ -420,9 +429,6 @@ static int PFR_LFR_guac_display_plan_find_copies(guac_display_plan* plan,
 
     }
 
-    /* A hash collision also consumes its candidate, retaining the original
-     * ban-on-collision behavior. No later window can change the plan then. */
-    return plan->indexed_count != 0;
 }
 
 void PFR_LFR_guac_display_plan_rewrite_as_copies(guac_display_plan* plan) {
@@ -450,7 +456,7 @@ void PFR_LFR_guac_display_plan_rewrite_as_copies(guac_display_plan* plan) {
 
             display->planner_statistics[GUAC_DISPLAY_PLANNER_SEARCH_WINDOWS]
                 += guac_hash_foreach_image_rect(plan, &current->last_frame, &search_region,
-                    PFR_LFR_guac_display_plan_find_copies, current);
+                    PFR_LFR_guac_display_plan_find_copies, current, 1);
             if (plan->indexed_count == 0) {
                 display->planner_statistics[GUAC_DISPLAY_PLANNER_EXHAUSTED_SEARCHES]++;
                 break;

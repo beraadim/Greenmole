@@ -128,6 +128,7 @@ def main():
         "harness_sha256": hashlib.sha256(SOURCE.read_bytes()).hexdigest(),
         "verification_frames": args.verify_frames,
         "statistics_note": "planner counter deltas cover measured frames only; scratch bytes are retained-capacity gauges; unavailable baseline counters are null, not zero",
+        "planning_phase_timing_note": "existing numeric TRACE phase durations captured without formatting; per-frame mean/p95 use integer-millisecond wall times; search includes both candidate indexing and copy search; zero phase durations are valid; phase quantiles cannot be subtracted from full-frame quantiles",
         "worker_pool": args.workers, "cpuset_cpus": args.cpuset_cpus,
         "samples": args.samples, "warmup": args.warmup, "runs": runs,
     }, indent=2))

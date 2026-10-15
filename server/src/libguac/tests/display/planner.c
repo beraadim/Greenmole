@@ -151,16 +151,16 @@ void test_display__planner_skips_empty_copy_search() {
     planner_display_free(display);
 }
 
-/** A unique hit consumes the only candidate and prevents all remaining scans. */
+/** A unique hit stops at the row boundary and prevents later layer scans. */
 void test_display__planner_stops_when_copy_candidates_exhausted() {
     guac_display* display = planner_display_alloc();
-    uint32_t pending[128 * 64];
-    uint32_t previous[128 * 64];
-    planner_fill(previous, 128 * 64, 123);
+    uint32_t pending[128 * 128];
+    uint32_t previous[128 * 128];
+    planner_fill(previous, 128 * 128, 123);
     memcpy(pending, previous, sizeof(pending));
     guac_display_layer layer, unreadable_next;
-    planner_layer_init(display, &layer, pending, previous, 128, 64);
-    planner_layer_init(display, &unreadable_next, NULL, NULL, 128, 64);
+    planner_layer_init(display, &layer, pending, previous, 128, 128);
+    planner_layer_init(display, &unreadable_next, NULL, NULL, 128, 128);
     layer.last_frame.next = &unreadable_next;
     display->last_frame.layers = &layer;
     guac_display_plan* plan = PFW_guac_display_plan_alloc(display, 2);
@@ -175,7 +175,7 @@ void test_display__planner_stops_when_copy_candidates_exhausted() {
     CU_ASSERT_EQUAL(plan->ops[0].type, GUAC_DISPLAY_PLAN_OPERATION_COPY);
     CU_ASSERT_EQUAL(plan->ops[1].type, GUAC_DISPLAY_PLAN_OPERATION_IMG);
     CU_ASSERT_EQUAL(plan->indexed_count, 0);
-    CU_ASSERT_EQUAL(display->planner_statistics[GUAC_DISPLAY_PLANNER_SEARCH_WINDOWS], 1);
+    CU_ASSERT_EQUAL(display->planner_statistics[GUAC_DISPLAY_PLANNER_SEARCH_WINDOWS], 65);
     CU_ASSERT_EQUAL(display->planner_statistics[GUAC_DISPLAY_PLANNER_EXHAUSTED_SEARCHES], 1);
     guac_display_plan_free(plan);
     planner_display_free(display);
@@ -219,7 +219,7 @@ void test_display__planner_hash_match_requires_identical_pixels() {
         .dest = { 0, 0, 64, 64 }
     };
     guac_display_plan_store_indexed_op(plan, 123, &plan->ops[0]);
-    CU_ASSERT_EQUAL(PFR_LFR_guac_display_plan_find_copies(plan, 0, 0, 123, &layer), 0);
+    PFR_LFR_guac_display_plan_find_copies(plan, 0, 0, 123, &layer);
     CU_ASSERT_EQUAL(plan->ops[0].type, GUAC_DISPLAY_PLAN_OPERATION_IMG);
     CU_ASSERT_EQUAL(plan->indexed_count, 0);
     CU_ASSERT_EQUAL(display->planner_statistics[GUAC_DISPLAY_PLANNER_COPY_MATCHES], 0);
