@@ -53,14 +53,14 @@ Each upstream Dockerfile expects its own component directory as the build
 context. Use private/local tags, for example:
 
 ```sh
-docker build -t guacamole-private/guacd:1.6.1-private.5 server/
-docker build -t guacamole-private/web:1.6.1-private.5 client/
+docker build -t guacamole-private/guacd:1.6.1-private.6 server/
+docker build -t guacamole-private/web:1.6.1-private.6 client/
 ```
 
 For the reviewed internal release, use the pinned build inputs instead:
 
 ```sh
-python3 scripts/build-images.py releases/1.6.1-private.5.json --jobs 4
+python3 scripts/build-images.py releases/1.6.1-private.6.json --jobs 4
 ```
 
 The script uses local image tags and does not publish or deploy them. It pins
@@ -77,22 +77,22 @@ Native `make check` gates the server image. The client build runs the Java,
 Firefox browser, and frontend Node tests with `-DskipTests=false`. These checks
 do not replace testing a real remote desktop session.
 
-The current deployment and validation record is
-[`1.6.1-private.5`](releases/1.6.1-private.5.md), a hotfix for browser catch-up
-delays caused by nested timer clamping and redundant clipboard
-resynchronization work. The record includes build and deployment verification,
-repeatable browser measurements, snapshot timing diagnostics, and rollback
-details. It retains ordered input, complete-frame rendering, bounded per-user
-display recovery, configurable encoding workers, source-frame boundaries,
-adaptive grouping, and dirty-region copies. Existing macrdp 0.1.12 remains
-compatible; this Guacamole release requires no new Mac package.
+The release and validation record is
+[`1.6.1-private.6`](releases/1.6.1-private.6.md), covering stabilized remote
+resizing, bounded WebSocket burst processing, and workload-aware encoding.
+It retains private.5's render-continuation and clipboard fixes, complete-frame
+rendering, bounded display recovery, source-frame boundaries, adaptive grouping,
+and dirty-region copies. Existing macrdp 0.1.12 remains compatible and requires
+no package update.
 
-Worker selection remains automatic on Oberon (22 workers). The isolated
-benchmark found different preferred counts for text scrolling and large 4K
-updates, so it does not establish a new default. See the
-[worker configuration and benchmark method](docs/encoder-workers.md) and
-[sanitized measurements](releases/1.6.1-private.4-encoder-benchmark.json).
+Oberon's configured persistent encoder pool remains 22 workers. Eligible partial
+batches admit up to 12 at once; broad updates retain the pool. The production
+planner/FIFO benchmarks measure CPU efficiency and frame-time tradeoffs, while
+the browser replay measures responsiveness versus backlog completion time.
+See the [encoder method and measurements](docs/encoder-workers.md) and
+[browser protocol budget](docs/browser-protocol-budget.md). These synthetic
+checks do not replace acceptance testing a live remote desktop.
 
-This import does not include production configuration, credentials, database
-contents, logs, or any change to the running Guacamole containers. Keep local
-deployment files in the ignored `local/` directory.
+This repository does not include production configuration, credentials,
+database contents, or operational logs. Keep local deployment files in the
+ignored `local/` directory and private deployment records outside Git.

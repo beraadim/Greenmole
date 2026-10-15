@@ -132,7 +132,7 @@ the real display path instead:
 ```sh
 python3 scripts/benchmark-display-production.py \
     --baseline-image guacamole-private/native-benchmark:1.6.1-private.5 \
-    --candidate-image guacamole-private/native-benchmark:candidate-private6 \
+    --candidate-image guacamole-private/native-benchmark:1.6.1-private.6 \
     --samples 30 --warmup 5 > display-production-result.json
 ```
 
@@ -140,6 +140,10 @@ Repeat with `--reverse` to check mode-order bias. `--workers` fixes the same
 pool size for every comparison (default 22); `--cpuset-cpus` optionally fixes
 affinity. The candidate's private benchmark control affects subsequent frames
 only and is not exposed through the Guacamole protocol or connection settings.
+For shorter adjacent text comparisons, select
+`--cases scroll-text partial-text-redraw` and
+`--modes baseline fixed adaptive fixed baseline adaptive`. Explicit
+`adaptive-8`, `adaptive-12` and `adaptive-16` modes support controlled tuning.
 
 The harness updates synthetic layers through the real raw-context and frame
 completion APIs. It includes dirty detection, every planner pass, copy search,
@@ -147,8 +151,8 @@ the production FIFO, actual encoding workers/codecs, frame completion, and
 serialization to a shared discard socket. It measures a small text update,
 translated text scrolling, partial text redraw, mixed 4K content, a 4K wallpaper
 change, photo-heavy full-window changes at 1920×944 and 2560×1304, and smaller
-photo windows within a 4K desktop. Fixture
-generation and initial pool/allocation setup are excluded from measured wall
+photo windows within a 4K desktop. Fixture generation and initial
+pool/allocation setup are excluded from measured wall
 and CPU time. Each case uses a fresh process for separate peak-memory results;
 containers have no network or production configuration access.
 
@@ -167,18 +171,41 @@ browser painting, Wi-Fi, or physical input delay.
 Thirty-frame production-path sweeps (five warm-up frames) found that the
 initial eight-worker cap reduced scrolling/text-redraw CPU use but could
 increase frame completion latency. Forward/reverse full sweeps also showed
-host/mode-order variation. A follow-up sweep interleaved fixed-pool runs with
-caps of eight, twelve and sixteen. The adjacent fixed-versus-twelve results:
+host/mode-order variation. Follow-up sweeps interleaved fixed-pool runs with
+caps of eight, twelve and sixteen. Twelve was selected as a more conservative
+CPU/latency tradeoff than eight; sixteen saved little CPU in those fixtures.
 
-| Synthetic workload | Fixed p95 ms | Twelve p95 ms | Fixed CPU ms/frame | Twelve CPU ms/frame |
-| --- | ---: | ---: | ---: | ---: |
-| Text scrolling | 41.828 | 42.719 | 112.338 | 97.911 |
-| Partial text redraw | 40.564 | 41.674 | 98.963 | 90.256 |
+Final verification compared the private.5 library from source
+`f710301dfa278fc70268cd19dc6d3a14809603f4` with committed private.6 source
+`6b8b0c25e175afd144cbd42630e29bb0c0294f3f`. It ran all nine scenarios in both
+mode orders, then a shorter balanced text sequence. The latter used baseline,
+fixed, adaptive, fixed, baseline, adaptive order, with both text workloads per
+mode. Fixed and adaptive use the same private.6 library; fixed retains full-pool
+admission. Each table value below is the **arithmetic mean of two per-run
+summaries**, not a percentile computed from pooled frame samples:
 
-This reduced process CPU by approximately 13% and 9%, respectively, with
-approximately 2% and 3% higher p95 completion times. Sixteen workers saved
-little CPU in these cases. Twelve is the more conservative partial-batch
-ceiling; this is not evidence of a 15% latency gain.
+| Workload | Mode | Mean reported p50 ms | Mean reported p95 ms | Mean CPU ms/frame |
+| --- | --- | ---: | ---: | ---: |
+| Text scrolling | private.5 | 38.614 | 43.592 | 114.052 |
+| Text scrolling | private.6 fixed | 38.702 | 41.325 | 111.464 |
+| Text scrolling | private.6 default twelve | 40.352 | 43.576 | 105.033 |
+| Partial text redraw | private.5 | 36.390 | 38.713 | 97.870 |
+| Partial text redraw | private.6 fixed | 36.721 | 39.007 | 100.651 |
+| Partial text redraw | private.6 default twelve | 37.525 | 39.446 | 94.550 |
+
+Against private.5, default admission used approximately 8% less process CPU
+for scrolling and 3% less for partial redraw. Mean reported p95 was essentially
+unchanged for scrolling and approximately 2% higher for redraw; mean reported
+p50 was approximately 5% and 3% higher, respectively. This is a modest CPU
+efficiency tradeoff, not a demonstrated native latency speedup. The original
+15% scrolling-latency target was not met.
+
+The first final full sweep alone showed a 7–8% text p95 increase, while the
+reverse sweep showed a 2–3% decrease. That mode-order variation prompted the
+balanced text check instead of selecting the favorable run. Across the two
+full sweeps, mean reported p95 for each large/full-window workload was within
+5% of the baseline or lower. Many of those workloads intentionally keep full
+concurrency, so favorable variation is not attributed to the admission policy.
 
 The photo-window checks demonstrate why selection uses the planner's final
 image area, not the raw incoming dirty rectangle. A 2560×1304 photo update
@@ -192,5 +219,9 @@ to twelve workers from a larger useful count.
 
 The complete candidate sweeps, tuning and photo-check results are preserved in
 [`1.6.1-private.6-admission-benchmark.json`](../releases/1.6.1-private.6-admission-benchmark.json).
-A final full comparison of the committed default policy is recorded with the
-release verification. Real desktop/Wi-Fi acceptance remains separate.
+The final committed-source forward, reverse and balanced-text records, source
+provenance, image IDs and numeric summaries are in
+[`1.6.1-private.6-display-production-benchmark.json`](../releases/1.6.1-private.6-display-production-benchmark.json).
+The old library reports zero admission/plan metadata because these counters
+are unavailable there; those zeros do not mean it performed no rendering or
+encoding. Real desktop/Wi-Fi acceptance remains separate.

@@ -1,8 +1,8 @@
 {
   "measurement": "Production planner/FIFO/encoder candidate comparison and partial concurrency tuning before final release verification.",
-  "interpretation": "Default partial ceiling selected as12. CPU efficiency improved in text fixtures with small p95 latency cost; no15percent latency improvement demonstrated. Host/mode-order variation present. Final committed-policy full matrix is recorded separately.",
+  "interpretation": "Default partial ceiling selected as 12. CPU efficiency improved in text fixtures with a small p95 latency cost; no 15% latency improvement demonstrated. Host and mode-order variation is present. The final committed-policy full matrix is recorded separately.",
   "privacy": "Synthetic pixels and numeric timing/resource measurements only. No runtime config, screen contents, credentials, or live desktop session.",
-  "candidate_note": "These runs used exported uncommitted candidate sources; OCI revision labels identify the parent commit, not the full candidate state. Explicit cap12 exercised the same admission path chosen as the final default.",
+  "candidate_note": "These runs used exported uncommitted candidate sources; OCI revision labels identify the parent commit, not the full candidate state. Explicit cap 12 exercised the same admission path chosen as the final default.",
   "comparisons": [
     {
       "name": "production-private6-forward.json",
