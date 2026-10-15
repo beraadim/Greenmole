@@ -53,14 +53,14 @@ Each upstream Dockerfile expects its own component directory as the build
 context. Use private/local tags, for example:
 
 ```sh
-docker build -t guacamole-private/guacd:1.6.1-private.4 server/
-docker build -t guacamole-private/web:1.6.1-private.4 client/
+docker build -t guacamole-private/guacd:1.6.1-private.5 server/
+docker build -t guacamole-private/web:1.6.1-private.5 client/
 ```
 
 For the reviewed internal release, use the pinned build inputs instead:
 
 ```sh
-python3 scripts/build-images.py releases/1.6.1-private.4.json --jobs 4
+python3 scripts/build-images.py releases/1.6.1-private.5.json --jobs 4
 ```
 
 The script uses local image tags and does not publish or deploy them. It pins
@@ -78,12 +78,14 @@ Firefox browser, and frontend Node tests with `-DskipTests=false`. These checks
 do not replace testing a real remote desktop session.
 
 The current deployment and validation record is
-[`1.6.1-private.4`](releases/1.6.1-private.4.md), including ordered input during
-clipboard synchronization, complete-frame browser catch-up, bounded per-user
-display recovery, expanded diagnostics, configurable encoding workers, measured
-worker-pool tradeoffs, and rollback details. It retains private.3's source-frame
-boundaries, adaptive grouping, and dirty-region copies. Existing macrdp 0.1.12
-remains compatible; this Guacamole release requires no new Mac package.
+[`1.6.1-private.5`](releases/1.6.1-private.5.md), a hotfix for browser catch-up
+delays caused by nested timer clamping and redundant clipboard
+resynchronization work. The record includes build and deployment verification,
+repeatable browser measurements, snapshot timing diagnostics, and rollback
+details. It retains ordered input, complete-frame rendering, bounded per-user
+display recovery, configurable encoding workers, source-frame boundaries,
+adaptive grouping, and dirty-region copies. Existing macrdp 0.1.12 remains
+compatible; this Guacamole release requires no new Mac package.
 
 Worker selection remains automatic on Oberon (22 workers). The isolated
 benchmark found different preferred counts for text scrolling and large 4K
