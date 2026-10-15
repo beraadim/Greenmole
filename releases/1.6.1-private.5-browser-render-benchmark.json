@@ -1,0 +1,490 @@
+{
+  "method": "Actual Display.js with synthetic per-frame drawing cost and one initial asynchronous blocker; real browser event loop, no virtual time.",
+  "limitations": "Synthetic tasks and ACK callbacks, not physical input latency, canvas throughput, a live RDP connection, Wi-Fi, or background-tab throttling.",
+  "browser": "Chrome/155.0.8059.41",
+  "platform": "darwin-arm64",
+  "samples_per_version": 4,
+  "sources": [
+    {
+      "version": "1.6.1-private.3",
+      "revision": "cfbf130a997681f7912c85ea038af36beca9ff65",
+      "display_sha256": "43308ba7b9c1172ccc60b3a8e4a34feac07755218525c298d63b804b530657af",
+      "working_tree_modified": false
+    },
+    {
+      "version": "1.6.1-private.4",
+      "revision": "88d4b0e47e5a616b8f692c5260af8e61c1751db3",
+      "display_sha256": "c199bf6748e8b9c4e14da899571440815ff9db6d027755e8fe5282de0726a661",
+      "working_tree_modified": false
+    },
+    {
+      "version": "working-tree",
+      "revision": "194d1ef392fb0cb143b4a9acd98d67f843df9b94",
+      "display_sha256": "ffb1e59a10e5d28a5c9f6e5ae515c067e56034eecde263eb872842effaedf729",
+      "working_tree_modified": true
+    }
+  ],
+  "summary": [
+    {
+      "version": "1.6.1-private.3",
+      "scenario": "180-cheap-frames",
+      "completion_median_ms": 54.049999952316284,
+      "input_task_delay_median_ms": 54.60000014305115,
+      "maximum_ack_gap_median_ms": 0.3000001907348633
+    },
+    {
+      "version": "1.6.1-private.3",
+      "scenario": "40-medium-frames",
+      "completion_median_ms": 80.04999995231628,
+      "input_task_delay_median_ms": 80.25,
+      "maximum_ack_gap_median_ms": 2
+    },
+    {
+      "version": "1.6.1-private.3",
+      "scenario": "16-expensive-frames",
+      "completion_median_ms": 144,
+      "input_task_delay_median_ms": 144.04999995231628,
+      "maximum_ack_gap_median_ms": 9
+    },
+    {
+      "version": "1.6.1-private.4",
+      "scenario": "180-cheap-frames",
+      "completion_median_ms": 77.20000004768372,
+      "input_task_delay_median_ms": 5.250000238418579,
+      "maximum_ack_gap_median_ms": 4.800000190734863
+    },
+    {
+      "version": "1.6.1-private.4",
+      "scenario": "40-medium-frames",
+      "completion_median_ms": 120.40000009536743,
+      "input_task_delay_median_ms": 8,
+      "maximum_ack_gap_median_ms": 6.549999952316284
+    },
+    {
+      "version": "1.6.1-private.4",
+      "scenario": "16-expensive-frames",
+      "completion_median_ms": 211.14999985694885,
+      "input_task_delay_median_ms": 9,
+      "maximum_ack_gap_median_ms": 13.5
+    },
+    {
+      "version": "working-tree",
+      "scenario": "180-cheap-frames",
+      "completion_median_ms": 54.75,
+      "input_task_delay_median_ms": 5.299999952316284,
+      "maximum_ack_gap_median_ms": 0.8000001907348633
+    },
+    {
+      "version": "working-tree",
+      "scenario": "40-medium-frames",
+      "completion_median_ms": 80,
+      "input_task_delay_median_ms": 8,
+      "maximum_ack_gap_median_ms": 2
+    },
+    {
+      "version": "working-tree",
+      "scenario": "16-expensive-frames",
+      "completion_median_ms": 144,
+      "input_task_delay_median_ms": 9,
+      "maximum_ack_gap_median_ms": 9
+    }
+  ],
+  "samples": [
+    {
+      "version": "1.6.1-private.3",
+      "iteration": 0,
+      "scenarios": [
+        {
+          "scenario": "180-cheap-frames",
+          "frames": 180,
+          "synthetic_work_per_frame_ms": 0.25,
+          "completion_ms": 54,
+          "input_task_delay_ms": 54.60000038146973,
+          "input_task_completed_frames": 180,
+          "maximum_ack_gap_ms": 0.3000001907348633
+        },
+        {
+          "scenario": "40-medium-frames",
+          "frames": 40,
+          "synthetic_work_per_frame_ms": 2,
+          "completion_ms": 80,
+          "input_task_delay_ms": 80.30000019073486,
+          "input_task_completed_frames": 40,
+          "maximum_ack_gap_ms": 2
+        },
+        {
+          "scenario": "16-expensive-frames",
+          "frames": 16,
+          "synthetic_work_per_frame_ms": 9,
+          "completion_ms": 144,
+          "input_task_delay_ms": 144.09999990463257,
+          "input_task_completed_frames": 16,
+          "maximum_ack_gap_ms": 9
+        }
+      ]
+    },
+    {
+      "version": "1.6.1-private.4",
+      "iteration": 0,
+      "scenarios": [
+        {
+          "scenario": "180-cheap-frames",
+          "frames": 180,
+          "synthetic_work_per_frame_ms": 0.25,
+          "completion_ms": 77.7000002861023,
+          "input_task_delay_ms": 5.300000190734863,
+          "input_task_completed_frames": 16,
+          "maximum_ack_gap_ms": 5.400000095367432
+        },
+        {
+          "scenario": "40-medium-frames",
+          "frames": 40,
+          "synthetic_work_per_frame_ms": 2,
+          "completion_ms": 120.30000019073486,
+          "input_task_delay_ms": 8,
+          "input_task_completed_frames": 4,
+          "maximum_ack_gap_ms": 6.599999904632568
+        },
+        {
+          "scenario": "16-expensive-frames",
+          "frames": 16,
+          "synthetic_work_per_frame_ms": 9,
+          "completion_ms": 211,
+          "input_task_delay_ms": 9,
+          "input_task_completed_frames": 1,
+          "maximum_ack_gap_ms": 13.599999904632568
+        }
+      ]
+    },
+    {
+      "version": "working-tree",
+      "iteration": 0,
+      "scenarios": [
+        {
+          "scenario": "180-cheap-frames",
+          "frames": 180,
+          "synthetic_work_per_frame_ms": 0.25,
+          "completion_ms": 54.799999713897705,
+          "input_task_delay_ms": 5.399999618530273,
+          "input_task_completed_frames": 16,
+          "maximum_ack_gap_ms": 0.8000001907348633
+        },
+        {
+          "scenario": "40-medium-frames",
+          "frames": 40,
+          "synthetic_work_per_frame_ms": 2,
+          "completion_ms": 80.09999990463257,
+          "input_task_delay_ms": 8,
+          "input_task_completed_frames": 4,
+          "maximum_ack_gap_ms": 2.0999999046325684
+        },
+        {
+          "scenario": "16-expensive-frames",
+          "frames": 16,
+          "synthetic_work_per_frame_ms": 9,
+          "completion_ms": 144,
+          "input_task_delay_ms": 9,
+          "input_task_completed_frames": 1,
+          "maximum_ack_gap_ms": 9
+        }
+      ]
+    },
+    {
+      "version": "working-tree",
+      "iteration": 1,
+      "scenarios": [
+        {
+          "scenario": "180-cheap-frames",
+          "frames": 180,
+          "synthetic_work_per_frame_ms": 0.25,
+          "completion_ms": 54.89999961853027,
+          "input_task_delay_ms": 5.299999713897705,
+          "input_task_completed_frames": 16,
+          "maximum_ack_gap_ms": 0.8000001907348633
+        },
+        {
+          "scenario": "40-medium-frames",
+          "frames": 40,
+          "synthetic_work_per_frame_ms": 2,
+          "completion_ms": 80,
+          "input_task_delay_ms": 8,
+          "input_task_completed_frames": 4,
+          "maximum_ack_gap_ms": 2
+        },
+        {
+          "scenario": "16-expensive-frames",
+          "frames": 16,
+          "synthetic_work_per_frame_ms": 9,
+          "completion_ms": 144,
+          "input_task_delay_ms": 9,
+          "input_task_completed_frames": 1,
+          "maximum_ack_gap_ms": 9
+        }
+      ]
+    },
+    {
+      "version": "1.6.1-private.4",
+      "iteration": 1,
+      "scenarios": [
+        {
+          "scenario": "180-cheap-frames",
+          "frames": 180,
+          "synthetic_work_per_frame_ms": 0.25,
+          "completion_ms": 76.90000009536743,
+          "input_task_delay_ms": 5.200000286102295,
+          "input_task_completed_frames": 16,
+          "maximum_ack_gap_ms": 4.800000190734863
+        },
+        {
+          "scenario": "40-medium-frames",
+          "frames": 40,
+          "synthetic_work_per_frame_ms": 2,
+          "completion_ms": 120.09999990463257,
+          "input_task_delay_ms": 8,
+          "input_task_completed_frames": 4,
+          "maximum_ack_gap_ms": 6.5
+        },
+        {
+          "scenario": "16-expensive-frames",
+          "frames": 16,
+          "synthetic_work_per_frame_ms": 9,
+          "completion_ms": 211.2999997138977,
+          "input_task_delay_ms": 9,
+          "input_task_completed_frames": 1,
+          "maximum_ack_gap_ms": 13.5
+        }
+      ]
+    },
+    {
+      "version": "1.6.1-private.3",
+      "iteration": 1,
+      "scenarios": [
+        {
+          "scenario": "180-cheap-frames",
+          "frames": 180,
+          "synthetic_work_per_frame_ms": 0.25,
+          "completion_ms": 54,
+          "input_task_delay_ms": 54.59999990463257,
+          "input_task_completed_frames": 180,
+          "maximum_ack_gap_ms": 0.3000001907348633
+        },
+        {
+          "scenario": "40-medium-frames",
+          "frames": 40,
+          "synthetic_work_per_frame_ms": 2,
+          "completion_ms": 80.09999990463257,
+          "input_task_delay_ms": 80.19999980926514,
+          "input_task_completed_frames": 40,
+          "maximum_ack_gap_ms": 2
+        },
+        {
+          "scenario": "16-expensive-frames",
+          "frames": 16,
+          "synthetic_work_per_frame_ms": 9,
+          "completion_ms": 144,
+          "input_task_delay_ms": 144.09999990463257,
+          "input_task_completed_frames": 16,
+          "maximum_ack_gap_ms": 9
+        }
+      ]
+    },
+    {
+      "version": "1.6.1-private.3",
+      "iteration": 2,
+      "scenarios": [
+        {
+          "scenario": "180-cheap-frames",
+          "frames": 180,
+          "synthetic_work_per_frame_ms": 0.25,
+          "completion_ms": 54.09999990463257,
+          "input_task_delay_ms": 54.59999990463257,
+          "input_task_completed_frames": 180,
+          "maximum_ack_gap_ms": 0.3000001907348633
+        },
+        {
+          "scenario": "40-medium-frames",
+          "frames": 40,
+          "synthetic_work_per_frame_ms": 2,
+          "completion_ms": 80,
+          "input_task_delay_ms": 80,
+          "input_task_completed_frames": 40,
+          "maximum_ack_gap_ms": 2
+        },
+        {
+          "scenario": "16-expensive-frames",
+          "frames": 16,
+          "synthetic_work_per_frame_ms": 9,
+          "completion_ms": 144,
+          "input_task_delay_ms": 144,
+          "input_task_completed_frames": 16,
+          "maximum_ack_gap_ms": 9
+        }
+      ]
+    },
+    {
+      "version": "1.6.1-private.4",
+      "iteration": 2,
+      "scenarios": [
+        {
+          "scenario": "180-cheap-frames",
+          "frames": 180,
+          "synthetic_work_per_frame_ms": 0.25,
+          "completion_ms": 77.30000019073486,
+          "input_task_delay_ms": 5.400000095367432,
+          "input_task_completed_frames": 16,
+          "maximum_ack_gap_ms": 4.800000190734863
+        },
+        {
+          "scenario": "40-medium-frames",
+          "frames": 40,
+          "synthetic_work_per_frame_ms": 2,
+          "completion_ms": 120.5,
+          "input_task_delay_ms": 8,
+          "input_task_completed_frames": 4,
+          "maximum_ack_gap_ms": 6.5
+        },
+        {
+          "scenario": "16-expensive-frames",
+          "frames": 16,
+          "synthetic_work_per_frame_ms": 9,
+          "completion_ms": 211.2999997138977,
+          "input_task_delay_ms": 9,
+          "input_task_completed_frames": 1,
+          "maximum_ack_gap_ms": 13.5
+        }
+      ]
+    },
+    {
+      "version": "working-tree",
+      "iteration": 2,
+      "scenarios": [
+        {
+          "scenario": "180-cheap-frames",
+          "frames": 180,
+          "synthetic_work_per_frame_ms": 0.25,
+          "completion_ms": 54.700000286102295,
+          "input_task_delay_ms": 5.300000190734863,
+          "input_task_completed_frames": 16,
+          "maximum_ack_gap_ms": 0.8000001907348633
+        },
+        {
+          "scenario": "40-medium-frames",
+          "frames": 40,
+          "synthetic_work_per_frame_ms": 2,
+          "completion_ms": 80,
+          "input_task_delay_ms": 8,
+          "input_task_completed_frames": 4,
+          "maximum_ack_gap_ms": 2
+        },
+        {
+          "scenario": "16-expensive-frames",
+          "frames": 16,
+          "synthetic_work_per_frame_ms": 9,
+          "completion_ms": 144,
+          "input_task_delay_ms": 9,
+          "input_task_completed_frames": 1,
+          "maximum_ack_gap_ms": 9
+        }
+      ]
+    },
+    {
+      "version": "working-tree",
+      "iteration": 3,
+      "scenarios": [
+        {
+          "scenario": "180-cheap-frames",
+          "frames": 180,
+          "synthetic_work_per_frame_ms": 0.25,
+          "completion_ms": 54.69999980926514,
+          "input_task_delay_ms": 5.299999713897705,
+          "input_task_completed_frames": 16,
+          "maximum_ack_gap_ms": 0.8000001907348633
+        },
+        {
+          "scenario": "40-medium-frames",
+          "frames": 40,
+          "synthetic_work_per_frame_ms": 2,
+          "completion_ms": 80,
+          "input_task_delay_ms": 8,
+          "input_task_completed_frames": 4,
+          "maximum_ack_gap_ms": 2
+        },
+        {
+          "scenario": "16-expensive-frames",
+          "frames": 16,
+          "synthetic_work_per_frame_ms": 9,
+          "completion_ms": 144,
+          "input_task_delay_ms": 9,
+          "input_task_completed_frames": 1,
+          "maximum_ack_gap_ms": 9
+        }
+      ]
+    },
+    {
+      "version": "1.6.1-private.4",
+      "iteration": 3,
+      "scenarios": [
+        {
+          "scenario": "180-cheap-frames",
+          "frames": 180,
+          "synthetic_work_per_frame_ms": 0.25,
+          "completion_ms": 77.09999990463257,
+          "input_task_delay_ms": 5.200000286102295,
+          "input_task_completed_frames": 16,
+          "maximum_ack_gap_ms": 4.800000190734863
+        },
+        {
+          "scenario": "40-medium-frames",
+          "frames": 40,
+          "synthetic_work_per_frame_ms": 2,
+          "completion_ms": 120.5,
+          "input_task_delay_ms": 8,
+          "input_task_completed_frames": 4,
+          "maximum_ack_gap_ms": 6.599999904632568
+        },
+        {
+          "scenario": "16-expensive-frames",
+          "frames": 16,
+          "synthetic_work_per_frame_ms": 9,
+          "completion_ms": 211,
+          "input_task_delay_ms": 9,
+          "input_task_completed_frames": 1,
+          "maximum_ack_gap_ms": 13.5
+        }
+      ]
+    },
+    {
+      "version": "1.6.1-private.3",
+      "iteration": 3,
+      "scenarios": [
+        {
+          "scenario": "180-cheap-frames",
+          "frames": 180,
+          "synthetic_work_per_frame_ms": 0.25,
+          "completion_ms": 54.40000009536743,
+          "input_task_delay_ms": 54.90000009536743,
+          "input_task_completed_frames": 180,
+          "maximum_ack_gap_ms": 0.5
+        },
+        {
+          "scenario": "40-medium-frames",
+          "frames": 40,
+          "synthetic_work_per_frame_ms": 2,
+          "completion_ms": 80.2999997138977,
+          "input_task_delay_ms": 80.5,
+          "input_task_completed_frames": 40,
+          "maximum_ack_gap_ms": 2.1999998092651367
+        },
+        {
+          "scenario": "16-expensive-frames",
+          "frames": 16,
+          "synthetic_work_per_frame_ms": 9,
+          "completion_ms": 144,
+          "input_task_delay_ms": 144,
+          "input_task_completed_frames": 16,
+          "maximum_ack_gap_ms": 9
+        }
+      ]
+    }
+  ]
+}

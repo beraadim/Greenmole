@@ -47,13 +47,13 @@ angular.module('clipboard').factory('clipboardService', ['$injector',
     var service = {};
 
     /**
-     * Number of outstanding local-to-remote synchronization operations. A
-     * remote clipboard write must not release input waiting for a local read,
-     * nor may the first of several overlapping reads release that input.
+     * The complete outstanding local-to-remote synchronization, if any. All
+     * callers share the read and publication so overlapping focus/copy events
+     * cannot extend the input gate behind independent clipboard reads.
      *
-     * @type number
+     * @type Promise|null
      */
-    let pendingSynchronizations = 0;
+    let pendingSynchronization = null;
 
     /**
      * Returns whether a clipboard resynchronization is in progress. Newly
@@ -63,7 +63,7 @@ angular.module('clipboard').factory('clipboardService', ['$injector',
      *     Whether local clipboard synchronization is still pending.
      */
     service.isSyncInProgress = function isSyncInProgress() {
-        return pendingSynchronizations !== 0;
+        return pendingSynchronization !== null;
     };
 
     /**
@@ -638,15 +638,26 @@ angular.module('clipboard').factory('clipboardService', ['$injector',
      *     A promise resolved after synchronization completes or fails.
      */
     service.resyncClipboard = function resyncClipboard() {
-        if (pendingSynchronizations++ === 0)
-            $rootScope.$broadcast('clipboardSyncInProgress', true);
+        if (pendingSynchronization)
+            return pendingSynchronization;
 
-        return getLocalClipboard().then(function clipboardRead(data) {
-            return service.setClipboard(data);
+        pendingSynchronization = getLocalClipboard().then(function clipboardRead(data) {
+
+            // The data already came from the local clipboard. Publish it
+            // directly instead of writing it back through another potentially
+            // delayed or permission-gated browser clipboard operation.
+            storedClipboardData(data);
+            $rootScope.$broadcast('guacClipboard', data);
+
         }, angular.noop).finally(function clipboardSyncCompleted() {
-            if (--pendingSynchronizations === 0)
-                $rootScope.$broadcast('clipboardSyncInProgress', false);
+            pendingSynchronization = null;
+            $rootScope.$broadcast('clipboardSyncInProgress', false);
         });
+
+        // Assign the shared promise before notifying input views. Reentrant
+        // requests and newly-attached views must join this same operation.
+        $rootScope.$broadcast('clipboardSyncInProgress', true);
+        return pendingSynchronization;
     };
 
     return service;

@@ -25,6 +25,7 @@ describe("Guacamole.Display catch-up scheduling", function() {
     var layer;
     var images;
     var originalImage;
+    var originalMessageChannel;
     var drawn;
     var acknowledged;
 
@@ -54,6 +55,7 @@ describe("Guacamole.Display catch-up scheduling", function() {
 
     beforeEach(function() {
         originalImage = window.Image;
+        originalMessageChannel = window.MessageChannel;
         images = [];
         window.Image = function Image() {
             this.width = this.height = 1;
@@ -68,6 +70,7 @@ describe("Guacamole.Display catch-up scheduling", function() {
     afterEach(function() {
         display.cancel();
         window.Image = originalImage;
+        window.MessageChannel = originalMessageChannel;
     });
 
     describe("with controlled clocks and continuations", function() {
@@ -94,6 +97,8 @@ describe("Guacamole.Display catch-up scheduling", function() {
         }
 
         beforeEach(function() {
+            // Exercise the fallback independently of MessageChannel support.
+            window.MessageChannel = undefined;
             originalTimeout = window.setTimeout;
             originalClearTimeout = window.clearTimeout;
             timers = {};
@@ -252,6 +257,23 @@ describe("Guacamole.Display catch-up scheduling", function() {
             expect(acknowledged).toEqual(indices(16).concat([100]));
         });
 
+        it("ignores a stale timer after cancellation and keeps the new continuation", function() {
+            queueBlockedFrames(20);
+            images[0].onload();
+            var stale = timers[continuations()[0]].callback;
+            display.cancel();
+
+            queueBlockedFrames(20);
+            images[1].onload();
+            expect(drawn.length).toBe(32);
+            stale();
+            expect(drawn.length).toBe(32);
+            expect(continuations().length).toBe(1);
+            continueRendering();
+            expect(drawn.length).toBe(36);
+            expect(acknowledged.length).toBe(36);
+        });
+
         it("cancels remaining operations and the acknowledgement of an active frame", function() {
             display.drawImage(layer, 0, 0, {});
             display.drawImage(layer, 1, 0, {});
@@ -300,6 +322,135 @@ describe("Guacamole.Display catch-up scheduling", function() {
             queueBlockedFrames(2);
             wallTime -= 100;
             expect(display.getQueueStatistics().oldestFrameAge).toBe(0);
+        });
+
+    });
+
+    describe("with channel continuations", function() {
+
+        var channels;
+        var messages;
+
+        function deliver(message) {
+            message = message || messages.shift();
+            message.handler({ data: message.token });
+        }
+
+        beforeEach(function() {
+            channels = [];
+            messages = [];
+            spyOn(window.performance, 'now').and.returnValue(0);
+            window.MessageChannel = function MessageChannel() {
+                var channel = this;
+                channel.port1 = {
+                    onmessage: null,
+                    close: jasmine.createSpy('close receiving port')
+                };
+                channel.port2 = {
+                    postMessage: function(token) {
+                        messages.push({
+                            handler: channel.port1.onmessage,
+                            token: token
+                        });
+                    },
+                    close: jasmine.createSpy('close sending port')
+                };
+                channels.push(channel);
+            };
+        });
+
+        it("uses one pending message and reuses one channel across catch-up slices", function() {
+            spyOn(window, 'setTimeout').and.throwError('must use channel tasks');
+            queueBlockedFrames(40);
+            images[0].onload();
+            queueFrame(40);
+            expect(drawn).toEqual(indices(16));
+            expect(channels.length).toBe(1);
+            expect(messages.length).toBe(1);
+            deliver();
+            expect(drawn).toEqual(indices(32));
+            expect(channels.length).toBe(1);
+            expect(messages.length).toBe(1);
+            deliver();
+            expect(drawn).toEqual(indices(41));
+            expect(acknowledged).toEqual(indices(41));
+            expect(messages.length).toBe(0);
+        });
+
+        it("ignores duplicate or mismatched messages without releasing pending work", function() {
+            queueBlockedFrames(40);
+            images[0].onload();
+            var first = messages.shift();
+            first.handler({ data: first.token + 1 });
+            expect(drawn.length).toBe(16);
+            deliver(first);
+            expect(drawn.length).toBe(32);
+            deliver(first);
+            expect(drawn.length).toBe(32);
+            deliver();
+            expect(drawn).toEqual(indices(40));
+            expect(acknowledged).toEqual(indices(40));
+        });
+
+        it("closes both ports and ignores stale messages after reinitialization", function() {
+            queueBlockedFrames(20);
+            images[0].onload();
+            var stale = messages.shift();
+            var firstChannel = channels[0];
+            display.cancel();
+            expect(firstChannel.port1.close).toHaveBeenCalledTimes(1);
+            expect(firstChannel.port2.close).toHaveBeenCalledTimes(1);
+            expect(firstChannel.port1.onmessage).toBeNull();
+
+            queueBlockedFrames(20);
+            images[1].onload();
+            expect(channels.length).toBe(2);
+            expect(drawn.length).toBe(32);
+            deliver(stale);
+            expect(drawn.length).toBe(32);
+            deliver();
+            expect(drawn.length).toBe(36);
+            expect(acknowledged.length).toBe(36);
+        });
+
+        it("falls back to a timer if channel construction fails", function() {
+            var timers = [];
+            window.MessageChannel = function() { throw new Error('unavailable'); };
+            spyOn(window, 'setTimeout').and.callFake(function(callback, delay) {
+                expect(delay).toBe(0);
+                timers.push(callback);
+                return timers.length;
+            });
+            queueBlockedFrames(20);
+            images[0].onload();
+            expect(drawn.length).toBe(16);
+            expect(timers.length).toBe(1);
+            timers.shift()();
+            expect(drawn).toEqual(indices(20));
+            expect(acknowledged).toEqual(indices(20));
+        });
+
+        it("closes failed channel ports before falling back to a timer", function() {
+            var timers = [];
+            var Channel = window.MessageChannel;
+            window.MessageChannel = function() {
+                var channel = new Channel();
+                channel.port2.postMessage = function() { throw new Error('cannot post'); };
+                return channel;
+            };
+            spyOn(window, 'setTimeout').and.callFake(function(callback) {
+                timers.push(callback);
+                return timers.length;
+            });
+            queueBlockedFrames(20);
+            images[0].onload();
+            expect(channels[0].port1.close).toHaveBeenCalledTimes(1);
+            expect(channels[0].port2.close).toHaveBeenCalledTimes(1);
+            expect(channels[0].port1.onmessage).toBeNull();
+            expect(timers.length).toBe(1);
+            timers.shift()();
+            expect(drawn).toEqual(indices(20));
+            expect(acknowledged).toEqual(indices(20));
         });
 
     });

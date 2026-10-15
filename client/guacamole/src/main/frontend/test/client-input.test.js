@@ -178,7 +178,7 @@ function clipboardFixture() {
     };
     const loaded = sources(['clipboard/services/clipboardService.js'], { navigator: { clipboard } });
     const service = loaded.factories.clipboardService({ get: name => services[name] });
-    return { service, reads, writes, state, root };
+    return { service, reads, writes, state, root, clipboard };
 }
 
 test('the gate sends immediately without promises or polling when unblocked', () => {
@@ -333,6 +333,8 @@ test('destroying the directive cancels queued input and unregisters the global s
 test('an unresolved clipboard read allocates no polling and cannot replay input after teardown', async () => {
     const clipboard = clipboardFixture();
     const sync = clipboard.service.resyncClipboard();
+    assert.equal(clipboard.service.resyncClipboard(), sync);
+    assert.equal(clipboard.reads.length, 1);
     const fixture = directiveFixture({ root: clipboard.root, clipboardService: clipboard.service });
     for (let i = 0; i < 1000; i++) fixture.mouse.emit(mouseEvent('mousemove', i));
     fixture.mouse.emit(mouseEvent('mousedown', 1000, { left: true }));
@@ -343,22 +345,96 @@ test('an unresolved clipboard read allocates no polling and cannot replay input 
     clipboard.reads[0].resolve('eventually available');
     await sync;
     assert.deepEqual(fixture.sent, []);
+    assert.deepEqual(clipboard.writes, []);
     // The service's own test listener is the only remaining subscription.
     assert.equal(clipboard.root.count('clipboardSyncInProgress'), 1);
 });
 
-test('overlapping resync operations keep the gate closed until both local reads complete', async () => {
+test('overlapping resync requests share the complete read and publication', async () => {
     const fixture = clipboardFixture();
+    const published = [];
+    let duringPublication;
+    fixture.root.$on('guacClipboard', (event, data) => {
+        published.push(data.data);
+        if (!duringPublication)
+            duringPublication = fixture.service.resyncClipboard();
+    });
     const first = fixture.service.resyncClipboard();
     const second = fixture.service.resyncClipboard();
+    assert.equal(first, second);
+    assert.equal(fixture.reads.length, 1);
     assert.deepEqual(fixture.state, [true]);
     fixture.reads[0].resolve('first');
     await first;
-    assert.equal(fixture.service.isSyncInProgress(), true);
-    assert.deepEqual(fixture.state, [true]);
-    fixture.reads[1].resolve('second');
     await second;
+    assert.equal(duringPublication, first);
     assert.equal(fixture.service.isSyncInProgress(), false);
+    assert.deepEqual(fixture.state, [true, false]);
+    assert.deepEqual(published, ['first']);
+    assert.deepEqual(fixture.writes, []);
+
+    const subsequent = fixture.service.resyncClipboard();
+    assert.notEqual(subsequent, first);
+    assert.equal(fixture.reads.length, 2);
+    fixture.reads[1].resolve('second');
+    await subsequent;
+    assert.deepEqual(published, ['first', 'second']);
+    assert.deepEqual(fixture.state, [true, false, true, false]);
+});
+
+test('a delayed local read releases ordered input without a redundant permission-gated write', async () => {
+    const clipboard = clipboardFixture();
+    const permission = deferred();
+    clipboard.clipboard.writeText = text => {
+        clipboard.writes.push(text);
+        return permission.promise;
+    };
+    const fixture = directiveFixture({ root: clipboard.root, clipboardService: clipboard.service });
+    clipboard.root.$on('guacClipboard', (event, data) => fixture.scope.$broadcast('guacClipboard', data));
+    let now = 0;
+    const timing = [];
+    const push = fixture.sent.push;
+    fixture.sent.push = function(...rows) {
+        timing.push(...rows.map(row => [now, row[1]]));
+        return push.apply(this, rows);
+    };
+
+    const sync = clipboard.service.resyncClipboard();
+    assert.equal(clipboard.service.resyncClipboard(), sync);
+    assert.equal(clipboard.reads.length, 1);
+    fixture.scope.$broadcast('guacKeydown', 0xFFE3);
+    fixture.scope.$broadcast('guacKeydown', 0x76);
+    fixture.scope.$broadcast('guacKeyup', 0x76);
+    fixture.scope.$broadcast('guacKeyup', 0xFFE3);
+    fixture.mouse.emit(mouseEvent('mousedown', 20, { left: true }));
+    fixture.mouse.emit(mouseEvent('mouseup', 20));
+    assert.deepEqual(timing, []);
+
+    // Model a realistic asynchronous read delay without a wall-clock sleep.
+    // The local write would remain pending indefinitely if it were attempted.
+    now = 80;
+    clipboard.reads[0].resolve('current local clipboard');
+    await sync;
+    assert.deepEqual(clipboard.writes, []);
+    assert.deepEqual(timing, [
+        [80, 'clipboard'], [80, 'key'], [80, 'key'], [80, 'key'],
+        [80, 'key'], [80, 'mouse'], [80, 'mouse']
+    ]);
+    assert.equal(fixture.sent[0][2], 'current local clipboard');
+});
+
+test('a reentrant resync during gate notification joins the already assigned operation', async () => {
+    const fixture = clipboardFixture();
+    let reentrant;
+    fixture.root.$on('clipboardSyncInProgress', (event, active) => {
+        if (active)
+            reentrant = fixture.service.resyncClipboard();
+    });
+    const first = fixture.service.resyncClipboard();
+    assert.equal(first, reentrant);
+    assert.equal(fixture.reads.length, 1);
+    fixture.reads[0].resolve('shared');
+    await first;
     assert.deepEqual(fixture.state, [true, false]);
 });
 

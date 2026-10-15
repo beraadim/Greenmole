@@ -204,14 +204,57 @@ Guacamole.Display = function() {
     var flushing = false;
 
     /**
-     * The timer scheduled to continue a partially rendered queue, or null if
-     * no continuation is pending. A timer is used instead of animation frames
-     * so rendering and acknowledgements also progress in background tabs.
+     * The fallback timer scheduled to continue a partially rendered queue, or
+     * null if no fallback timer is pending. MessageChannel is preferred because
+     * a chain of zero-delay timers is subject to nested timer clamping.
      *
      * @private
      * @type {?number}
      */
     var flushTimer = null;
+
+    /**
+     * The channel reused to continue rendering between complete frames, or
+     * null if no channel has been created. Only one channel is retained by a
+     * display, and both ports are closed when the display is cancelled.
+     *
+     * @private
+     * @type {?MessageChannel}
+     */
+    var flushChannel = null;
+
+    /**
+     * The generation of the currently scheduled continuation, or null if no
+     * continuation is pending. Generations are not reset during cancellation,
+     * so already-delivered messages cannot resume a later rendering queue.
+     *
+     * @private
+     * @type {?number}
+     */
+    var flushToken = null;
+
+    /**
+     * The last assigned continuation generation.
+     *
+     * @private
+     * @type {!number}
+     */
+    var flushGeneration = 0;
+
+    /**
+     * Releases the channel used to continue rendering. Clearing its handler
+     * and closing both ports also releases references retained by the browser.
+     *
+     * @private
+     */
+    var closeFlushChannel = function closeFlushChannel() {
+        if (flushChannel) {
+            flushChannel.port1.onmessage = null;
+            flushChannel.port1.close();
+            flushChannel.port2.close();
+            flushChannel = null;
+        }
+    };
 
     /**
      * Returns a monotonic timestamp where available. This clock is used only
@@ -228,18 +271,49 @@ Guacamole.Display = function() {
     };
 
     /**
-     * Schedules another rendering slice. At most one continuation may be
-     * pending, even if additional image loads or sync instructions arrive.
+     * Schedules another rendering slice as a browser task. At most one
+     * continuation may be pending, even if additional image loads or sync
+     * instructions arrive. Unlike animation frames, channel messages do not
+     * depend on display refresh, and unlike nested timers they do not impose
+     * a minimum timer delay on each slice. A timer remains available for
+     * browsers which do not support or cannot create a channel.
      *
      * @private
      */
     var scheduleFlush = function scheduleFlush() {
-        if (flushTimer === null) {
-            flushTimer = window.setTimeout(function continueFlush() {
-                flushTimer = null;
-                syncFlush();
-            }, 0);
+        if (flushToken !== null)
+            return;
+
+        var token = ++flushGeneration;
+        flushToken = token;
+
+        if (window.MessageChannel) {
+            try {
+                if (!flushChannel) {
+                    var channel = flushChannel = new window.MessageChannel();
+                    channel.port1.onmessage = function continueChannelFlush(event) {
+                        if (flushChannel === channel && flushToken === event.data) {
+                            flushToken = null;
+                            syncFlush();
+                        }
+                    };
+                }
+
+                flushChannel.port2.postMessage(token);
+                return;
+            }
+            catch (e) {
+                closeFlushChannel();
+            }
         }
+
+        flushTimer = window.setTimeout(function continueTimerFlush() {
+            if (flushToken === token) {
+                flushTimer = null;
+                flushToken = null;
+                syncFlush();
+            }
+        }, 0);
     };
 
     /**
@@ -407,7 +481,7 @@ Guacamole.Display = function() {
      * @private
      */
     function __flush_frames() {
-        if (!flushing && flushTimer === null)
+        if (!flushing && flushToken === null)
             syncFlush();
     }
 
@@ -818,6 +892,9 @@ Guacamole.Display = function() {
             window.clearTimeout(flushTimer);
             flushTimer = null;
         }
+
+        flushToken = null;
+        closeFlushChannel();
 
         if (activeFrame) {
             activeFrame.cancel();

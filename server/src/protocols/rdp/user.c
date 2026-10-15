@@ -37,18 +37,26 @@
 #include <guacamole/protocol.h>
 #include <guacamole/socket.h>
 #include <guacamole/stream.h>
+#include <guacamole/timestamp.h>
 #include <guacamole/user.h>
 
+#include <inttypes.h>
 #include <pthread.h>
 #include <stddef.h>
 
 /** Refresh only this authenticated user's view of the established session. */
 static int guac_rdp_user_display_refresh_handler(guac_user* user) {
     guac_rdp_client* rdp_client = (guac_rdp_client*) user->client->data;
+    guac_timestamp started = guac_timestamp_current();
+    /* Snapshot work can outlast the render-state wait while encoding/sending.
+     * Log both ends so a blocked request is distinguishable from no request. */
+    guac_user_log(user, GUAC_LOG_INFO, "Display snapshot refresh requested.");
     int refreshed = rdp_client->display != NULL
         && guac_display_refresh(rdp_client->display, user->socket);
-    guac_user_log(user, GUAC_LOG_DEBUG, "Display snapshot refresh: %s.",
-            refreshed ? "sent" : "render busy or not ready");
+    guac_user_log(user, GUAC_LOG_INFO,
+            "Display snapshot refresh: %s (elapsed=%" PRId64 "ms).",
+            refreshed ? "sent" : "render busy or not ready",
+            guac_timestamp_current() - started);
     guac_protocol_send_display_refresh(user->socket,
             refreshed ? "done" : "busy");
     guac_socket_flush(user->socket);
