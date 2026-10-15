@@ -261,6 +261,15 @@ void guac_display_free(guac_display* display);
 void guac_display_dup(guac_display* display, guac_socket* socket);
 
 /**
+ * Resends the committed display to one user, replacing existing pixels. The
+ * render-state condition wait is limited to 250 ms; acquiring the committed
+ * frame lock, encoding, and socket writes retain normal duplication behavior.
+ * Returns one if sent, zero if the render remains busy. No remote input is
+ * injected and no other user's view is reset.
+ */
+int guac_display_refresh(guac_display* display, guac_socket* socket);
+
+/**
  * Notifies the given guac_display that a specific user has left the connection
  * and need no longer be considered for future updates/events. This SHOULD
  * always be called when a user leaves the connection to ensure other future,

@@ -75,6 +75,9 @@ typedef struct __guac_instruction_handler_mapping {
  */
 __guac_instruction_handler __guac_handle_sync;
 
+/** Private, versioned display snapshot request. */
+__guac_instruction_handler __guac_handle_display_refresh;
+
 /**
  * Internal initial handler for the mouse instruction. When a mouse instruction
  * is received, this handler will be called. The client's mouse handler will

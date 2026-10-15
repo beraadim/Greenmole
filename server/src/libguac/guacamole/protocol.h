@@ -378,6 +378,13 @@ int guac_protocol_send_set_int(guac_socket* socket, const guac_layer* layer,
 int guac_protocol_send_select(guac_socket* socket, const char* protocol);
 
 /**
+ * Sends a private x-resync version 1 capability/result. Supporting protocols
+ * advertise "ready" and send "done"/"busy" after a snapshot request. Older
+ * clients ignore this instruction and must never receive unsolicited requests.
+ */
+int guac_protocol_send_display_refresh(guac_socket* socket, const char* action);
+
+/**
  * Sends a sync instruction over the given guac_socket connection. The
  * current time in milliseconds should be passed in as the timestamp.
  *

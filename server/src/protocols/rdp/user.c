@@ -42,6 +42,19 @@
 #include <pthread.h>
 #include <stddef.h>
 
+/** Refresh only this authenticated user's view of the established session. */
+static int guac_rdp_user_display_refresh_handler(guac_user* user) {
+    guac_rdp_client* rdp_client = (guac_rdp_client*) user->client->data;
+    int refreshed = rdp_client->display != NULL
+        && guac_display_refresh(rdp_client->display, user->socket);
+    guac_user_log(user, GUAC_LOG_DEBUG, "Display snapshot refresh: %s.",
+            refreshed ? "sent" : "render busy or not ready");
+    guac_protocol_send_display_refresh(user->socket,
+            refreshed ? "done" : "busy");
+    guac_socket_flush(user->socket);
+    return 0;
+}
+
 int guac_rdp_user_join_handler(guac_user* user, int argc, char** argv) {
 
     guac_rdp_client* rdp_client = (guac_rdp_client*) user->client->data;
@@ -59,6 +72,12 @@ int guac_rdp_user_join_handler(guac_user* user, int argc, char** argv) {
 
     /* Store settings at user level */
     user->data = settings;
+
+    /* Private capability is advertised only for this supporting protocol.
+     * It does not grant input or access beyond the existing session. */
+    user->display_refresh_handler = guac_rdp_user_display_refresh_handler;
+    guac_protocol_send_display_refresh(user->socket, "ready");
+    guac_socket_flush(user->socket);
 
     /* Connect via RDP if owner */
     if (user->owner) {

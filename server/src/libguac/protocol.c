@@ -1197,6 +1197,15 @@ int guac_protocol_send_start(guac_socket* socket, const guac_layer* layer,
 
 }
 
+int guac_protocol_send_display_refresh(guac_socket* socket, const char* action) {
+    guac_socket_instruction_begin(socket);
+    int result = guac_socket_write_string(socket, "8.x-resync,1.1,")
+        || __guac_socket_write_length_string(socket, action)
+        || guac_socket_write_string(socket, ";");
+    guac_socket_instruction_end(socket);
+    return result;
+}
+
 int guac_protocol_send_sync(guac_socket* socket, guac_timestamp timestamp,
         int frames) {
 

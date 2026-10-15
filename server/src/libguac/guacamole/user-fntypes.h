@@ -451,6 +451,14 @@ typedef int guac_user_leave_handler(guac_user* user);
 typedef int guac_user_sync_handler(guac_user* user, guac_timestamp timestamp);
 
 /**
+ * Handles a private, negotiated request to refresh this user's display from
+ * server state. Implementations must target only the requesting user's socket.
+ * The generic dispatcher validates the version and limits requests to one
+ * every five seconds. Return zero on success, non-zero on a terminal error.
+ */
+typedef int guac_user_display_refresh_handler(guac_user* user);
+
+/**
  * Handler for Guacamole object get requests. The semantics of the stream
  * which will be created in response to the request are determined by the type
  * of the object and the name of the stream requested. It is up to the

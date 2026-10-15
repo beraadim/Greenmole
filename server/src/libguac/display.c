@@ -19,6 +19,7 @@
 
 #include "display-plan.h"
 #include "display-priv.h"
+#include "display-workers.h"
 #include "guacamole/client.h"
 #include "guacamole/display.h"
 #include "guacamole/fifo.h"
@@ -31,84 +32,8 @@
 #include "guacamole/timestamp.h"
 #include "guacamole/user.h"
 
-#ifdef __MINGW32__
-#include <winbase.h>
-#endif
-
 #include <cairo/cairo.h>
 #include <pthread.h>
-#include <sched.h>
-#include <unistd.h>
-
-/**
- * The number of worker threads to create per processor.
- */
-#define GUAC_DISPLAY_CPU_THREAD_FACTOR 1
-
-/**
- * Returns the number of processors available to this process. If possible,
- * limits on otherwise available processors like CPU affinity will be taken
- * into account. If the number of available processors cannot be determined,
- * zero is returned.
- *
- * @return
- *     The number of available processors, or zero if this value cannot be
- *     determined for any reason.
- */
-static unsigned long guac_display_nproc() {
-
-#if defined(HAVE_SCHED_GETAFFINITY)
-
-    /* Linux, etc. implementation leveraging sched_getaffinity() (this is
-     * specific to glibc and MUSL libc and is non-portable) */
-
-    cpu_set_t cpu_set;
-    CPU_ZERO(&cpu_set);
-
-    if (sched_getaffinity(0, sizeof(cpu_set), &cpu_set) == 0) {
-        long cpu_count = CPU_COUNT(&cpu_set);
-        if (cpu_count > 0)
-            return cpu_count;
-    }
-
-#elif defined(_SC_NPROCESSORS_ONLN)
-
-    /* Linux, etc. implementation leveraging sysconf() and _SC_NPROCESSORS_ONLN
-     * (which is also non-portable) */
-
-    long cpu_count = sysconf(_SC_NPROCESSORS_ONLN);
-    if (cpu_count > 0)
-        return cpu_count;
-
-#elif defined(__MINGW32__)
-
-    /* Windows-specific implementation (clearly also non-portable) */
-
-    unsigned long cpu_count = 0;
-    DWORD_PTR process_mask, system_mask;
-    for (GetProcessAffinityMask(GetCurrentProcess(), &process_mask, &system_mask);
-            process_mask != 0; process_mask >>= 1) {
-
-        if (process_mask & 1)
-                cpu_count++;
-
-    }
-
-    if (cpu_count > 0)
-        return cpu_count;
-
-#else
-
-    /* Fallback implementation that does not query the number of CPUs available
-     * at all, returning an error code (as portable as it gets) */
-
-    long cpu_count = 0;
-
-#endif
-
-    return 0;
-
-}
 
 guac_display* guac_display_alloc(guac_client* client) {
 
@@ -136,26 +61,8 @@ guac_display* guac_display_alloc(guac_client* client) {
     guac_flag_init(&display->render_state);
     guac_flag_set(&display->render_state, GUAC_DISPLAY_RENDER_STATE_FRAME_NOT_IN_PROGRESS);
 
-    int cpu_count = guac_display_nproc();
-    if (cpu_count <= 0) {
-        guac_client_log(client, GUAC_LOG_WARNING, "Number of available "
-                "processors could not be determined. Assuming single-processor.");
-        cpu_count = 1;
-    }
-    else {
-        guac_client_log(client, GUAC_LOG_INFO, "Local system reports %i "
-                "processor(s) are available.", cpu_count);
-    }
-
-    display->worker_thread_count = cpu_count * GUAC_DISPLAY_CPU_THREAD_FACTOR;
-    display->worker_threads = guac_mem_alloc(display->worker_thread_count, sizeof(pthread_t));
-    guac_client_log(client, GUAC_LOG_INFO, "Graphical updates will be encoded "
-            "using %i worker thread(s).", display->worker_thread_count);
-
-    /* Now that the core of the display has been fully initialized, it's safe
-     * to start the worker threads */
-    for (int i = 0; i < display->worker_thread_count; i++)
-        pthread_create(&(display->worker_threads[i]), NULL, guac_display_worker_thread, display);
+    /* The display is fully initialized before workers may inspect it. */
+    guac_display_start_workers(display);
 
     return display;
 
@@ -184,11 +91,11 @@ void guac_display_stop(guac_display* display) {
 
         /* All worker threads are now terminated and may be safely cleaned up */
         guac_mem_free(display->worker_threads);
+        display->worker_threads = NULL;
         display->worker_thread_count = 0;
 
-        /* NOTE: The only other reference to the worker_threads AT ALL is in
-         * guac_display_create(). Nothing outside of guac_display_create() and
-         * guac_display_stop() references worker_threads or worker_thread_count. */
+        /* Worker handles are owned by pool startup and this shutdown path.
+         * The count includes only successfully created threads. */
 
         /* Notify other calls to guac_display_stop() that the display is now
          * officially stopped */
@@ -235,9 +142,13 @@ void guac_display_free(guac_display* display) {
 
 }
 
-void guac_display_dup(guac_display* display, guac_socket* socket) {
+static int guac_display_dup_frame(guac_display* display, guac_socket* socket,
+        int timeout) {
 
     guac_client* client = display->client;
+    /* A refresh replaces existing pixels, including transparent pixels. An
+     * initial duplication retains its established compositing behavior. */
+    guac_composite_mode mode = timeout < 0 ? GUAC_COMP_OVER : GUAC_COMP_SRC;
     guac_rwlock_acquire_read_lock(&display->last_frame.lock);
 
     /* Wait for any pending frame to finish being sent to established users of
@@ -246,8 +157,17 @@ void guac_display_dup(guac_display* display, guac_socket* socket) {
      * new users after they finish joining, even though they are already in
      * sync with that frame, and those trailing instructions may not have the
      * intended meaning in context of the new users' remote displays) */
-    guac_flag_wait_and_lock(&display->render_state,
-            GUAC_DISPLAY_RENDER_STATE_FRAME_NOT_IN_PROGRESS);
+    if (timeout < 0)
+        guac_flag_wait_and_lock(&display->render_state,
+                GUAC_DISPLAY_RENDER_STATE_FRAME_NOT_IN_PROGRESS);
+    /* This timeout bounds the render-state condition wait only. Acquiring the
+     * committed frame lock, encoding, and socket writes retain the normal
+     * display duplication behavior and transport timeouts. */
+    else if (!guac_flag_timedwait_and_lock(&display->render_state,
+                GUAC_DISPLAY_RENDER_STATE_FRAME_NOT_IN_PROGRESS, timeout)) {
+        guac_rwlock_release_lock(&display->last_frame.lock);
+        return 0;
+    }
 
     /* Sync the state of all layers/buffers */
     guac_display_layer* current = display->last_frame.layers;
@@ -277,12 +197,12 @@ void guac_display_dup(guac_display* display, guac_socket* socket) {
                         width, height, current->last_frame.buffer_stride);
 
             /* Send PNG for rect */
-            guac_client_stream_png(client, socket, GUAC_COMP_OVER, layer, 0, 0, rect);
+            guac_client_stream_png(client, socket, mode, layer, 0, 0, rect);
 
             /* Resync copy of previous frame */
             guac_protocol_send_copy(socket,
                     layer, 0, 0, width, height,
-                    GUAC_COMP_OVER, current->last_frame_buffer, 0, 0);
+                    mode, current->last_frame_buffer, 0, 0);
 
             cairo_surface_destroy(rect);
 
@@ -337,7 +257,16 @@ void guac_display_dup(guac_display* display, guac_socket* socket) {
     guac_rwlock_release_lock(&display->last_frame.lock);
 
     guac_socket_flush(socket);
+    return 1;
 
+}
+
+void guac_display_dup(guac_display* display, guac_socket* socket) {
+    guac_display_dup_frame(display, socket, -1);
+}
+
+int guac_display_refresh(guac_display* display, guac_socket* socket) {
+    return guac_display_dup_frame(display, socket, 250);
 }
 
 void guac_display_notify_user_left(guac_display* display, guac_user* user) {

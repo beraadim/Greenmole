@@ -415,6 +415,13 @@ struct guac_user {
      */
     guac_user_sync_handler* sync_handler;
 
+    /** Private x-resync capability, installed only by supporting protocols. */
+    guac_user_display_refresh_handler* display_refresh_handler;
+
+    /** Rate-limit expensive full snapshots separately for each active user. */
+    guac_timestamp last_display_refresh;
+    int display_refresh_requested;
+
     /**
      * Handler for leave events fired by the guac_client when a guac_user
      * is leaving an active connection.

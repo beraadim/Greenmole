@@ -119,6 +119,7 @@ noinst_HEADERS =              \
     display-builtin-cursors.h \
     display-plan.h            \
     display-priv.h            \
+    display-workers.h         \
     encode-jpeg.h             \
     encode-png.h              \
     id.h                      \
@@ -145,6 +146,7 @@ libguac_la_SOURCES =          \
     display-plan-search.c     \
     display-render-thread.c   \
     display-worker.c          \
+    display-workers.c         \
     encode-jpeg.c             \
     encode-png.c              \
     error.c                   \

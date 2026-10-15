@@ -37,6 +37,7 @@
 
 __guac_instruction_handler_mapping __guac_instruction_handler_map[] = {
    {"sync",       __guac_handle_sync},
+   {"x-resync",   __guac_handle_display_refresh},
    {"touch",      __guac_handle_touch},
    {"mouse",      __guac_handle_mouse},
    {"key",        __guac_handle_key},
@@ -158,6 +159,27 @@ int __guac_handle_sync(guac_user* user, int argc, char** argv) {
     if (user->sync_handler)
         return user->sync_handler(user, timestamp);
     return 0;
+}
+
+int __guac_handle_display_refresh(guac_user* user, int argc, char** argv) {
+
+    /* Never interpret arbitrary arguments or activate an unsupported protocol.
+     * This extension is advertised by the protocol only after installing its
+     * handler. Read-only users may refresh their own view without sending any
+     * input to the remote desktop. */
+    if (argc != 2 || strcmp(argv[0], "1") || strcmp(argv[1], "request")
+            || !user->display_refresh_handler)
+        return 0;
+
+    guac_timestamp now = guac_timestamp_current();
+    if (user->display_refresh_requested && now >= user->last_display_refresh
+            && now - user->last_display_refresh < 5000)
+        return 0;
+
+    user->display_refresh_requested = 1;
+    user->last_display_refresh = now;
+    return user->display_refresh_handler(user);
+
 }
 
 int __guac_handle_touch(guac_user* user, int argc, char** argv) {

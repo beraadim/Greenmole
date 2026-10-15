@@ -43,8 +43,10 @@ test_libguac_SOURCES =               \
     client/layer_pool.c              \
     display/flush.c                  \
     display/image-format.c           \
+    display/refresh.c                \
     display/render-thread.c          \
     display/source-frame.c           \
+    display/workers.c                \
     fifo/fifo.c                      \
     file/openat.c                    \
     flag/flag.c                      \
@@ -88,6 +90,8 @@ test_libguac_CFLAGS =       \
 
 test_libguac_LDADD = \
     @CUNIT_LIBS@     \
+    @CAIRO_LIBS@     \
+    @PTHREAD_LIBS@   \
     @LIBGUAC_LTLIB@
 
 #
