@@ -53,14 +53,14 @@ Each upstream Dockerfile expects its own component directory as the build
 context. Use private/local tags, for example:
 
 ```sh
-docker build -t guacamole-private/guacd:1.6.1-private.1 server/
-docker build -t guacamole-private/web:1.6.1-private.1 client/
+docker build -t guacamole-private/guacd:1.6.1-private.3 server/
+docker build -t guacamole-private/web:1.6.1-private.3 client/
 ```
 
 For the reviewed internal release, use the pinned build inputs instead:
 
 ```sh
-python3 scripts/build-images.py releases/1.6.1-private.2.json --jobs 4
+python3 scripts/build-images.py releases/1.6.1-private.3.json --jobs 4
 ```
 
 The script uses local image tags and does not publish or deploy them. It pins
@@ -78,8 +78,11 @@ and Firefox browser tests with `-DskipTests=false`. These checks do not replace
 testing a real remote desktop session.
 
 The current deployment and validation record is
-[`1.6.1-private.2`](releases/1.6.1-private.2.md), including performance changes,
-the optional diagnostics overlay and rollback details.
+[`1.6.1-private.3`](releases/1.6.1-private.3.md), including source-frame
+boundaries, bounded grouping for jittered updates, dirty-region copies, the
+optional diagnostics overlay and rollback details. The frame-marker changes
+pair with macrdp 0.1.12; dirty-region copies and adaptive grouping also apply
+to existing servers.
 
 This import does not include production configuration, credentials, database
 contents, logs, or any change to the running Guacamole containers. Keep local
