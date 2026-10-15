@@ -69,6 +69,9 @@ Maven artifacts still resolve through their package repositories. Archive build
 logs and final image IDs with each deployment. Use `--component server` or
 `--component client` to build one image. When building an exported source
 archive, supply its Git commit through `SOURCE_REVISION`.
+Preserve source file permissions when extracting that archive (`tar -xp`);
+the runtime entrypoints execute as unprivileged container users. The build
+driver rejects entrypoints whose permissions would prevent this.
 
 Native `make check` now gates the server image. The client build runs the Java
 and Firefox browser tests with `-DskipTests=false`. These checks do not replace

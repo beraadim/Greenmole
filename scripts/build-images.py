@@ -24,6 +24,16 @@ def main():
     for component, spec in release["images"].items():
         if args.component not in ("all", component):
             continue
+        entrypoint = root / component / {
+            "server": "src/guacd-docker/bin/entrypoint.sh",
+            "client": "guacamole-docker/bin/entrypoint.sh",
+        }[component]
+        # COPY retains source permissions; these scripts run as non-root users.
+        if entrypoint.stat().st_mode & 0o005 != 0o005:
+            raise RuntimeError(
+                f"{entrypoint} must be readable and executable by container users. "
+                "Preserve exported source modes with tar -xp."
+            )
         command = [
             "docker", "build", "--progress=plain", "--platform", release["platform"],
             "--tag", spec["tag"],
