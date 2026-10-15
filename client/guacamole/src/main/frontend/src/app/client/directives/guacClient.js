@@ -52,7 +52,9 @@ angular.module('client').directive('guacClient', [function guacClient() {
 
         // Required types
         const ManagedClient = $injector.get('ManagedClient');
+        const ManagedClientState = $injector.get('ManagedClientState');
         const ClientInputQueue = $injector.get('ClientInputQueue');
+        const ClientResizeQueue = $injector.get('ClientResizeQueue');
             
         // Required services
         const $rootScope = $injector.get('$rootScope');
@@ -142,6 +144,12 @@ angular.module('client').directive('guacClient', [function guacClient() {
          */
         const inputQueue = new ClientInputQueue();
         inputQueue.setBlocked(clipboardService.isSyncInProgress());
+
+        const resizeQueue = new ClientResizeQueue((width, height) => {
+            if (client)
+                client.sendSize(width, height);
+        });
+        let connectionRequested = false;
 
         /**
          * Updates the scale of the attached Guacamole.Client based on current window
@@ -342,6 +350,8 @@ angular.module('client').directive('guacClient', [function guacClient() {
 
             // Pending input belongs only to the client that received it.
             inputQueue.clear();
+            resizeQueue.clear();
+            connectionRequested = false;
             client = null;
             display = null;
             displayElement = null;
@@ -359,6 +369,10 @@ angular.module('client').directive('guacClient', [function guacClient() {
             // Attach possibly new display
             display = client.getDisplay();
             display.scale($scope.client.clientProperties.scale);
+            resizeQueue.acknowledge(display.getWidth(), display.getHeight());
+            const states = ManagedClientState.ConnectionState;
+            const state = managedClient.clientState && managedClient.clientState.connectionState;
+            resizeQueue.setConnected(state === states.WAITING || state === states.CONNECTED);
 
             // Add display element
             displayElement = display.getElement();
@@ -392,7 +406,20 @@ angular.module('client').directive('guacClient', [function guacClient() {
 
         // Update scale when display is resized
         $scope.$watch('client.managedDisplay.size', function setDisplaySize() {
+            if (display)
+                resizeQueue.acknowledge(display.getWidth(), display.getHeight());
             $scope.$evalAsync(updateDisplayScale);
+        });
+
+        // The viewport can change while the connection handshake is in flight.
+        // Apply its latest size only once the client accepts size instructions.
+        $scope.$watch('client.clientState.connectionState', function connectionStateChanged(state) {
+            const states = ManagedClientState.ConnectionState;
+            resizeQueue.setConnected(state === states.WAITING || state === states.CONNECTED);
+        });
+
+        $scope.$watch('client.protocol', function protocolChanged() {
+            $scope.mainElementResized();
         });
 
         // Keep local cursor up-to-date
@@ -473,21 +500,27 @@ angular.module('client').directive('guacClient', [function guacClient() {
             // Send new display size, if changed
             if (client && display && main.offsetWidth && main.offsetHeight) {
 
-                // Connect, if not already connected
-                ManagedClient.connect($scope.client, main.offsetWidth, main.offsetHeight);
+                // Preserve the first known viewport for the initial handshake.
+                // Further notifications join the pending resize instead of
+                // starting additional asynchronous connection attempts.
+                if (!connectionRequested) {
+                    connectionRequested = true;
+                    ManagedClient.connect($scope.client, main.offsetWidth, main.offsetHeight);
+                }
 
-                const pixelDensity = $window.devicePixelRatio || 1;
-                const width  = main.offsetWidth  * pixelDensity;
-                const height = main.offsetHeight * pixelDensity;
-
-                if (display.getWidth() !== width || display.getHeight() !== height)
-                    client.sendSize(width, height);
+                const size = ClientResizeQueue.normalize(main.offsetWidth, main.offsetHeight,
+                    $window.devicePixelRatio || 1, $scope.client.protocol === 'rdp');
+                resizeQueue.request(size.width, size.height);
 
             }
 
             $scope.$evalAsync(updateDisplayScale);
 
         };
+
+        // A monitor/DPI transition can change devicePixelRatio while CSS
+        // dimensions stay unchanged, which the element sensor cannot detect.
+        $window.addEventListener('resize', $scope.mainElementResized);
 
         // Scroll client display if absolute mouse is in use (the same drag
         // gesture is needed for moving the mouse pointer with relative mouse)
@@ -637,6 +670,8 @@ angular.module('client').directive('guacClient', [function guacClient() {
         $scope.$on('$destroy', function destroyClientInput() {
             stopClipboardSyncListener();
             inputQueue.dispose();
+            resizeQueue.dispose();
+            $window.removeEventListener('resize', $scope.mainElementResized);
             client = null;
             display = null;
             mouse.off('mousedown', focusBody);

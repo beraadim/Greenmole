@@ -19,6 +19,7 @@
 
 #include "display-plan.h"
 #include "display-priv.h"
+#include "display-workers.h"
 #include "guacamole/client.h"
 #include "guacamole/display.h"
 #include "guacamole/fifo.h"
@@ -277,7 +278,7 @@ void* guac_display_worker_thread(void* data) {
     guac_socket* socket = client->socket;
 
     guac_display_plan_operation op;
-    while (guac_fifo_dequeue_and_lock(&display->ops, &op)) {
+    while (guac_display_worker_dequeue_and_lock(display, &op)) {
 
         /* Notify any watchers of render_state that a frame is now in progress */
         guac_flag_set_and_lock(&display->render_state, GUAC_DISPLAY_RENDER_STATE_FRAME_IN_PROGRESS);
@@ -438,6 +439,11 @@ void* guac_display_worker_thread(void* data) {
         }
 
         display->active_workers--;
+        /* Excess persistent threads wait before claiming an operation. Wake
+         * one when an encoder slot becomes available; FIFO invalidation wakes
+         * all waiters during shutdown. */
+        if (display->ops.state.value & GUAC_FIFO_STATE_NONEMPTY)
+            pthread_cond_signal(&display->ops.state.value_changed);
         guac_fifo_unlock(&display->ops);
 
         guac_rwlock_release_lock(&display->last_frame.lock);

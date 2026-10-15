@@ -1,0 +1,582 @@
+{
+  "method": "Actual WebSocketTunnel, Parser, Client and Display with synchronous ready-frame protocol bursts and real canvas copies/fills. WebSocket delivery is simulated locally; ACK order and final canvas pixels are checked.",
+  "limitations": "Foreground headless Chrome API/ACK completion and synthetic browser-task opportunity; not physical paint/FPS, physical input latency, live networking, Wi-Fi, image decoding, or background throttling.",
+  "browser": "Chrome/155.0.8059.41",
+  "platform": "darwin-arm64",
+  "samples_per_version": 4,
+  "sources": [
+    {
+      "version": "1.6.1-private.5",
+      "revision": "f710301dfa278fc70268cd19dc6d3a14809603f4",
+      "working_tree_modified": false,
+      "module_bundle_sha256": "3e804306f1f6735ab2491724abf8342a814a075c52883a8424f8b28ce3f20335"
+    },
+    {
+      "version": "working-tree",
+      "revision": "9233ae7a5ab49acd190acdf91828e3a156129ed6",
+      "working_tree_modified": true,
+      "module_bundle_sha256": "a9c91884259dbefeb4fbc837b2031f8356ec347421ba9f0ed2c26aa6a6c781e4"
+    }
+  ],
+  "modules": [
+    "Parser.js",
+    "Status.js",
+    "Display.js",
+    "DisplayRecovery.js",
+    "IntegerPool.js",
+    "InstructionPump.js",
+    "Tunnel.js",
+    "Client.js"
+  ],
+  "layer_sha256": "b9f1d73b2e975d7944f9e66c545d24e16ad3a61af559db8d3075ae629711c26b",
+  "summary": [
+    {
+      "version": "1.6.1-private.5",
+      "scenario": "small-copy-burst",
+      "completion_median_ms": 77.45000004768372,
+      "input_task_delay_median_ms": 78.29999995231628,
+      "maximum_ack_gap_median_ms": 5.799999952316284
+    },
+    {
+      "version": "1.6.1-private.5",
+      "scenario": "window-copy-burst",
+      "completion_median_ms": 56.49999976158142,
+      "input_task_delay_median_ms": 58.44999980926514,
+      "maximum_ack_gap_median_ms": 5.299999713897705
+    },
+    {
+      "version": "1.6.1-private.5",
+      "scenario": "mixed-1080p-burst",
+      "completion_median_ms": 65.04999995231628,
+      "input_task_delay_median_ms": 67.19999980926514,
+      "maximum_ack_gap_median_ms": 5.150000095367432
+    },
+    {
+      "version": "working-tree",
+      "scenario": "small-copy-burst",
+      "completion_median_ms": 90.35000014305115,
+      "input_task_delay_median_ms": 9.150000095367432,
+      "maximum_ack_gap_median_ms": 4.549999952316284
+    },
+    {
+      "version": "working-tree",
+      "scenario": "window-copy-burst",
+      "completion_median_ms": 61.69999980926514,
+      "input_task_delay_median_ms": 9.300000190734863,
+      "maximum_ack_gap_median_ms": 1.7999999523162842
+    },
+    {
+      "version": "working-tree",
+      "scenario": "mixed-1080p-burst",
+      "completion_median_ms": 68.5,
+      "input_task_delay_median_ms": 9.800000190734863,
+      "maximum_ack_gap_median_ms": 2.1000001430511475
+    }
+  ],
+  "samples": [
+    {
+      "version": "1.6.1-private.5",
+      "iteration": 0,
+      "scenarios": [
+        {
+          "scenario": "small-copy-burst",
+          "frames": 22000,
+          "canvas_width": 128,
+          "canvas_height": 128,
+          "copies_per_frame": 1,
+          "wire_text_code_units": 1399001,
+          "completion_ms": 104,
+          "input_task_delay_ms": 105.09999990463257,
+          "input_task_completed_frames": 22000,
+          "maximum_ack_gap_ms": 7,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "window-copy-burst",
+          "frames": 6000,
+          "canvas_width": 1280,
+          "canvas_height": 720,
+          "copies_per_frame": 4,
+          "wire_text_code_units": 1284000,
+          "completion_ms": 56.799999713897705,
+          "input_task_delay_ms": 58.69999980926514,
+          "input_task_completed_frames": 6000,
+          "maximum_ack_gap_ms": 5.199999809265137,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "mixed-1080p-burst",
+          "frames": 3000,
+          "canvas_width": 1920,
+          "canvas_height": 1080,
+          "copies_per_frame": 8,
+          "wire_text_code_units": 1471682,
+          "completion_ms": 56.39999961853027,
+          "input_task_delay_ms": 58.19999980926514,
+          "input_task_completed_frames": 3000,
+          "maximum_ack_gap_ms": 5.099999904632568,
+          "final_pixel": [
+            184,
+            80,
+            120,
+            255
+          ],
+          "acknowledgements_in_order": true
+        }
+      ]
+    },
+    {
+      "version": "working-tree",
+      "iteration": 0,
+      "scenarios": [
+        {
+          "scenario": "small-copy-burst",
+          "frames": 22000,
+          "canvas_width": 128,
+          "canvas_height": 128,
+          "copies_per_frame": 1,
+          "wire_text_code_units": 1399001,
+          "completion_ms": 83.30000019073486,
+          "input_task_delay_ms": 10.5,
+          "input_task_completed_frames": 1494,
+          "maximum_ack_gap_ms": 1.5,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "window-copy-burst",
+          "frames": 6000,
+          "canvas_width": 1280,
+          "canvas_height": 720,
+          "copies_per_frame": 4,
+          "wire_text_code_units": 1284000,
+          "completion_ms": 67.5,
+          "input_task_delay_ms": 9.300000190734863,
+          "input_task_completed_frames": 500,
+          "maximum_ack_gap_ms": 9.400000095367432,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "mixed-1080p-burst",
+          "frames": 3000,
+          "canvas_width": 1920,
+          "canvas_height": 1080,
+          "copies_per_frame": 8,
+          "wire_text_code_units": 1471682,
+          "completion_ms": 68.69999980926514,
+          "input_task_delay_ms": 9.800000190734863,
+          "input_task_completed_frames": 368,
+          "maximum_ack_gap_ms": 2.1000003814697266,
+          "final_pixel": [
+            184,
+            80,
+            120,
+            255
+          ],
+          "acknowledgements_in_order": true
+        }
+      ]
+    },
+    {
+      "version": "working-tree",
+      "iteration": 1,
+      "scenarios": [
+        {
+          "scenario": "small-copy-burst",
+          "frames": 22000,
+          "canvas_width": 128,
+          "canvas_height": 128,
+          "copies_per_frame": 1,
+          "wire_text_code_units": 1399001,
+          "completion_ms": 90.7000002861023,
+          "input_task_delay_ms": 9.200000286102295,
+          "input_task_completed_frames": 1542,
+          "maximum_ack_gap_ms": 5,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "window-copy-burst",
+          "frames": 6000,
+          "canvas_width": 1280,
+          "canvas_height": 720,
+          "copies_per_frame": 4,
+          "wire_text_code_units": 1284000,
+          "completion_ms": 60.09999990463257,
+          "input_task_delay_ms": 9.300000190734863,
+          "input_task_completed_frames": 483,
+          "maximum_ack_gap_ms": 1.6999998092651367,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "mixed-1080p-burst",
+          "frames": 3000,
+          "canvas_width": 1920,
+          "canvas_height": 1080,
+          "copies_per_frame": 8,
+          "wire_text_code_units": 1471682,
+          "completion_ms": 68.30000019073486,
+          "input_task_delay_ms": 9.800000190734863,
+          "input_task_completed_frames": 360,
+          "maximum_ack_gap_ms": 1.9000000953674316,
+          "final_pixel": [
+            184,
+            80,
+            120,
+            255
+          ],
+          "acknowledgements_in_order": true
+        }
+      ]
+    },
+    {
+      "version": "1.6.1-private.5",
+      "iteration": 1,
+      "scenarios": [
+        {
+          "scenario": "small-copy-burst",
+          "frames": 22000,
+          "canvas_width": 128,
+          "canvas_height": 128,
+          "copies_per_frame": 1,
+          "wire_text_code_units": 1399001,
+          "completion_ms": 76.69999980926514,
+          "input_task_delay_ms": 77.5,
+          "input_task_completed_frames": 22000,
+          "maximum_ack_gap_ms": 6,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "window-copy-burst",
+          "frames": 6000,
+          "canvas_width": 1280,
+          "canvas_height": 720,
+          "copies_per_frame": 4,
+          "wire_text_code_units": 1284000,
+          "completion_ms": 55.700000286102295,
+          "input_task_delay_ms": 57.700000286102295,
+          "input_task_completed_frames": 6000,
+          "maximum_ack_gap_ms": 5.399999618530273,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "mixed-1080p-burst",
+          "frames": 3000,
+          "canvas_width": 1920,
+          "canvas_height": 1080,
+          "copies_per_frame": 8,
+          "wire_text_code_units": 1471682,
+          "completion_ms": 64.5,
+          "input_task_delay_ms": 66.69999980926514,
+          "input_task_completed_frames": 3000,
+          "maximum_ack_gap_ms": 5.400000095367432,
+          "final_pixel": [
+            184,
+            80,
+            120,
+            255
+          ],
+          "acknowledgements_in_order": true
+        }
+      ]
+    },
+    {
+      "version": "1.6.1-private.5",
+      "iteration": 2,
+      "scenarios": [
+        {
+          "scenario": "small-copy-burst",
+          "frames": 22000,
+          "canvas_width": 128,
+          "canvas_height": 128,
+          "copies_per_frame": 1,
+          "wire_text_code_units": 1399001,
+          "completion_ms": 78.2000002861023,
+          "input_task_delay_ms": 79.09999990463257,
+          "input_task_completed_frames": 22000,
+          "maximum_ack_gap_ms": 5.300000190734863,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "window-copy-burst",
+          "frames": 6000,
+          "canvas_width": 1280,
+          "canvas_height": 720,
+          "copies_per_frame": 4,
+          "wire_text_code_units": 1284000,
+          "completion_ms": 56.19999980926514,
+          "input_task_delay_ms": 58.19999980926514,
+          "input_task_completed_frames": 6000,
+          "maximum_ack_gap_ms": 5.299999713897705,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "mixed-1080p-burst",
+          "frames": 3000,
+          "canvas_width": 1920,
+          "canvas_height": 1080,
+          "copies_per_frame": 8,
+          "wire_text_code_units": 1471682,
+          "completion_ms": 65.59999990463257,
+          "input_task_delay_ms": 67.69999980926514,
+          "input_task_completed_frames": 3000,
+          "maximum_ack_gap_ms": 5.200000286102295,
+          "final_pixel": [
+            184,
+            80,
+            120,
+            255
+          ],
+          "acknowledgements_in_order": true
+        }
+      ]
+    },
+    {
+      "version": "working-tree",
+      "iteration": 2,
+      "scenarios": [
+        {
+          "scenario": "small-copy-burst",
+          "frames": 22000,
+          "canvas_width": 128,
+          "canvas_height": 128,
+          "copies_per_frame": 1,
+          "wire_text_code_units": 1399001,
+          "completion_ms": 94.59999990463257,
+          "input_task_delay_ms": 9.099999904632568,
+          "input_task_completed_frames": 1367,
+          "maximum_ack_gap_ms": 4.299999713897705,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "window-copy-burst",
+          "frames": 6000,
+          "canvas_width": 1280,
+          "canvas_height": 720,
+          "copies_per_frame": 4,
+          "wire_text_code_units": 1284000,
+          "completion_ms": 62.799999713897705,
+          "input_task_delay_ms": 9.299999713897705,
+          "input_task_completed_frames": 520,
+          "maximum_ack_gap_ms": 1.9000000953674316,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "mixed-1080p-burst",
+          "frames": 3000,
+          "canvas_width": 1920,
+          "canvas_height": 1080,
+          "copies_per_frame": 8,
+          "wire_text_code_units": 1471682,
+          "completion_ms": 68.2999997138977,
+          "input_task_delay_ms": 9.599999904632568,
+          "input_task_completed_frames": 372,
+          "maximum_ack_gap_ms": 2.0999999046325684,
+          "final_pixel": [
+            184,
+            80,
+            120,
+            255
+          ],
+          "acknowledgements_in_order": true
+        }
+      ]
+    },
+    {
+      "version": "working-tree",
+      "iteration": 3,
+      "scenarios": [
+        {
+          "scenario": "small-copy-burst",
+          "frames": 22000,
+          "canvas_width": 128,
+          "canvas_height": 128,
+          "copies_per_frame": 1,
+          "wire_text_code_units": 1399001,
+          "completion_ms": 90,
+          "input_task_delay_ms": 8.800000190734863,
+          "input_task_completed_frames": 1501,
+          "maximum_ack_gap_ms": 4.800000190734863,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "window-copy-burst",
+          "frames": 6000,
+          "canvas_width": 1280,
+          "canvas_height": 720,
+          "copies_per_frame": 4,
+          "wire_text_code_units": 1284000,
+          "completion_ms": 60.59999990463257,
+          "input_task_delay_ms": 9.599999904632568,
+          "input_task_completed_frames": 588,
+          "maximum_ack_gap_ms": 1.5999999046325684,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "mixed-1080p-burst",
+          "frames": 3000,
+          "canvas_width": 1920,
+          "canvas_height": 1080,
+          "copies_per_frame": 8,
+          "wire_text_code_units": 1471682,
+          "completion_ms": 70.69999980926514,
+          "input_task_delay_ms": 13.899999618530273,
+          "input_task_completed_frames": 329,
+          "maximum_ack_gap_ms": 6.299999713897705,
+          "final_pixel": [
+            184,
+            80,
+            120,
+            255
+          ],
+          "acknowledgements_in_order": true
+        }
+      ]
+    },
+    {
+      "version": "1.6.1-private.5",
+      "iteration": 3,
+      "scenarios": [
+        {
+          "scenario": "small-copy-burst",
+          "frames": 22000,
+          "canvas_width": 128,
+          "canvas_height": 128,
+          "copies_per_frame": 1,
+          "wire_text_code_units": 1399001,
+          "completion_ms": 76.30000019073486,
+          "input_task_delay_ms": 77.2000002861023,
+          "input_task_completed_frames": 22000,
+          "maximum_ack_gap_ms": 5.599999904632568,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "window-copy-burst",
+          "frames": 6000,
+          "canvas_width": 1280,
+          "canvas_height": 720,
+          "copies_per_frame": 4,
+          "wire_text_code_units": 1284000,
+          "completion_ms": 57.80000019073486,
+          "input_task_delay_ms": 59.700000286102295,
+          "input_task_completed_frames": 6000,
+          "maximum_ack_gap_ms": 5.299999713897705,
+          "final_pixel": [
+            20,
+            40,
+            60,
+            255
+          ],
+          "acknowledgements_in_order": true
+        },
+        {
+          "scenario": "mixed-1080p-burst",
+          "frames": 3000,
+          "canvas_width": 1920,
+          "canvas_height": 1080,
+          "copies_per_frame": 8,
+          "wire_text_code_units": 1471682,
+          "completion_ms": 66.09999990463257,
+          "input_task_delay_ms": 68.30000019073486,
+          "input_task_completed_frames": 3000,
+          "maximum_ack_gap_ms": 5.099999904632568,
+          "final_pixel": [
+            184,
+            80,
+            120,
+            255
+          ],
+          "acknowledgements_in_order": true
+        }
+      ]
+    }
+  ]
+}

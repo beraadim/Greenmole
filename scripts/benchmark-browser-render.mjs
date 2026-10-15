@@ -27,19 +27,22 @@ import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { protocolReplay } from './benchmarks/protocol-replay.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const modulePath = 'client/guacamole-common-js/src/main/webapp/modules/';
-const options = { samples: 4, browser: process.env.CHROME_BIN, output: null };
+const options = { samples: 4, browser: process.env.CHROME_BIN, output: null, scenario: 'render' };
 for (let i = 2; i < process.argv.length; i++) {
     const argument = process.argv[i];
-    if (!['--samples', '--browser', '--output'].includes(argument) || !process.argv[i + 1])
-        throw new Error('Usage: benchmark-browser-render.mjs [--samples 1..20] [--browser executable] [--output result.json]');
+    if (!['--samples', '--browser', '--output', '--scenario'].includes(argument) || !process.argv[i + 1])
+        throw new Error('Usage: benchmark-browser-render.mjs [--samples 1..20] [--browser executable] [--output result.json] [--scenario render|protocol]');
     options[argument.slice(2)] = process.argv[++i];
 }
 options.samples = Number(options.samples);
 if (!Number.isInteger(options.samples) || options.samples < 1 || options.samples > 20)
     throw new Error('--samples must be an integer from 1 through 20');
+if (!['render', 'protocol'].includes(options.scenario))
+    throw new Error('--scenario must be render or protocol');
 
 if (!options.browser) {
     const candidates = ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'];
@@ -58,15 +61,20 @@ if (!options.browser)
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
 const layer = await readFile(path.join(root, modulePath, 'Layer.js'), 'utf8');
 const versions = [];
-for (const tag of ['1.6.1-private.3', '1.6.1-private.4']) {
+const modules = options.scenario === 'protocol'
+    ? ['Parser.js', 'Status.js', 'Display.js', 'DisplayRecovery.js', 'IntegerPool.js', 'InstructionPump.js', 'Tunnel.js', 'Client.js']
+    : ['Display.js'];
+const tags = options.scenario === 'protocol' ? ['1.6.1-private.5'] : ['1.6.1-private.3', '1.6.1-private.4'];
+for (const tag of tags) {
     versions.push({ name: tag, revision: git('rev-parse', tag + '^{}').trim(),
-        source: git('show', tag + ':' + modulePath + 'Display.js') });
+        source: modules.filter(name => name !== 'InstructionPump.js')
+            .map(name => git('show', tag + ':' + modulePath + name)).join('\n') });
 }
 versions.push({ name: 'working-tree', revision: git('rev-parse', 'HEAD').trim(),
-    modified: git('diff', 'HEAD', '--', modulePath + 'Display.js').length !== 0,
-    source: await readFile(path.join(root, modulePath, 'Display.js'), 'utf8') });
+    modified: git('diff', 'HEAD', '--', ...modules.map(name => modulePath + name)).length !== 0,
+    source: (await Promise.all(modules.map(name => readFile(path.join(root, modulePath, name), 'utf8')))).join('\n') });
 
-const replay = `
+const renderReplay = `
 window.__renderReplay = (async function() {
     const originalImage = window.Image;
     const scenarios = [];
@@ -121,12 +129,14 @@ window.__renderReplay = (async function() {
     return scenarios;
 })();`;
 
+const replay = options.scenario === 'protocol' ? protocolReplay : renderReplay;
+
 const temporary = await mkdtemp(path.join(tmpdir(), 'guacamole-browser-render-'));
 let browser;
 try {
     for (const [index, version] of versions.entries()) {
         version.file = path.join(temporary, index + '.html');
-        await writeFile(version.file, '<!doctype html><script>'
+        await writeFile(version.file, '<!doctype html><body><script>'
             + (layer + '\n' + version.source + '\n' + replay).replaceAll('</script', '<\\/script')
             + '</script>');
     }
@@ -206,13 +216,19 @@ try {
             maximum_ack_gap_median_ms: median(cases.map(value => value.maximum_ack_gap_ms)) };
     }));
     const result = {
-        method: 'Actual Display.js with synthetic per-frame drawing cost and one initial asynchronous blocker; real browser event loop, no virtual time.',
-        limitations: 'Synthetic tasks and ACK callbacks, not physical input latency, canvas throughput, a live RDP connection, Wi-Fi, or background-tab throttling.',
+        method: options.scenario === 'protocol'
+            ? 'Actual WebSocketTunnel, Parser, Client and Display with synchronous ready-frame protocol bursts and real canvas copies/fills. WebSocket delivery is simulated locally; ACK order and final canvas pixels are checked.'
+            : 'Actual Display.js with synthetic per-frame drawing cost and one initial asynchronous blocker; real browser event loop, no virtual time.',
+        limitations: options.scenario === 'protocol'
+            ? 'Foreground headless Chrome API/ACK completion and synthetic browser-task opportunity; not physical paint/FPS, physical input latency, live networking, Wi-Fi, image decoding, or background throttling.'
+            : 'Synthetic tasks and ACK callbacks, not physical input latency, canvas throughput, a live RDP connection, Wi-Fi, or background-tab throttling.',
         browser: browserVersion.Browser, platform: process.platform + '-' + process.arch,
         samples_per_version: options.samples,
         sources: versions.map(version => ({ version: version.name, revision: version.revision,
             working_tree_modified: !!version.modified,
-            display_sha256: createHash('sha256').update(version.source).digest('hex') })),
+            [options.scenario === 'protocol' ? 'module_bundle_sha256' : 'display_sha256']:
+                createHash('sha256').update(version.source).digest('hex') })),
+        ...(options.scenario === 'protocol' ? { modules: modules, layer_sha256: createHash('sha256').update(layer).digest('hex') } : {}),
         summary, samples
     };
     const output = JSON.stringify(result, null, 2) + '\n';

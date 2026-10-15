@@ -117,6 +117,9 @@ void guac_display_start_workers(guac_display* display) {
     int invalid;
     int requested = guac_display_select_worker_count(cpu_count,
             getenv(GUAC_DISPLAY_WORKER_THREADS_ENV), &invalid);
+    display->worker_active_limit = requested;
+    display->worker_workload_aware = 1;
+    display->worker_medium_limit = GUAC_DISPLAY_PARTIAL_BATCH_WORKERS;
     if (invalid)
         guac_client_log(client, GUAC_LOG_WARNING, "Invalid "
                 GUAC_DISPLAY_WORKER_THREADS_ENV "; using automatic worker count "

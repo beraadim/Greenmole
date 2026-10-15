@@ -145,6 +145,7 @@ libguac_la_SOURCES =          \
     display-plan-rect.c       \
     display-plan-search.c     \
     display-render-thread.c   \
+    display-concurrency.c     \
     display-worker.c          \
     display-workers.c         \
     encode-jpeg.c             \

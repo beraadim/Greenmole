@@ -55,6 +55,16 @@ Guacamole.Parser = function Parser() {
     var elementBuffer = [];
 
     /**
+     * Estimated retained size of completed elements for the current
+     * instruction, including sixteen code units of metadata per element.
+     * These elements may outlive a truncated source buffer.
+     *
+     * @private
+     * @type {!number}
+     */
+    var elementBufferLength = 0;
+
+    /**
      * The character offset within the buffer of the current or most recently
      * parsed element's terminator. If sufficient characters have not yet been
      * read via calls to receive(), this may point to an offset well beyond the
@@ -125,6 +135,56 @@ Guacamole.Parser = function Parser() {
      *     buffered by the parser as needed.
      */
     this.receive = function receive(packet, isBuffer) {
+        receiveData(packet, isBuffer);
+    };
+
+    /**
+     * Parses new data synchronously, stopping between complete elements when
+     * shouldYield() returns true. Instructions are only delivered after their
+     * final element. Returns whether buffered data remains
+     * after yielding. Resume that data with an empty packet before appending
+     * further packets. Unlike receive(), this opt-in interface may defer
+     * instructions until a subsequent call.
+     *
+     * @param {!string} packet New protocol data, or an empty string to resume.
+     * @param {!function(boolean):boolean} shouldYield Receives whether an
+     *     instruction just completed, and returns whether parsing should pause.
+     * @returns {!boolean} Whether parsing yielded with buffered data remaining.
+     */
+    this.receivePartial = function receivePartial(packet, shouldYield) {
+        return receiveData(packet, false, shouldYield);
+    };
+
+    /**
+     * Returns a conservative count of UTF-16 code units retained by the source
+     * buffer, completed instruction elements, and estimated element metadata.
+     * Parsed prefixes or shared
+     * substring storage may be counted more than once. This count is intended
+     * for receive-buffer limits rather than exact browser memory accounting.
+     *
+     * @returns {!number} Retained protocol text length.
+     */
+    this.getBufferedLength = function getBufferedLength() {
+        return buffer.length + elementBufferLength;
+    };
+
+    /**
+     * Returns the number of completed elements retained for an incomplete
+     * instruction, so a receive pump can bound array/substring metadata even
+     * when many elements are empty.
+     * @returns {!number} Retained element count.
+     */
+    this.getBufferedElementCount = function getBufferedElementCount() {
+        return elementBuffer.length;
+    };
+
+    /**
+     * Shared parser implementation. The synchronous API intentionally does
+     * not provide a yield predicate and therefore retains its original behavior.
+     *
+     * @private
+     */
+    function receiveData(packet, isBuffer, shouldYield) {
 
         if (isBuffer)
             buffer = packet;
@@ -156,6 +216,8 @@ Guacamole.Parser = function Parser() {
 
         // While search is within currently received data
         while (elementEnd < buffer.length) {
+
+            var instructionComplete = false;
 
             // If we are waiting for element data
             if (elementEnd >= startIndex) {
@@ -191,6 +253,7 @@ Guacamole.Parser = function Parser() {
 
                 // Add element to array
                 elementBuffer.push(element);
+                elementBufferLength += element.length + 16;
 
                 // If last element, handle instruction
                 if (terminator === ';') {
@@ -204,6 +267,8 @@ Guacamole.Parser = function Parser() {
 
                     // Clear elements
                     elementBuffer = [];
+                    elementBufferLength = 0;
+                    instructionComplete = true;
 
                     // Immediately truncate buffer if its contents have been
                     // completely parsed, so that the next call to receive()
@@ -220,6 +285,16 @@ Guacamole.Parser = function Parser() {
                 // Start searching for length at character after
                 // element terminator
                 startIndex = elementEnd + 1;
+
+                // Leave parser offsets consistent before returning control to
+                // the receive pump. Yielding between elements can bound work
+                // within a large instruction without delivering it partially.
+                // Ordinary instructions have few elements. For unusually large
+                // instructions, checkpoint every 32 elements as well, avoiding
+                // a clock/function call for every graphics argument.
+                if (shouldYield && (instructionComplete || elementBuffer.length % 32 === 0)
+                        && shouldYield(instructionComplete))
+                    return startIndex < buffer.length;
 
             }
 
@@ -249,7 +324,9 @@ Guacamole.Parser = function Parser() {
 
         } // end parse loop
 
-    };
+        return false;
+
+    }
 
     /**
      * Fired once for every complete Guacamole instruction received, in order.

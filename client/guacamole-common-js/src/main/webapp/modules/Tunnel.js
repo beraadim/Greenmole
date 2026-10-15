@@ -760,14 +760,20 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
     var tunnel = this;
 
     /**
-     * The parser that this tunnel will use to parse received Guacamole
-     * instructions. The parser is created when the tunnel is (re-)connected.
-     * Initially, this will be null.
+     * The bounded receive pump for the current WebSocket connection. A new
+     * pump is created on reconnect and cancelled before closing the socket.
      *
      * @private
-     * @type {Guacamole.Parser}
+     * @type {?Guacamole.InstructionPump}
      */
-    var parser = null;
+    var receiver = null;
+
+    /**
+     * Connection generation used to reject old socket and timer callbacks.
+     * @private
+     * @type {!number}
+     */
+    var connectionGeneration = 0;
 
     /**
      * The WebSocket used by this tunnel.
@@ -776,6 +782,9 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
      * @type {WebSocket}
      */
     var socket = null;
+
+    /** Whether natural EOF has arrived while received instructions drain. */
+    var socketEnded = false;
 
     /**
      * The current receive timeout ID, if any.
@@ -893,6 +902,8 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
      */
     var resetTimers = function resetTimers() {
 
+        var generation = connectionGeneration;
+
         // Get rid of old timeouts (if any)
         window.clearTimeout(receive_timeout);
         window.clearTimeout(unstableTimeout);
@@ -902,14 +913,19 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
         if (tunnel.state === Guacamole.Tunnel.State.UNSTABLE)
             tunnel.setState(Guacamole.Tunnel.State.OPEN);
 
+        if (generation !== connectionGeneration)
+            return;
+
         // Set new timeout for tracking overall connection timeout
         receive_timeout = window.setTimeout(function () {
-            close_tunnel(new Guacamole.Status(Guacamole.Status.Code.UPSTREAM_TIMEOUT, "Server timeout."));
+            if (generation === connectionGeneration && !socketEnded)
+                close_tunnel(new Guacamole.Status(Guacamole.Status.Code.UPSTREAM_TIMEOUT, "Server timeout."));
         }, tunnel.receiveTimeout);
 
         // Set new timeout for tracking suspected connection instability
         unstableTimeout = window.setTimeout(function() {
-            tunnel.setState(Guacamole.Tunnel.State.UNSTABLE);
+            if (generation === connectionGeneration && !socketEnded)
+                tunnel.setState(Guacamole.Tunnel.State.UNSTABLE);
         }, tunnel.unstableThreshold);
 
         var currentTime = new Date().getTime();
@@ -918,7 +934,10 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
         // Ping tunnel endpoint regularly to test connection stability, sending
         // the ping immediately if enough time has already elapsed
         if (pingDelay > 0)
-            pingTimeout = window.setTimeout(sendPing, pingDelay);
+            pingTimeout = window.setTimeout(function pingIfCurrent() {
+                if (generation === connectionGeneration && !socketEnded)
+                    sendPing();
+            }, pingDelay);
         else
             sendPing();
 
@@ -941,24 +960,39 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
         window.clearTimeout(pingTimeout);
 
         // Ignore if already closed
-        if (tunnel.state === Guacamole.Tunnel.State.CLOSED)
+        if (tunnel.state === Guacamole.Tunnel.State.CLOSED && !socket && !receiver)
             return;
 
+        var generation = ++connectionGeneration;
+        if (receiver) {
+            receiver.cancel();
+            receiver = null;
+        }
+        if (socket) {
+            var closingSocket = socket;
+            socket = null;
+            closingSocket.onopen = closingSocket.onclose = closingSocket.onmessage = null;
+            closingSocket.close();
+        }
+
         // If connection closed abnormally, signal error.
-        if (status.code !== Guacamole.Status.Code.SUCCESS && tunnel.onerror)
-            tunnel.onerror(status);
-
-        // Mark as closed
-        tunnel.setState(Guacamole.Tunnel.State.CLOSED);
-
-        socket.close();
+        try {
+            if (status.code !== Guacamole.Status.Code.SUCCESS && tunnel.onerror)
+                tunnel.onerror(status);
+        }
+        finally {
+            // An error callback may reconnect this same tunnel. Do not close
+            // the replacement connection after returning from that callback.
+            if (generation === connectionGeneration)
+                tunnel.setState(Guacamole.Tunnel.State.CLOSED);
+        }
 
     }
 
     this.sendMessage = function(elements) {
 
         // Do not attempt to send messages if not connected
-        if (!tunnel.isConnected())
+        if (!tunnel.isConnected() || !socket || socketEnded)
             return;
 
         // Do not attempt to send empty messages
@@ -971,13 +1005,31 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
 
     this.connect = function(data) {
 
-        resetTimers();
+        var generation = ++connectionGeneration;
+        socketEnded = false;
+        if (receiver) {
+            receiver.cancel();
+            receiver = null;
+        }
+        if (socket) {
+            socket.onopen = socket.onclose = socket.onmessage = null;
+            socket.close();
+            socket = null;
+        }
+
+        window.clearTimeout(receive_timeout);
+        window.clearTimeout(unstableTimeout);
+        window.clearTimeout(pingTimeout);
+        tunnel.uuid = null;
 
         // Mark the tunnel as connecting
         tunnel.setState(Guacamole.Tunnel.State.CONNECTING);
+        if (generation !== connectionGeneration)
+            return;
 
-        parser = new Guacamole.Parser();
-        parser.oninstruction = function instructionReceived(opcode, args) {
+        receiver = new Guacamole.InstructionPump(function instructionReceived(opcode, args) {
+            if (generation !== connectionGeneration)
+                return;
 
             // Update state and UUID when first instruction received
             if (tunnel.uuid === null) {
@@ -986,51 +1038,83 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
                 if (opcode === Guacamole.Tunnel.INTERNAL_DATA_OPCODE && args.length === 1)
                     tunnel.setUUID(args[0]);
 
+                if (generation !== connectionGeneration)
+                    return;
+
                 // Tunnel is now open and UUID is available
                 tunnel.setState(Guacamole.Tunnel.State.OPEN);
 
             }
 
             // Call instruction handler.
-            if (opcode !== Guacamole.Tunnel.INTERNAL_DATA_OPCODE && tunnel.oninstruction)
+            if (generation === connectionGeneration
+                    && opcode !== Guacamole.Tunnel.INTERNAL_DATA_OPCODE && tunnel.oninstruction)
                 tunnel.oninstruction(opcode, args);
 
-        };
+        }, function receiveFailed(status) {
+            if (generation === connectionGeneration)
+                close_tunnel(status);
+        });
 
         // Connect socket
-        socket = new WebSocket(tunnelURL + "?" + data, "guacamole");
+        try {
+            socket = new WebSocket(tunnelURL + "?" + data, "guacamole");
+        }
+        catch (e) {
+            close_tunnel(new Guacamole.Status(Guacamole.Status.Code.SERVER_ERROR, e.message));
+            return;
+        }
+
+        resetTimers();
 
         socket.onopen = function(event) {
-            resetTimers();
+            if (generation === connectionGeneration && !socketEnded)
+                resetTimers();
         };
 
         socket.onclose = function(event) {
 
+            if (generation !== connectionGeneration)
+                return;
+
+            socketEnded = true;
+            window.clearTimeout(receive_timeout);
+            window.clearTimeout(unstableTimeout);
+            window.clearTimeout(pingTimeout);
+
+            var status;
+
             // Pull status code directly from closure reason provided by Guacamole
             if (event.reason)
-                close_tunnel(new Guacamole.Status(parseInt(event.reason), event.reason));
+                status = new Guacamole.Status(parseInt(event.reason), event.reason);
 
             // Failing that, derive a Guacamole status code from the WebSocket
             // status code provided by the browser
             else if (event.code)
-                close_tunnel(new Guacamole.Status(Guacamole.Status.Code.fromWebSocketCode(event.code)));
+                status = new Guacamole.Status(Guacamole.Status.Code.fromWebSocketCode(event.code));
 
             // Otherwise, assume server is unreachable
             else
-                close_tunnel(new Guacamole.Status(Guacamole.Status.Code.UPSTREAM_NOT_FOUND));
+                status = new Guacamole.Status(Guacamole.Status.Code.UPSTREAM_NOT_FOUND);
+
+            // The browser may dispatch close before a receive continuation.
+            // Preserve all complete instructions already received, including
+            // final display syncs and protocol errors, before reporting EOF.
+            receiver.end(function receivedDataDrained() {
+                if (generation === connectionGeneration)
+                    close_tunnel(status);
+            });
 
         };
         
         socket.onmessage = function(event) {
 
-            resetTimers();
+            if (generation !== connectionGeneration || socketEnded)
+                return;
 
-            try {
-                parser.receive(event.data);
-            }
-            catch (e) {
-                close_tunnel(new Guacamole.Status(Guacamole.Status.Code.SERVER_ERROR, e.message));
-            }
+            resetTimers();
+            if (generation === connectionGeneration && receiver)
+                receiver.receive(event.data);
 
         };
 

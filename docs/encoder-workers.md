@@ -99,3 +99,98 @@ benchmark wakeup barrier described above. They do not demonstrate a browser,
 input-latency, or Wi-Fi improvement. The complete sanitized measurements,
 including CPU, memory, and byte counts, are in
 [`releases/1.6.1-private.4-encoder-benchmark.json`](../releases/1.6.1-private.4-encoder-benchmark.json).
+
+## Workload-aware admission and production-path comparison
+
+The persistent pool and `GUAC_DISPLAY_WORKER_THREADS` continue to set the
+maximum number of encoders available to a session. Workload-aware admission
+can use fewer of those existing threads for a frame; it does not create and
+destroy pools, drop drawing operations, change image quality, or alter frame
+boundaries.
+
+The policy admits at most twelve simultaneous image encoders when
+the final encoded image area is below 4,194,304 pixels and below half of the
+committed desktop area. The limit also cannot exceed the real pool or the
+number of image operations. Large changes, full-window transitions on smaller
+desktops, and unknown desktop dimensions retain the full pool. Copy/fill
+operations do not count toward image area. These are bounds on encoding work,
+not limits on remote capture rate or browser frame rate.
+
+Admission happens before a worker removes an operation from the production
+FIFO or takes a framebuffer lock. The limit is selected only between frames,
+under the FIFO lock, and stays fixed until that frame completes. Completing a
+worker wakes a capacity waiter; invalidating the FIFO wakes all waiters during
+shutdown. Partial pools use only successfully created threads. TRACE records
+report the selected limit, real pool size, image count and encoded pixel area,
+without retaining screen contents.
+
+The earlier codec benchmark used a separate wakeup barrier and is insufficient
+to validate this scheduling change. Compare the old library, the candidate
+with a fixed full pool, and the candidate with workload-aware admission using
+the real display path instead:
+
+```sh
+python3 scripts/benchmark-display-production.py \
+    --baseline-image guacamole-private/native-benchmark:1.6.1-private.5 \
+    --candidate-image guacamole-private/native-benchmark:candidate-private6 \
+    --samples 30 --warmup 5 > display-production-result.json
+```
+
+Repeat with `--reverse` to check mode-order bias. `--workers` fixes the same
+pool size for every comparison (default 22); `--cpuset-cpus` optionally fixes
+affinity. The candidate's private benchmark control affects subsequent frames
+only and is not exposed through the Guacamole protocol or connection settings.
+
+The harness updates synthetic layers through the real raw-context and frame
+completion APIs. It includes dirty detection, every planner pass, copy search,
+the production FIFO, actual encoding workers/codecs, frame completion, and
+serialization to a shared discard socket. It measures a small text update,
+translated text scrolling, partial text redraw, mixed 4K content, a 4K wallpaper
+change, photo-heavy full-window changes at 1920×944 and 2560×1304, and smaller
+photo windows within a 4K desktop. Fixture
+generation and initial pool/allocation setup are excluded from measured wall
+and CPU time. Each case uses a fresh process for separate peak-memory results;
+containers have no network or production configuration access.
+
+Report frame p50/p95, CPU time, bytes and memory for all cases. Compare the
+candidate's fixed mode to the old library to expose admission overhead, then
+compare its adaptive mode to both. The initial target was at least
+15% better scrolling p95 without more than 5% regression on full-screen and
+full-window updates. Production-path measurements did not demonstrate that
+latency improvement, so this policy is an efficiency tradeoff rather than a
+claim of faster window switching. Do not infer success from the old isolated
+codec result. These synthetic fixtures do not measure capture, RDP transport,
+browser painting, Wi-Fi, or physical input delay.
+
+## Admission measurements, 15 October 2026
+
+Thirty-frame production-path sweeps (five warm-up frames) found that the
+initial eight-worker cap reduced scrolling/text-redraw CPU use but could
+increase frame completion latency. Forward/reverse full sweeps also showed
+host/mode-order variation. A follow-up sweep interleaved fixed-pool runs with
+caps of eight, twelve and sixteen. The adjacent fixed-versus-twelve results:
+
+| Synthetic workload | Fixed p95 ms | Twelve p95 ms | Fixed CPU ms/frame | Twelve CPU ms/frame |
+| --- | ---: | ---: | ---: | ---: |
+| Text scrolling | 41.828 | 42.719 | 112.338 | 97.911 |
+| Partial text redraw | 40.564 | 41.674 | 98.963 | 90.256 |
+
+This reduced process CPU by approximately 13% and 9%, respectively, with
+approximately 2% and 3% higher p95 completion times. Sixteen workers saved
+little CPU in these cases. Twelve is the more conservative partial-batch
+ceiling; this is not evidence of a 15% latency gain.
+
+The photo-window checks demonstrate why selection uses the planner's final
+image area, not the raw incoming dirty rectangle. A 2560×1304 photo update
+inside a 3840×2160 desktop produced 15 image operations covering a summed
+5,632,000 pixels after planning/combining. That exceeds the four-megapixel
+guard, so all adaptive test caps selected 15 workers (the available image
+count). A 1920×944 update produced eight image operations covering 2,623,488
+pixels; its eight-worker limit was bounded by available work even with the
+twelve/sixteen test caps. These cases did not force a photo-heavy batch down
+to twelve workers from a larger useful count.
+
+The complete candidate sweeps, tuning and photo-check results are preserved in
+[`1.6.1-private.6-admission-benchmark.json`](../releases/1.6.1-private.6-admission-benchmark.json).
+A final full comparison of the committed default policy is recorded with the
+release verification. Real desktop/Wi-Fi acceptance remains separate.

@@ -19,6 +19,7 @@
 
 #include "display-plan.h"
 #include "display-priv.h"
+#include "display-workers.h"
 #include "guacamole/assert.h"
 #include "guacamole/client.h"
 #include "guacamole/display.h"
@@ -378,6 +379,15 @@ void guac_display_plan_apply(guac_display_plan* plan) {
     /* Do not allow worker threads to move forward with image encoding until
      * AFTER the non-image instructions have finished being written */
     guac_fifo_lock(&display->ops);
+
+    /* A protocol producer may finish after display_stop() has invalidated the
+     * queue. Do not read pool state or send further operations during teardown. */
+    if (!guac_fifo_is_valid(&display->ops)) {
+        guac_fifo_unlock(&display->ops);
+        return;
+    }
+
+    guac_display_configure_worker_frame(display, plan);
 
     /* Immediately send instructions for all updates that do not involve
      * significant processing (do not involve encoding anything). This allows

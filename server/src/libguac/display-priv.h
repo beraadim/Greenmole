@@ -859,6 +859,19 @@ struct guac_display {
     unsigned int active_workers;
 
     /**
+     * Maximum simultaneous encoders for the current frame. Guarded by ops;
+     * selected only while the previous frame has no queued/active operations.
+     * The allocated thread pool and administrative pool ceiling are unchanged.
+     */
+    int worker_active_limit;
+
+    /** Whether subsequent frames use the bounded workload-aware policy. */
+    int worker_workload_aware;
+
+    /** Partial-batch ceiling; private benchmarks may tune subsequent frames. */
+    int worker_medium_limit;
+
+    /**
      * Whether least one pending frame has been deferred due to the encoding
      * process being underway for a previous frame at the time it was
      * completed.

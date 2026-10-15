@@ -41,6 +41,7 @@ noinst_HEADERS =                     \
 test_libguac_SOURCES =               \
     client/buffer_pool.c             \
     client/layer_pool.c              \
+    display/concurrency.c            \
     display/flush.c                  \
     display/image-format.c           \
     display/refresh.c                \
