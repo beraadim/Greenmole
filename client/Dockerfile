@@ -27,8 +27,12 @@
 ARG TOMCAT_VERSION=9
 ARG TOMCAT_JRE=jdk21
 
+# Allow internal releases to pin both build and runtime images by digest.
+ARG MAVEN_BASE_IMAGE=maven:3-eclipse-temurin-21
+ARG TOMCAT_BASE_IMAGE=tomcat:${TOMCAT_VERSION}-${TOMCAT_JRE}
+
 # Use official maven image for the build
-FROM maven:3-eclipse-temurin-21 AS builder
+FROM ${MAVEN_BASE_IMAGE} AS builder
 
 # Use Mozilla's Firefox PPA (newer Ubuntu lacks a "firefox-esr" package and
 # provides only a transitional "firefox" package that actually requires Snap
@@ -79,7 +83,7 @@ RUN /opt/guacamole/bin/build-guacamole.sh "$BUILD_DIR" /opt/guacamole
 RUN rm -rf /opt/guacamole/build.d /opt/guacamole/bin/build-guacamole.sh
 
 # For the runtime image, we start with the official Tomcat distribution
-FROM tomcat:${TOMCAT_VERSION}-${TOMCAT_JRE}
+FROM ${TOMCAT_BASE_IMAGE}
 
 # Apply any pending security updates to the base image's OS packages, and
 # install XMLStarlet for server.xml alterations

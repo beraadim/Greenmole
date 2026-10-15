@@ -160,7 +160,9 @@ ARG LIBWEBSOCKETS_X86_OPTS=""
 #
 
 FROM alpine:${ALPINE_BASE_IMAGE} AS builder
+ARG BUILD_ARCHITECTURE
 ARG BUILD_DIR
+ARG BUILD_JOBS
 
 # Install build dependencies
 RUN apk add --no-cache                \
@@ -289,6 +291,9 @@ COPY --from=libwebsockets ${PREFIX_DIR} ${PREFIX_DIR}
 COPY . ${BUILD_DIR}
 
 RUN ${BUILD_DIR}/src/guacd-docker/bin/autobuild.sh "GUACAMOLE_SERVER" "${BUILD_DIR}"
+
+# Run the native test suites before promoting artifacts into the runtime image.
+RUN make -C "${BUILD_DIR}" -j"${BUILD_JOBS:-4}" check
 
 # Determine location of the FREERDP library based on the version.
 ARG FREERDP_LIB_PATH=${PREFIX_DIR}/lib/freerdp${FREERDP_VERSION}

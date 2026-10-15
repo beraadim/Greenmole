@@ -57,11 +57,22 @@ docker build -t guacamole-private/guacd:1.6.1-private.1 server/
 docker build -t guacamole-private/web:1.6.1-private.1 client/
 ```
 
-The names above are local image tags; these commands do not publish or deploy
-them. Pin external dependency versions and base-image digests when preparing a
-reproducible internal release: the upstream Dockerfiles still select some
-dependencies dynamically. Follow each component's build and test documentation;
-building the guacd image alone does not run its full test suite.
+For the reviewed internal release, use the pinned build inputs instead:
+
+```sh
+python3 scripts/build-images.py releases/1.6.1-private.1.json --jobs 4
+```
+
+The script uses local image tags and does not publish or deploy them. It pins
+base-image digests and native dependency commits; distribution packages and
+Maven artifacts still resolve through their package repositories. Archive build
+logs and final image IDs with each deployment. Use `--component server` or
+`--component client` to build one image. When building an exported source
+archive, supply its Git commit through `SOURCE_REVISION`.
+
+Native `make check` now gates the server image. The client build runs the Java
+and Firefox browser tests with `-DskipTests=false`. These checks do not replace
+testing a real remote desktop session.
 
 This import does not include production configuration, credentials, database
 contents, logs, or any change to the running Guacamole containers. Keep local
