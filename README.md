@@ -53,14 +53,14 @@ Each upstream Dockerfile expects its own component directory as the build
 context. Use private/local tags, for example:
 
 ```sh
-docker build -t guacamole-private/guacd:1.6.1-private.6 server/
-docker build -t guacamole-private/web:1.6.1-private.6 client/
+docker build -t guacamole-private/guacd:1.6.1-private.7 server/
+docker build -t guacamole-private/web:1.6.1-private.7 client/
 ```
 
 For the reviewed internal release, use the pinned build inputs instead:
 
 ```sh
-python3 scripts/build-images.py releases/1.6.1-private.6.json --jobs 4
+python3 scripts/build-images.py releases/1.6.1-private.7.json --jobs 4
 ```
 
 The script uses local image tags and does not publish or deploy them. It pins
@@ -78,9 +78,11 @@ Firefox browser, and frontend Node tests with `-DskipTests=false`. These checks
 do not replace testing a real remote desktop session.
 
 The release and validation record is
-[`1.6.1-private.6`](releases/1.6.1-private.6.md), covering stabilized remote
-resizing, bounded WebSocket burst processing, and workload-aware encoding.
-It retains private.5's render-continuation and clipboard fixes, complete-frame
+[`1.6.1-private.7`](releases/1.6.1-private.7.md), covering reusable browser
+deadlines, bounded planner storage, fixed-cell hashing and reduced copy-search
+work. It retains stabilized remote resizing, bounded WebSocket burst processing
+and workload-aware encoding, along with private.5's render-continuation and
+clipboard fixes, complete-frame
 rendering, bounded display recovery, source-frame boundaries, adaptive grouping,
 and dirty-region copies. Existing macrdp 0.1.12 remains compatible and requires
 no package update.
