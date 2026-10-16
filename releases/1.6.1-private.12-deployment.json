@@ -1,0 +1,115 @@
+{
+  "schema": "guacamole-private12-deployment-v1",
+  "deployment": {
+    "revision": "bb94cc2370419cb628c0b1600b149a75502406fb",
+    "deployed_at_utc": "2026-10-16 15:14:36 UTC",
+    "images": {
+      "windows11-guac-lab-guacd": "sha256:5fb6d9f0145a516148a6a75ed5c04a0ccaf94b0e78a86b195c5f661a8527774a",
+      "windows11-guac-lab-web": "sha256:53ce3b86abfdd14229a23af410a0ebf12b217065a36250be38288924beba17e2"
+    },
+    "configuration_preserved": true,
+    "runtime_settings_preserved": true,
+    "languages": 16,
+    "web_url": "http://10.44.0.2:18080/",
+    "guacd_version": "Guacamole proxy daemon (guacd) version 1.6.1"
+  },
+  "verified_local_time": "2026-10-16T17:14:36+02:00",
+  "verification": {
+    "revision": "bb94cc2370419cb628c0b1600b149a75502406fb",
+    "build": "20261016135100",
+    "assets_verified": 12,
+    "languages": 16,
+    "browser_deadline_timers_budget_resize_and_clipboard_served": true,
+    "containers": {
+      "windows11-guac-lab-guacd": {
+        "image_id": "sha256:5fb6d9f0145a516148a6a75ed5c04a0ccaf94b0e78a86b195c5f661a8527774a",
+        "started_at": "2026-10-16T15:14:30.402744953Z",
+        "running": true,
+        "restarts": 0,
+        "oom_killed": false,
+        "health": "healthy",
+        "critical_startup_entries": 0
+      },
+      "windows11-guac-lab-web": {
+        "image_id": "sha256:53ce3b86abfdd14229a23af410a0ebf12b217065a36250be38288924beba17e2",
+        "started_at": "2026-10-16T15:14:30.490537616Z",
+        "running": true,
+        "restarts": 0,
+        "oom_killed": false,
+        "health": "not configured",
+        "critical_startup_entries": 0
+      }
+    },
+    "rollback_private_11_verified": true,
+    "fallback_private_3_verified": true,
+    "preflight_containers_removed": true,
+    "pipeline_diagnostics_api_served": true,
+    "diagnostics_disabled": true
+  },
+  "served_assets": {
+    "build": "20261016135100",
+    "root_sha256": "50ffbe854836204dbe02ce53c3ff7bcbc67c9956348b212583a1b6f680b87d27",
+    "assets": {
+      "guacamole.32df30316067fbd5.css": {
+        "bytes": 88133,
+        "sha256": "37c234e1cb6bde5ec06be36fe69469701e5c83b85275b6a8c5e480d8e9f67fe2"
+      },
+      "app.css?b=20261016135100": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "Blob.js?b=20261016135100": {
+        "bytes": 9048,
+        "sha256": "28113d138ef9ad40118a3ac184400339cf350b6b1244526270bca1862447d1d7"
+      },
+      "datalist-polyfill.min.js?b=20261016135100": {
+        "bytes": 6988,
+        "sha256": "46c39fae23661444ae4f0fa1dc7b9fba4f55cdec579c59899ff18e0f52f418f6"
+      },
+      "guacamole-common-js/all.min.js?b=20261016135100": {
+        "bytes": 97074,
+        "sha256": "35fefdf855315794b2e47d6bbffcad78100e597b08bcb008ad83371712e8d07d"
+      },
+      "jquery.min.js?b=20261016135100": {
+        "bytes": 86672,
+        "sha256": "a9329a132c34e8859d294fb346f9ef245bf6d1343a86cb3476f5d30f874549b0"
+      },
+      "lodash.min.js?b=20261016135100": {
+        "bytes": 70563,
+        "sha256": "7abc268ba482a68d9a44851fd65c4f2b6dd85ae9f186daa98884a4c3e2d0f23d"
+      },
+      "angular.min.js?b=20261016135100": {
+        "bytes": 175561,
+        "sha256": "6dd696fdefbe4db30625ba086e688ccd1c70b1f6c0fca1aa4d591e94ab3e3902"
+      },
+      "guacamole.6411e6d5f0166a68.js": {
+        "bytes": 1666,
+        "sha256": "f25fd1ce06ea32ef0d116668205f76996bc44bfa8678d519ea1d89be299280ba"
+      },
+      "guacamole.9a01cb21c0f3c435.js": {
+        "bytes": 595775,
+        "sha256": "f47231eaa6d768ad943f4f321b8dbae1ba1528e10a9fc46a75f6e0b6d1f40de9"
+      },
+      "templates.js?b=20261016135100": {
+        "bytes": 87571,
+        "sha256": "806505647dc16af04d59cf55176eb013eeaf6e3c2b2e676d93bf42be1060a894"
+      },
+      "app.js?b=20261016135100": {
+        "bytes": 657,
+        "sha256": "0dde639a0574b80c90f25feb06765a5b17e2513b9bc12e1dcb852800ea6d556e"
+      }
+    }
+  },
+  "rollback": {
+    "guacamole-private/guacd:rollback-1.6.1-private.11-before-private.12": "sha256:f190a9722efb9bafd4bcf5269f4bbfbc332f2afb19e7cf15d48753468fcae53e",
+    "guacamole-private/web:rollback-1.6.1-private.11-before-private.12": "sha256:87f45d9e703cd69494be677320012939e044177fdab0759557c4c68f1763b3d8"
+  },
+  "preserved": {
+    "compose_changes_limited_to_two_image_references": true,
+    "configuration_hashes": true,
+    "compose_mode_and_ownership": true,
+    "runtime_environment_users_mounts_ports_network_aliases_restart_policy": true,
+    "no_user_data_or_images_pruned": true
+  },
+  "operational_material": "Configuration backup, container metadata, deployment helpers and raw logs remain outside Git in the private Oberon release state directory."
+}
