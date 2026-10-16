@@ -1,11 +1,16 @@
 # Browser image pipeline replay
 
 `scripts/benchmark-browser-image-pipeline.mjs` measures real loopback WebSocket
-delivery through the unmodified Guacamole `WebSocketTunnel`, receive pump,
+delivery through the production Guacamole `WebSocketTunnel`, receive pump,
 `Parser`, `Client`, image streams, native image decoding, canvas drawing, and
 actual outgoing `sync` acknowledgements. It complements the existing render,
 protocol, timer, and readiness benchmarks without changing their behavior.
-There is no production instrumentation or browser optimization in this change.
+Private.11 introduced this replay without changing production browser modules.
+Private.12 adds optional Client pipeline diagnostics, enabled separately with
+`--pipeline-diagnostics on` and disabled by default. Test-only observers and
+optional untimed Base64 counters are distinct from those Client diagnostics;
+see [pipeline diagnostics](display-timing-diagnostics.md) and
+[the rejected direct-buffer study](byob-base64.md).
 
 The downstream sender applies deterministic source pacing, byte serialization,
 release delay and seeded jitter to prerecorded `img/blob/end/sync` instructions.
