@@ -1,0 +1,878 @@
+{
+  "schema": "guacamole-browser-image-pipeline-evidence-v1",
+  "release_implementation_revision": "bb94cc2370419cb628c0b1600b149a75502406fb",
+  "result": "No browser pipeline speedup is established. Preserve existing production Base64 decoding after rejecting a slower guarded BYOB candidate; diagnostics remain off by default. Exact pipeline correctness and enabled aggregate behavior pass.",
+  "environment": {
+    "browser": "Chrome/155.0.8059.80",
+    "platform": "darwin-arm64"
+  },
+  "harness_provenance": {
+    "driver_sha256": "ac7570169ba5a2a582b5d220ef2af00e90b173a51f0f7c592fe357167a8c83bc",
+    "support_sha256": {
+      "image-pipeline-transport.mjs": "f9844480cead8fc86eae770387966228c1b22dc9c9b1da32ad841f78b4f76d41",
+      "image-pipeline-fixture.mjs": "e2643e89fa0ca69db5104df610c3559da54fd97fe80b514ded0eb86cb5652baa",
+      "image-pipeline-replay.mjs": "38465128e7de309e6690c55a53138a407b77b2d2b62130aadea8d7b8c4a54516"
+    },
+    "replay_sha256": "0e9cdb8a16a9d179a87629e61079be89926f6e9564d5b54632e4e3efbe2d83bf"
+  },
+  "source_provenance": {
+    "default_off_recorded_sources": [
+      {
+        "name": "baseline",
+        "revision": "0761e433f74dceaad4d4cd45c90aad16ecea5ba1",
+        "ref": "1.6.1-private.11",
+        "modified": false,
+        "bundle_sha256": "2dae0180319a730c16e417619563bc9bfe9653c8d6171cb60868138a10b81b06"
+      },
+      {
+        "name": "candidate",
+        "revision": "3dfbedc494141733a76978cc6b9b906688894ee3",
+        "ref": "working-tree",
+        "modified": false,
+        "bundle_sha256": "e787f05bf4d74a5344ff9685bda500d5efb9430f1efd7fbad4ba6ae7c5b49224"
+      }
+    ],
+    "diagnostic_on_recorded_sources": [
+      {
+        "name": "baseline",
+        "revision": "bb94cc2370419cb628c0b1600b149a75502406fb",
+        "ref": "bb94cc2370419cb628c0b1600b149a75502406fb",
+        "modified": false,
+        "bundle_sha256": "e787f05bf4d74a5344ff9685bda500d5efb9430f1efd7fbad4ba6ae7c5b49224"
+      },
+      {
+        "name": "candidate",
+        "revision": "bb94cc2370419cb628c0b1600b149a75502406fb",
+        "ref": "bb94cc2370419cb628c0b1600b149a75502406fb",
+        "modified": false,
+        "bundle_sha256": "e787f05bf4d74a5344ff9685bda500d5efb9430f1efd7fbad4ba6ae7c5b49224"
+      }
+    ],
+    "final_client_component_tree": "b400738a1880251b04255e867e6819f27f7edda9",
+    "final_javascript_modules_tree": "8e49dcb8593389c0aeaf19780223a1b4bb7ba17c",
+    "final_replay_client_bundle_sha256": "e787f05bf4d74a5344ff9685bda500d5efb9430f1efd7fbad4ba6ae7c5b49224",
+    "equivalence": "The main record captured working-tree revision 3dfbedc494141733a76978cc6b9b906688894ee3 with modified=false. Its entire client component tree and replay module tree are byte-identical to final implementation bb94cc2370419cb628c0b1600b149a75502406fb and the client source tree at evidence creation; both replay source bundle hashes equal the final bundle. Later changes only affect standalone study tooling/release evidence, not these client sources. Recorded revisions are retained without relabeling.",
+    "baseline_javascript_modules_tree": "0e6b0a7a43341417228c53135e9ff34636b0ba56",
+    "production_input_stream_matches_private11": true
+  },
+  "payload_provenance": {
+    "fixture_sha256": "a9dd7228713c51e1b66408444162bd82748b9e77b87cc721b97901c8f54e147a",
+    "geometry_sha256": "240affcef144d4d0f6f554283da9186b682aa225da20b1357cca28b58c6aa0d4",
+    "encoded_asset_bytes": 610180,
+    "assets": 20,
+    "native_payload_source": {
+      "source_revision": "0761e433f74dceaad4d4cd45c90aad16ecea5ba1",
+      "image_id": "sha256:2ef9ded01b721d4c30be13791413a948c1f1ea2f1262b17fd58c068b02ab3ced",
+      "generator": "scripts/benchmarks/export-image-assets.c",
+      "generator_sha256": "da2122af04c4d886d050ea50db5b920406da2a201fab485325d0f8344639a1e9",
+      "encoder_note": "Actual guac_png_write/guac_webp_write and real blob serialization to a discard socket. WebP is lossy quality90, method2; PNG uses the image production policy. Browser replay constructs img/blob/end/sync instructions around these encoded bytes. One sequential encode time per asset is informational, not a performance comparison."
+    },
+    "encoded_bytes_and_geometry_identical_between_all_slots": true,
+    "scope": "Static deterministic synthetic payloads exported by private.11, not live RDP capture, native planner/encoder runtime performance, or a new private.12 native export."
+  },
+  "validated_checks": {
+    "current_driver_support_replay_and_client_hashes_match": true,
+    "entire_candidate_client_component_tree_matches_final_implementation": true,
+    "all_payload_canonical_rgb_and_native_reference_hashes_equal": true,
+    "ordered_exactly_once_sync_acks_and_image_draw_metadata": true,
+    "sender_and_browser_causal_timestamp_ordering": true,
+    "timestamp_derived_distributions_recomputed": [
+      "browser_image_dispatch_to_ack_ms",
+      "browser_image_dispatch_to_sync_ms",
+      "browser_sync_dispatch_to_ack_ms",
+      "source_due_to_ack_received_ms",
+      "final_write_to_ack_received_ms",
+      "transfer_span_ms",
+      "source_schedule_delay_ms"
+    ],
+    "reported_browser_and_source_proxy_summary_means_recomputed": true,
+    "all_complete_display_queues_drained": true,
+    "default_diagnostics_snapshots_null_in_every_record": true,
+    "base64_counters_only_in_separate_verification": true,
+    "enabled_sync_counts_include_bootstrap_and_match_all_frames": true,
+    "enabled_duplicate_canceled_and_current_inflight_zero": true,
+    "limit": "Per-blob input-probe, handler and draw-call aggregates retain distributions but not every underlying event timestamp. Their full quantiles cannot be reconstructed from absent individual events; no independent remeasurement is claimed."
+  },
+  "audit_counts": {
+    "default_off_comparison": {
+      "timing_runs": 192,
+      "separate_per_frame_verification_runs": 12,
+      "timing_display_frames": 2688,
+      "verification_display_frames": 24,
+      "measured_frames": 2304,
+      "all_image_frames_and_ordered_image_sync_acks": 2712,
+      "sync_instructions_including_bootstrap": 2916,
+      "image_draws": 152776,
+      "exact_rgba_readbacks": 216,
+      "exact_checked_rgba_pixels": 279134208,
+      "protocol_bytes": 440107654,
+      "ping_echoes": 224,
+      "deferred_ping_echoes": 224,
+      "frames_started_over_0_51_ms_before_target": 40,
+      "actual_decoder_format_counts": {
+        "BGRX": 89599,
+        "I420": 63177
+      },
+      "maximum_pending_display_frames": 2,
+      "maximum_sampled_oldest_frame_age_ms": 15,
+      "maximum_started_unacknowledged_frames": 3,
+      "maximum_source_schedule_delay_ms": 3832.601999999999,
+      "maximum_source_target_early_ms": 1.1939999999885913
+    },
+    "diagnostic_on_correctness": {
+      "timing_runs": 24,
+      "separate_per_frame_verification_runs": 12,
+      "timing_display_frames": 120,
+      "verification_display_frames": 24,
+      "measured_frames": 96,
+      "all_image_frames_and_ordered_image_sync_acks": 144,
+      "sync_instructions_including_bootstrap": 180,
+      "image_draws": 8112,
+      "exact_rgba_readbacks": 48,
+      "exact_checked_rgba_pixels": 62029824,
+      "protocol_bytes": 23330818,
+      "ping_echoes": 4,
+      "deferred_ping_echoes": 4,
+      "frames_started_over_0_51_ms_before_target": 4,
+      "actual_decoder_format_counts": {
+        "BGRX": 4314,
+        "I420": 3798
+      },
+      "maximum_pending_display_frames": 2,
+      "maximum_sampled_oldest_frame_age_ms": 11,
+      "maximum_started_unacknowledged_frames": 2,
+      "maximum_source_schedule_delay_ms": 567.7564999999995,
+      "maximum_source_target_early_ms": 0.9197089999997843
+    }
+  },
+  "base64_observations": {
+    "actual_api_availability": {
+      "setFromBase64": true,
+      "fromBase64": true
+    },
+    "verification_runs": 12,
+    "aggregate_counts": {
+      "direct_decode_calls": 0,
+      "direct_decoded_bytes": 0,
+      "fallback_payload_buffers": 2886,
+      "fallback_decoded_bytes": 2825264,
+      "fallback_payload_copy_calls": 0,
+      "fallback_payload_copy_bytes": 0,
+      "byob_request_queries": 4238,
+      "unique_byob_requests_observed": 0,
+      "observed_byob_capacity_bytes": 0,
+      "maximum_byob_capacity_bytes": 0
+    },
+    "timing_records_with_null_counters": 192,
+    "interpretation": "No actual outstanding BYOB requests, direct decode calls or BYOB payload copies were observed in Chrome 155 ImageDecoder consumption. Getter queries are not unique requests. Counters do not measure heap bytes, decoder-internal copies or CPU savings. The final production InputStream remains exactly private.11; rejected experimental candidate and actual native BYOB results are in 1.6.1-private.12-byob-study.json and commit 6046fa964bef309066ab90514056d450f3334de9."
+  },
+  "default_off_comparison": {
+    "requested": {
+      "samples_per_version": 4,
+      "measured_frames": 12,
+      "warmup_frames": 2,
+      "source_interval_ms": 16,
+      "profiles": [
+        "healthy",
+        "lan",
+        "constrained",
+        "jitter"
+      ],
+      "scenarios": [
+        "png-1",
+        "png-40",
+        "png-128",
+        "webp-1",
+        "webp-40",
+        "webp-128"
+      ],
+      "base64_read_counts_in_verification": true,
+      "pipeline_diagnostics_enabled": false,
+      "order": "A/B, then B/A alternating per sample"
+    },
+    "summary_method": "Arithmetic means of per-run nearest-rank p95/max/rate values, not pooled-frame percentiles. Raw observations retained.",
+    "per_profile_percent_ranges": [
+      {
+        "profile": "healthy",
+        "browser_p95_percent": {
+          "min": -7.93651041940906,
+          "max": 4.054053422741166
+        },
+        "source_proxy_p95_percent": {
+          "min": -1.097302936587341,
+          "max": 7.64769204660336
+        }
+      },
+      {
+        "profile": "lan",
+        "browser_p95_percent": {
+          "min": -4.065040639900475,
+          "max": 0.680268203055423
+        },
+        "source_proxy_p95_percent": {
+          "min": -3.7432276051255986,
+          "max": 5.622305426614971
+        }
+      },
+      {
+        "profile": "constrained",
+        "browser_p95_percent": {
+          "min": -7.058824572183675,
+          "max": 1.1363639108857182
+        },
+        "source_proxy_p95_percent": {
+          "min": -0.2801582760196597,
+          "max": 0.18159789935894288
+        }
+      },
+      {
+        "profile": "jitter",
+        "browser_p95_percent": {
+          "min": -1.3893130343274773,
+          "max": 4.850360503407969
+        },
+        "source_proxy_p95_percent": {
+          "min": -0.8892248757706112,
+          "max": 1.6479065726165532
+        }
+      }
+    ],
+    "case_differences": [
+      {
+        "scenario": "png-1",
+        "profile": "healthy",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 4.725000023841858,
+          "candidate": 4.349999904632568,
+          "difference_ms": -0.37500011920928955,
+          "percent": -7.93651041940906
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 5.877114500001653,
+          "candidate": 5.812624750006535,
+          "difference_ms": -0.06448974999511847,
+          "percent": -1.097302936587341
+        },
+        "paired_browser_p95_differences_ms": [
+          -0.19999980926513672,
+          0.2999997138977051,
+          -1.4000000953674316,
+          -0.20000028610229492
+        ]
+      },
+      {
+        "scenario": "png-1",
+        "profile": "lan",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 4.724999904632568,
+          "candidate": 4.724999904632568,
+          "difference_ms": 0.0,
+          "percent": 0.0
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 7.073614749998683,
+          "candidate": 6.808833249996496,
+          "difference_ms": -0.2647815000021865,
+          "percent": -3.7432276051255986
+        },
+        "paired_browser_p95_differences_ms": [
+          0.0,
+          0.3000001907348633,
+          -0.5,
+          0.19999980926513672
+        ]
+      },
+      {
+        "scenario": "png-1",
+        "profile": "constrained",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 10.62500011920929,
+          "candidate": 9.875,
+          "difference_ms": -0.7500001192092896,
+          "percent": -7.058824572183675
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 32.00766650000719,
+          "candidate": 32.06579175000502,
+          "difference_ms": 0.05812524999782909,
+          "percent": 0.18159789935894288
+        },
+        "paired_browser_p95_differences_ms": [
+          -0.9000000953674316,
+          -0.10000038146972656,
+          -1.4000000953674316,
+          -0.5999999046325684
+        ]
+      },
+      {
+        "scenario": "png-1",
+        "profile": "jitter",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 24.225000023841858,
+          "candidate": 25.399999856948853,
+          "difference_ms": 1.1749998331069946,
+          "percent": 4.850360503407969
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 45.69755200000304,
+          "candidate": 45.291198000000804,
+          "difference_ms": -0.40635400000223854,
+          "percent": -0.8892248757706112
+        },
+        "paired_browser_p95_differences_ms": [
+          0.5,
+          0,
+          4.399999618530273,
+          -0.20000028610229492
+        ]
+      },
+      {
+        "scenario": "png-40",
+        "profile": "healthy",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 2.5250000953674316,
+          "candidate": 2.6250001192092896,
+          "difference_ms": 0.10000002384185791,
+          "percent": 3.9603968342546203
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 4.570312500001364,
+          "candidate": 4.612385499998709,
+          "difference_ms": 0.042072999997344596,
+          "percent": 0.9205716238732453
+        },
+        "paired_browser_p95_differences_ms": [
+          0.0,
+          0.20000028610229492,
+          0.2999997138977051,
+          -0.09999990463256836
+        ]
+      },
+      {
+        "scenario": "png-40",
+        "profile": "lan",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 3.6750000715255737,
+          "candidate": 3.6999999284744263,
+          "difference_ms": 0.02499985694885254,
+          "percent": 0.680268203055423
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 5.934322749995999,
+          "candidate": 6.267968500001871,
+          "difference_ms": 0.3336457500058714,
+          "percent": 5.622305426614971
+        },
+        "paired_browser_p95_differences_ms": [
+          4.76837158203125e-07,
+          -0.9000000953674316,
+          -0.10000038146972656,
+          1.0999994277954102
+        ]
+      },
+      {
+        "scenario": "png-40",
+        "profile": "constrained",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 19.24999988079071,
+          "candidate": 19.049999952316284,
+          "difference_ms": -0.19999992847442627,
+          "percent": -1.0389606738335777
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 41.60219774999837,
+          "candidate": 41.48564574999568,
+          "difference_ms": -0.11655200000268451,
+          "percent": -0.2801582760196597
+        },
+        "paired_browser_p95_differences_ms": [
+          0.09999990463256836,
+          -0.2999997138977051,
+          -1.8999996185302734,
+          1.299999713897705
+        ]
+      },
+      {
+        "scenario": "png-40",
+        "profile": "jitter",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 23.574999928474426,
+          "candidate": 24.425000071525574,
+          "difference_ms": 0.8500001430511475,
+          "percent": 3.6055149337434367
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 45.200666250002314,
+          "candidate": 45.945531000002575,
+          "difference_ms": 0.7448647500002608,
+          "percent": 1.6479065726165532
+        },
+        "paired_browser_p95_differences_ms": [
+          1.0999999046325684,
+          1.4000005722045898,
+          2.0,
+          -1.0999999046325684
+        ]
+      },
+      {
+        "scenario": "png-128",
+        "profile": "healthy",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 7.399999976158142,
+          "candidate": 7.699999928474426,
+          "difference_ms": 0.2999999523162842,
+          "percent": 4.054053422741166
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 9.24843724999846,
+          "candidate": 9.955729250001696,
+          "difference_ms": 0.7072920000032354,
+          "percent": 7.64769204660336
+        },
+        "paired_browser_p95_differences_ms": [
+          -0.09999942779541016,
+          0.3000001907348633,
+          0.09999942779541016,
+          0.8999996185302734
+        ]
+      },
+      {
+        "scenario": "png-128",
+        "profile": "lan",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 9.225000023841858,
+          "candidate": 8.850000023841858,
+          "difference_ms": -0.375,
+          "percent": -4.065040639900475
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 10.844604249995882,
+          "candidate": 11.248812499998166,
+          "difference_ms": 0.40420825000228433,
+          "percent": 3.7272752484484473
+        },
+        "paired_browser_p95_differences_ms": [
+          -1.3000001907348633,
+          -0.09999990463256836,
+          -0.5,
+          0.40000009536743164
+        ]
+      },
+      {
+        "scenario": "png-128",
+        "profile": "constrained",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 52.799999833106995,
+          "candidate": 53.39999997615814,
+          "difference_ms": 0.6000001430511475,
+          "percent": 1.1363639108857182
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 503.55434400000377,
+          "candidate": 503.71395824999627,
+          "difference_ms": 0.15961424999250085,
+          "percent": 0.03169752220277822
+        },
+        "paired_browser_p95_differences_ms": [
+          1.3000001907348633,
+          0.6000003814697266,
+          0.3000001907348633,
+          0.19999980926513672
+        ]
+      },
+      {
+        "scenario": "png-128",
+        "profile": "jitter",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 48.27500021457672,
+          "candidate": 48.22499990463257,
+          "difference_ms": -0.05000030994415283,
+          "percent": -0.10357391967251717
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 152.48282325000446,
+          "candidate": 152.35884374999887,
+          "difference_ms": -0.12397950000558922,
+          "percent": -0.0813071907793339
+        },
+        "paired_browser_p95_differences_ms": [
+          -0.7000002861022949,
+          1.5999994277954102,
+          -0.9000000953674316,
+          -0.20000028610229492
+        ]
+      },
+      {
+        "scenario": "webp-1",
+        "profile": "healthy",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 16.449999928474426,
+          "candidate": 16.700000166893005,
+          "difference_ms": 0.2500002384185791,
+          "percent": 1.5197582948668353
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 17.86313550000159,
+          "candidate": 18.596604000006664,
+          "difference_ms": 0.733468500005074,
+          "percent": 4.106045660376978
+        },
+        "paired_browser_p95_differences_ms": [
+          0.10000038146972656,
+          0.3000001907348633,
+          0.7000002861022949,
+          -0.09999990463256836
+        ]
+      },
+      {
+        "scenario": "webp-1",
+        "profile": "lan",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 33.625,
+          "candidate": 32.950000166893005,
+          "difference_ms": -0.6749998331069946,
+          "percent": -2.0074344479018458
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 227.9449584999984,
+          "candidate": 227.80463525000278,
+          "difference_ms": -0.14032324999561752,
+          "percent": -0.06156014632612283
+        },
+        "paired_browser_p95_differences_ms": [
+          -0.2999997138977051,
+          -0.19999980926513672,
+          -2.0999999046325684,
+          -0.09999990463256836
+        ]
+      },
+      {
+        "scenario": "webp-1",
+        "profile": "constrained",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 315.8249999284744,
+          "candidate": 315.8749998807907,
+          "difference_ms": 0.04999995231628418,
+          "percent": 0.0158315371891371
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 4144.476406249996,
+          "candidate": 4143.499698000003,
+          "difference_ms": -0.9767082499929529,
+          "percent": -0.02356650525311421
+        },
+        "paired_browser_p95_differences_ms": [
+          1.799999713897705,
+          -1.4000000953674316,
+          -0.40000009536743164,
+          0.20000028610229492
+        ]
+      },
+      {
+        "scenario": "webp-1",
+        "profile": "jitter",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 177.9999998807907,
+          "candidate": 177.7499998807907,
+          "difference_ms": -0.25,
+          "percent": -0.1404494382963084
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 1985.1498644999929,
+          "candidate": 1985.644499750002,
+          "difference_ms": 0.49463525000919617,
+          "percent": 0.02491677121483349
+        },
+        "paired_browser_p95_differences_ms": [
+          -1.9000000953674316,
+          1.4000000953674316,
+          -0.9000000953674316,
+          0.40000009536743164
+        ]
+      },
+      {
+        "scenario": "webp-40",
+        "profile": "healthy",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 2.9250000715255737,
+          "candidate": 2.9999998807907104,
+          "difference_ms": 0.07499980926513672,
+          "percent": 2.564095980552228
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 4.3525312499969,
+          "candidate": 4.532208250002441,
+          "difference_ms": 0.17967700000554032,
+          "percent": 4.1281036179962705
+        },
+        "paired_browser_p95_differences_ms": [
+          0.2999997138977051,
+          -0.3000001907348633,
+          0.09999990463256836,
+          0.19999980926513672
+        ]
+      },
+      {
+        "scenario": "webp-40",
+        "profile": "lan",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 10.650000095367432,
+          "candidate": 10.675000190734863,
+          "difference_ms": 0.02500009536743164,
+          "percent": 0.23474267740435373
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 12.17517675000181,
+          "candidate": 12.180478749998656,
+          "difference_ms": 0.005301999996845552,
+          "percent": 0.04354762239360266
+        },
+        "paired_browser_p95_differences_ms": [
+          -0.19999980926513672,
+          0.3000001907348633,
+          -0.09999990463256836,
+          0.09999990463256836
+        ]
+      },
+      {
+        "scenario": "webp-40",
+        "profile": "constrained",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 97.57499992847443,
+          "candidate": 98.22500014305115,
+          "difference_ms": 0.6500002145767212,
+          "percent": 0.6661544607257985
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 1141.160333499999,
+          "candidate": 1141.8641039999939,
+          "difference_ms": 0.7037704999947891,
+          "percent": 0.06167148290514568
+        },
+        "paired_browser_p95_differences_ms": [
+          4.76837158203125e-07,
+          0.9000000953674316,
+          4.76837158203125e-07,
+          1.6999998092651367
+        ]
+      },
+      {
+        "scenario": "webp-40",
+        "profile": "jitter",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 64.64999985694885,
+          "candidate": 64.875,
+          "difference_ms": 0.22500014305114746,
+          "percent": 0.3480280642676137
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 469.1535102499929,
+          "candidate": 469.80513549999887,
+          "difference_ms": 0.6516252500059636,
+          "percent": 0.13889382382723525
+        },
+        "paired_browser_p95_differences_ms": [
+          -0.6999998092651367,
+          0.3000001907348633,
+          1.0,
+          0.3000001907348633
+        ]
+      },
+      {
+        "scenario": "webp-128",
+        "profile": "healthy",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 7.324999928474426,
+          "candidate": 7.150000095367432,
+          "difference_ms": -0.17499983310699463,
+          "percent": -2.389076243219046
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 8.42716675000338,
+          "candidate": 8.7018227499957,
+          "difference_ms": 0.27465599999231927,
+          "percent": 3.259173671770643
+        },
+        "paired_browser_p95_differences_ms": [
+          0.09999990463256836,
+          0.20000028610229492,
+          -0.5999999046325684,
+          -0.39999961853027344
+        ]
+      },
+      {
+        "scenario": "webp-128",
+        "profile": "lan",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 32.675000071525574,
+          "candidate": 32.35000002384186,
+          "difference_ms": -0.3250000476837158,
+          "percent": -0.9946443671684513
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 220.374593499997,
+          "candidate": 220.08312474999912,
+          "difference_ms": -0.2914687499978754,
+          "percent": -0.13226059563797854
+        },
+        "paired_browser_p95_differences_ms": [
+          0.40000009536743164,
+          -0.3000001907348633,
+          -0.40000009536743164,
+          -1
+        ]
+      },
+      {
+        "scenario": "webp-128",
+        "profile": "constrained",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 311.47500002384186,
+          "candidate": 312.3249999284744,
+          "difference_ms": 0.8499999046325684,
+          "percent": 0.2728950652757023
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 4072.544302500004,
+          "candidate": 4070.406948000009,
+          "difference_ms": -2.1373544999951264,
+          "percent": -0.05248204417771518
+        },
+        "paired_browser_p95_differences_ms": [
+          1.1999998092651367,
+          0.9000000953674316,
+          2.0999999046325684,
+          -0.8000001907348633
+        ]
+      },
+      {
+        "scenario": "webp-128",
+        "profile": "jitter",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 163.7500001192093,
+          "candidate": 161.47500002384186,
+          "difference_ms": -2.2750000953674316,
+          "percent": -1.3893130343274773
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 1937.8020829999987,
+          "candidate": 1935.4154062499983,
+          "difference_ms": -2.3866767500003334,
+          "percent": -0.12316411314334808
+        },
+        "paired_browser_p95_differences_ms": [
+          -0.09999990463256836,
+          -4.099999904632568,
+          -1.6999998092651367,
+          -3.200000762939453
+        ]
+      }
+    ],
+    "overall_browser_p95_percent_range": {
+      "min": -7.93651041940906,
+      "max": 4.850360503407969
+    },
+    "overall_browser_p95_difference_ms_range": {
+      "min": -2.2750000953674316,
+      "max": 1.1749998331069946
+    },
+    "overall_source_proxy_p95_percent_range": {
+      "min": -3.7432276051255986,
+      "max": 7.64769204660336
+    },
+    "overall_source_proxy_p95_difference_ms_range": {
+      "min": -2.3866767500003334,
+      "max": 0.7448647500002608
+    },
+    "interpretation": "Mixed small browser differences do not establish a browser improvement or zero overhead. Percent extremes slightly exceed the old control range. No pervasive multi-profile regression appears, but these short samples cannot exclude small persistent changes."
+  },
+  "historical_same_client_same_payload_control": {
+    "file": "1.6.1-private.11-browser-image-control.json.gz",
+    "uncompressed_sha256": "55987f7c3ef0ea99ff98466c0b481c72d8609957223c06c1185830d778ec2041",
+    "browser_p95_percent_range": {
+      "min": -6.6037718449338145,
+      "max": 2.926953419000222
+    },
+    "browser_p95_difference_ms_range": {
+      "min": -4.224999904632568,
+      "max": 2.875
+    },
+    "limit": "Historical A/A variability is context, not a confidence interval, contemporaneous control, universal noise bound or proof that every new difference is noise."
+  },
+  "small_tail_observations": [
+    {
+      "scenario": "png-128",
+      "profile": "constrained",
+      "finding": "Browser mean per-run p95 is +0.600000143 ms/+1.1364%, with all four paired differences positive (+0.2 to +1.3 ms). Scheduled-source proxy changes only +0.15961425 ms/+0.0317%. A small recurring browser interval regression cannot be excluded; no broad latency regression or gain is inferred."
+    },
+    {
+      "scenario": "png-1",
+      "profile": "jitter",
+      "finding": "Largest positive browser change is +1.174999833 ms/+4.8504%; paired differences are +0.5, 0, +4.4, -0.2 ms. One trial accounts for most of the average. Scheduled-source proxy improves 0.406354 ms; this does not show consistent end-to-end degradation."
+    }
+  ],
+  "diagnostic_on_correctness": {
+    "requested": {
+      "samples_per_version": 1,
+      "measured_frames": 4,
+      "warmup_frames": 1,
+      "source_interval_ms": 16,
+      "profiles": [
+        "healthy",
+        "jitter"
+      ],
+      "scenarios": [
+        "png-1",
+        "png-40",
+        "png-128",
+        "webp-1",
+        "webp-40",
+        "webp-128"
+      ],
+      "base64_read_counts_in_verification": false,
+      "pipeline_diagnostics_enabled": true,
+      "order": "A/B, then B/A alternating per sample"
+    },
+    "identical_client_bundles_for_both_labels": true,
+    "snapshot_records": 36,
+    "sum_sync_received_completed_ack_attempted": 180,
+    "all_snapshots_received_completed_ack_attempted_equal_frames_plus_bootstrap": true,
+    "all_snapshots_duplicate_canceled_and_current_inflight_zero": true,
+    "all_snapshots_numeric_and_finite": true,
+    "all_base64_counters_null": true,
+    "interpretation": "This is an enabled/enabled functional probe with one sample per case/profile, not a disabled/enabled overhead comparison. Snapshots occur before cleanup/disconnect. Counts include one bootstrap sync per document in addition to its image frames."
+  },
+  "scope_and_limitations": [
+    "Real loopback WebSocket/Tunnel/InstructionPump/Parser/Client/image decode/canvas draw and actual ordered sync ACKs execute. Preencoded payloads exclude capture and native planner/encoder speed; static asset encode_ms values are informational only.",
+    "Pacing is an approximate 16 ms target with application-level bandwidth/release delay/seeded jitter. Loopback ACKs are unshaped; this does not emulate Wi-Fi loss, TCP congestion, actual RTT, physical input or display paint/FPS.",
+    "Sender and browser clocks are separate, never subtracted across domains. Scheduled-source-due-to-ACK is a schedule/backlog proxy, not latency from actual capture or proof of immediate kernel delivery. Source timer early/late records remain complete.",
+    "Transfer and decode overlap. Browser image-dispatch-to-sync includes arrival/parsing/handlers; sync-to-ACK includes remaining decode/frame wait/draw and audio synchronization. Intervals are not independent additive CPU stages.",
+    "Every image frame has draw-coordinate/count/order and exactly-once sync-ACK checks. Exact RGBA is read per frame only in separate ACK-gated verification documents; timing runs check only final pixels. Readback counts are reported separately from all frame counts.",
+    "PNG Image/data-URI references and WebP Image/RGB plus native complete-buffer references are checked exactly. Actual VideoFrame.format selects the WebP representation, never a tolerance or best pixel match. Native WebP reference is not an independent decoder algorithm and original lossy source RGB equality is not claimed.",
+    "Optional Base64/copy instrumentation runs only after oracle construction in separate verification pages. The default comparison has null diagnostics snapshots everywhere; enabled correctness probes intentionally incur optional measurements.",
+    "Display snapshots can miss partial/not-yet-arrived frames and transient spikes. A low browser display queue does not imply low update latency: source schedule debt reaches 3.833 seconds under the constrained profile.",
+    "Summary p95 values are arithmetic means of four per-run nearest-rank p95s, not pooled percentiles. With 12 measured frames, each per-run p95 is that run's maximum. Short mixed results and historical A/A data do not establish a browser gain or universally exclude regressions."
+  ],
+  "records": {
+    "default_off_comparison": {
+      "file": "1.6.1-private.12-browser-image-default-off.json.gz",
+      "format": "gzip-compressed UTF-8 JSON, original complete raw record bytes",
+      "sha256": "e5b1d50c229534318ef14cf840126e9ccf8a21ef222e76031fc3fc52e875df69",
+      "uncompressed_sha256": "354050c4d2720b1dee9a68f54718a2f66ec885c5275da1f259e9ea1233cd6ee6",
+      "compressed_bytes": 480966,
+      "uncompressed_bytes": 7354208,
+      "gzip_mtime": 0,
+      "gzip_original_filename_present": false
+    },
+    "diagnostic_on_correctness": {
+      "file": "1.6.1-private.12-browser-image-diagnostics-on.json.gz",
+      "format": "gzip-compressed UTF-8 JSON, original complete raw record bytes",
+      "sha256": "0ede8e5dc062ad77ebb2b6cf73680dd140a8356687638213c0a3c8deefbe82ca",
+      "uncompressed_sha256": "4cd193aa6634788facddbf7f8f1eb6f49ef2081ad729d55206aca05eaa7d1d11",
+      "compressed_bytes": 41685,
+      "uncompressed_bytes": 618869,
+      "gzip_mtime": 0,
+      "gzip_original_filename_present": false
+    }
+  },
+  "raw_record_storage": "Adjacent deterministic gzip files retain the exact original complete synthetic JSON bytes, including whitespace/newline. No observations are removed. mtime0/no original filename, compressed/uncompressed hashes and sizes are recorded above."
+}
