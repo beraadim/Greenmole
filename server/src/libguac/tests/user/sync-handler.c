@@ -20,6 +20,7 @@
 #include "../../user-handlers.h"
 #include "guacamole/client.h"
 #include "guacamole/timestamp.h"
+#include "guacamole/user.h"
 #include <CUnit/CUnit.h>
 #include <inttypes.h>
 #include <stdio.h>
