@@ -28,6 +28,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { protocolReplay, timerReplay } from './benchmarks/protocol-replay.mjs';
+import { readinessReplaySource } from './benchmarks/readiness-replay.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const modulePath = 'client/guacamole-common-js/src/main/webapp/modules/';
@@ -35,14 +36,14 @@ const options = { samples: 4, browser: process.env.CHROME_BIN, output: null, sce
 for (let i = 2; i < process.argv.length; i++) {
     const argument = process.argv[i];
     if (!['--samples', '--browser', '--output', '--scenario', '--baseline'].includes(argument) || !process.argv[i + 1])
-        throw new Error('Usage: benchmark-browser-render.mjs [--samples 1..20] [--browser executable] [--output result.json] [--scenario render|protocol|timers] [--baseline ref]');
+        throw new Error('Usage: benchmark-browser-render.mjs [--samples 1..20] [--browser executable] [--output result.json] [--scenario render|protocol|timers|readiness] [--baseline ref]');
     options[argument.slice(2)] = process.argv[++i];
 }
 options.samples = Number(options.samples);
 if (!Number.isInteger(options.samples) || options.samples < 1 || options.samples > 20)
     throw new Error('--samples must be an integer from 1 through 20');
-if (!['render', 'protocol', 'timers'].includes(options.scenario))
-    throw new Error('--scenario must be render, protocol, or timers');
+if (!['render', 'protocol', 'timers', 'readiness'].includes(options.scenario))
+    throw new Error('--scenario must be render, protocol, timers, or readiness');
 
 if (!options.browser) {
     const candidates = ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'];
@@ -61,11 +62,13 @@ if (!options.browser)
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
 const layer = await readFile(path.join(root, modulePath, 'Layer.js'), 'utf8');
 const versions = [];
-const protocol = options.scenario !== 'render';
-const modules = protocol
+const readiness = options.scenario === 'readiness';
+const protocol = ['protocol', 'timers'].includes(options.scenario);
+const bundle = protocol || readiness;
+const modules = readiness ? ['ArrayBufferReader.js', 'DataURIReader.js', 'InputStream.js', 'Display.js'] : protocol
     ? ['Parser.js', 'Status.js', 'Display.js', 'DisplayRecovery.js', 'IntegerPool.js', 'InstructionPump.js', 'DeadlineTimer.js', 'Tunnel.js', 'Client.js']
     : ['Display.js'];
-const tags = options.baseline ? [options.baseline] : options.scenario === 'timers'
+const tags = options.baseline ? [options.baseline] : readiness ? ['1.6.1-private.9'] : options.scenario === 'timers'
     ? ['1.6.1-private.6'] : protocol ? ['1.6.1-private.5'] : ['1.6.1-private.3', '1.6.1-private.4'];
 for (const tag of tags) {
     const available = new Set(git('ls-tree', '--name-only', tag, '--',
@@ -136,7 +139,7 @@ window.__renderReplay = (async function() {
     return scenarios;
 })();`;
 
-const replay = options.scenario === 'timers' ? timerReplay : protocol ? protocolReplay : renderReplay;
+const replay = readiness ? readinessReplaySource : options.scenario === 'timers' ? timerReplay : protocol ? protocolReplay : renderReplay;
 
 const temporary = await mkdtemp(path.join(tmpdir(), 'guacamole-browser-render-'));
 let browser;
@@ -146,6 +149,18 @@ try {
         await writeFile(version.file, '<!doctype html><body><script>'
             + (layer + '\n' + version.source + '\n' + replay).replaceAll('</script', '<\\/script')
             + '</script>');
+        if (readiness) {
+            // Only a separate count-only page changes the source predicate.
+            // Real decoding/frame timings always use the unmodified module.
+            const predicate = /if \((tasks\[[^\]]+\]\.blocked)\)/g;
+            const matches = [...version.source.matchAll(predicate)];
+            if (matches.length !== 1) throw new Error('Expected exactly one frame-readiness predicate in ' + version.name);
+            version.countSource = version.source.replace(predicate, 'if ((window.__readinessChecks++, $1))');
+            version.countFile = path.join(temporary, index + '-count.html');
+            await writeFile(version.countFile, '<!doctype html><body><script>'
+                + ('window.__readinessCountOnly=true;window.__readinessChecks=0;\n' + layer + '\n'
+                    + version.countSource + '\n' + replay).replaceAll('</script', '<\\/script') + '</script>');
+        }
     }
     browser = spawn(options.browser, ['--headless', '--remote-debugging-address=127.0.0.1',
         '--remote-debugging-port=0', '--user-data-dir=' + path.join(temporary, 'profile'),
@@ -168,7 +183,9 @@ try {
     const samples = [];
     for (let iteration = 0; iteration < options.samples; iteration++) {
         const ordered = iteration % 2 ? [...versions].reverse() : versions;
-        for (const version of ordered) {
+        const variants = ordered.flatMap(version => (readiness ? ['timing', 'count-only'] : ['timing'])
+            .map(kind => ({ version, kind })));
+        for (const { version, kind } of variants) {
             const target = await (await fetch(address + '/json/new?about:blank', { method: 'PUT' })).json();
             const socket = new WebSocket(target.webSocketDebuggerUrl);
             await new Promise((resolve, reject) => {
@@ -189,7 +206,7 @@ try {
                 socket.send(JSON.stringify({ id, method, params }));
             });
             try {
-                await call('Page.navigate', { url: pathToFileURL(version.file).href });
+                await call('Page.navigate', { url: pathToFileURL(kind === 'count-only' ? version.countFile : version.file).href });
                 let response;
                 for (let attempt = 0; attempt < 20; attempt++) {
                     response = await call('Runtime.evaluate', {
@@ -201,7 +218,7 @@ try {
                 }
                 if (response.error || response.result.exceptionDetails)
                     throw new Error('Replay failed: ' + JSON.stringify(response));
-                samples.push({ version: version.name, iteration, scenarios: response.result.result.value });
+                samples.push({ version: version.name, iteration, ...(readiness ? { kind } : {}), scenarios: response.result.result.value });
             }
             finally {
                 socket.close();
@@ -214,7 +231,16 @@ try {
         const middle = Math.floor(values.length / 2);
         return values.length % 2 ? values[middle] : (values[middle - 1] + values[middle]) / 2;
     };
-    const summary = versions.flatMap(version => samples[0].scenarios.map(scenario => {
+    const summary = readiness ? versions.flatMap(version => {
+        const native = samples.filter(sample => sample.version === version.name && sample.kind === 'timing');
+        return native[0].scenarios.map(scenario => {
+            const cases = native.flatMap(sample => sample.scenarios.filter(value => value.scenario === scenario.scenario));
+            return { version: version.name, scenario: scenario.scenario,
+                frame_completion_p50_median_ms: median(cases.map(value => value.frame_completion_p50_ms)),
+                frame_completion_p95_median_ms: median(cases.map(value => value.frame_completion_p95_ms)),
+                input_task_delay_p95_median_ms: median(cases.map(value => value.input_task_delay_ms)) };
+        });
+    }) : versions.flatMap(version => samples[0].scenarios.map(scenario => {
         const cases = samples.filter(sample => sample.version === version.name)
             .flatMap(sample => sample.scenarios.filter(value => value.scenario === scenario.scenario));
         return { version: version.name, scenario: scenario.scenario,
@@ -227,23 +253,56 @@ try {
                 peak_pending_timeouts_median: median(cases.map(value => value.peak_pending_timeouts))
             } : {}) };
     }));
+    if (readiness) {
+        // Fail closed if a version/sample did different decoded work or pixels.
+        const native = samples.filter(sample => sample.kind === 'timing');
+        for (const sample of native) {
+            if (sample.scenarios.length !== 4) throw new Error('Missing native readiness scenarios');
+            for (const scenario of sample.scenarios) {
+                const reference = native[0].scenarios.find(value => value.scenario === scenario.scenario);
+                if (!reference) throw new Error('Unexpected native readiness scenario');
+                if (![scenario.frame_completion_p50_ms, scenario.frame_completion_p95_ms, scenario.input_task_delay_ms]
+                    .every(value => Number.isFinite(value) && value >= 0)
+                    || scenario.frame_completion_p50_ms > scenario.frame_completion_p95_ms)
+                    throw new Error('Invalid native readiness timing');
+                for (const key of ['frames', 'warmup_frames', 'checked_frames', 'images_per_frame', 'mimetype', 'decoder', 'acknowledgements', 'rgb_pixels_compared', 'final_pixel_hash'])
+                    if (scenario[key] !== reference[key]) throw new Error('Readiness decode work differs: ' + key);
+            }
+        }
+        for (const sample of samples.filter(value => value.kind === 'count-only')) {
+            if (sample.scenarios.length !== 5 || sample.scenarios.some(value => !Number.isSafeInteger(value.readiness_checks)
+                || value.readiness_checks < value.images || value.acknowledgements !== 1 || !value.ordered_draws_verified))
+                throw new Error('Invalid count-only readiness observations');
+        }
+    }
     const result = {
-        method: protocol
+        method: readiness ? 'Actual Display/InputStream with native streamed PNG/WebP decode, real canvas draws, 40/128-image atomic frames and a 16ms minimum source interval. Separate count-only pages use controlled deferred-image callbacks and one instrumented readiness predicate.' : protocol
             ? 'Actual WebSocketTunnel, Parser, Client and Display with synchronous ready-frame protocol bursts and real canvas copies/fills. WebSocket delivery is simulated locally; ACK order and final canvas pixels are checked.'
             : 'Actual Display.js with synthetic per-frame drawing cost and one initial asynchronous blocker; real browser event loop, no virtual time.',
-        limitations: protocol
+        limitations: readiness ? 'Foreground headless Chrome decode-to-ACK-callback and browser-task opportunity; not physical paint/FPS/input, wire ACKs, transport, capture, Wi-Fi or background throttling. Pixel readback and pacing are outside per-frame timers. Count-only pages add predicate increments and provide structural work counts only, never speed evidence.' : protocol
             ? 'Foreground headless Chrome API/ACK completion and synthetic browser-task opportunity; not physical paint/FPS, physical input latency, live networking, Wi-Fi, image decoding, or background throttling.'
             : 'Synthetic tasks and ACK callbacks, not physical input latency, canvas throughput, a live RDP connection, Wi-Fi, or background-tab throttling.',
         browser: browserVersion.Browser, platform: process.platform + '-' + process.arch,
         samples_per_version: options.samples,
+        ...(readiness ? {
+            scenario: 'readiness', replay_sha256: createHash('sha256').update(replay).digest('hex'),
+            count_instrumentation: 'A separate document increments one counter at each tasks[index].blocked predicate read in Frame.isReady. Both sources receive the identical transformation; timing pages use unmodified sources. No production diagnostic/API is added.',
+            count_summary: versions.flatMap(version => {
+                const counted = samples.filter(sample => sample.version === version.name && sample.kind === 'count-only');
+                return counted[0].scenarios.map(scenario => ({ version: version.name, scenario: scenario.scenario,
+                    images: scenario.images,
+                    readiness_checks: counted.map(sample => sample.scenarios.find(value => value.scenario === scenario.scenario).readiness_checks) }));
+            })
+        } : {}),
         ...(options.scenario === 'timers' ? { timer_instrumentation:
             'Both versions wrap native setTimeout/clearTimeout to count allocations/cancellations during each burst. These wrappers add overhead, especially to versions creating many timers.' } : {}),
         sources: versions.map(version => ({ version: version.name, revision: version.revision,
             working_tree_modified: !!version.modified,
-            ...(protocol ? { modules: version.modules || modules } : {}),
-            [protocol ? 'module_bundle_sha256' : 'display_sha256']:
-                createHash('sha256').update(version.source).digest('hex') })),
-        ...(protocol ? { modules: modules, layer_sha256: createHash('sha256').update(layer).digest('hex') } : {}),
+            ...(bundle ? { modules: version.modules || modules } : {}),
+            [bundle ? 'module_bundle_sha256' : 'display_sha256']:
+                createHash('sha256').update(version.source).digest('hex'),
+            ...(readiness ? { count_bundle_sha256: createHash('sha256').update(version.countSource).digest('hex') } : {}) })),
+        ...(bundle ? { modules: modules, layer_sha256: createHash('sha256').update(layer).digest('hex') } : {}),
         summary, samples
     };
     const output = JSON.stringify(result, null, 2) + '\n';

@@ -509,6 +509,11 @@ Guacamole.Display = function() {
      */
     var Frame = function Frame(callback, tasks, timestamp, logicalFrames) {
 
+        // Tasks never become blocked again. Retain the unresolved position so
+        // each asynchronous completion need not rescan the already-ready prefix.
+        // The task array belongs only to this frame once flush() captures it.
+        var firstUnresolvedTask = 0;
+
         /**
          * The local timestamp of the point in time at which this frame was
          * received by the display, in milliseconds since the Unix Epoch.
@@ -547,6 +552,7 @@ Guacamole.Display = function() {
             });
 
             tasks = [];
+            firstUnresolvedTask = 0;
 
         };
 
@@ -559,10 +565,11 @@ Guacamole.Display = function() {
          */
         this.isReady = function() {
 
-            // Search for blocked tasks
-            for (var i=0; i < tasks.length; i++) {
-                if (tasks[i].blocked)
+            // Check each ready prefix task only once, preserving task order.
+            while (firstUnresolvedTask < tasks.length) {
+                if (tasks[firstUnresolvedTask].blocked)
                     return false;
+                firstUnresolvedTask++;
             }
 
             // If no blocked tasks, the frame is ready
