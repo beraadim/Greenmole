@@ -118,8 +118,72 @@ export async function imagePipelineReplay(config) {
     const expectedHashes = {};
     for (const representation of ['rgb', 'native']) expectedHashes[representation] = await Promise.all(config.scenario.frames.map(async frame =>
         Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', composeReference(frame, representation))), byte => byte.toString(16).padStart(2, '0')).join('')));
+
+    // Structural observations only: never install allocation/copy probes in a
+    // timing run. They run after oracle construction and are restored on exit.
+    assert(!config.count_base64_reads || config.verify, 'Base64 counters require untimed verification');
+    const base64Capabilities = { setFromBase64: typeof Uint8Array.prototype.setFromBase64 === 'function',
+        fromBase64: typeof Uint8Array.fromBase64 === 'function' };
+    let base64Reads = null, restoreBase64Reads = () => {};
+    if (config.count_base64_reads) {
+        base64Reads = { direct_decode_calls: 0, direct_decoded_bytes: 0,
+            fallback_payload_buffers: 0, fallback_decoded_bytes: 0,
+            fallback_payload_copy_calls: 0, fallback_payload_copy_bytes: 0,
+            byob_request_queries: 0, unique_byob_requests_observed: 0,
+            observed_byob_capacity_bytes: 0, maximum_byob_capacity_bytes: 0 };
+        const buffers = new WeakSet(), OriginalReader = Guacamole.ArrayBufferReader;
+        const originalSet = Uint8Array.prototype.set, originalDecode = Uint8Array.prototype.setFromBase64;
+        const controllerPrototype = window.ReadableByteStreamController?.prototype;
+        const byobDescriptor = controllerPrototype && Object.getOwnPropertyDescriptor(controllerPrototype, 'byobRequest');
+        base64Reads.byob_request_observer_available = Boolean(byobDescriptor?.get);
+        const requests = new WeakSet();
+        if (byobDescriptor?.get) Object.defineProperty(controllerPrototype, 'byobRequest', {
+            ...byobDescriptor, get() {
+                const request = byobDescriptor.get.call(this);
+                base64Reads.byob_request_queries++;
+                if (request && !requests.has(request)) {
+                    requests.add(request); base64Reads.unique_byob_requests_observed++;
+                    base64Reads.observed_byob_capacity_bytes += request.view.byteLength;
+                    base64Reads.maximum_byob_capacity_bytes = Math.max(base64Reads.maximum_byob_capacity_bytes, request.view.byteLength);
+                }
+                return request;
+            }
+        });
+        Guacamole.ArrayBufferReader = function(...args) {
+            const reader = new OriginalReader(...args);
+            let callback = reader.ondata;
+            Object.defineProperty(reader, 'ondata', {
+                configurable: true, get: () => callback,
+                set: value => { callback = value && (buffer => {
+                    buffers.add(buffer); base64Reads.fallback_payload_buffers++;
+                    base64Reads.fallback_decoded_bytes += buffer.byteLength;
+                    return value(buffer);
+                }); }
+            });
+            return reader;
+        };
+        Uint8Array.prototype.set = function(source, ...args) {
+            if (source && buffers.has(source.buffer)) {
+                base64Reads.fallback_payload_copy_calls++;
+                base64Reads.fallback_payload_copy_bytes += source.byteLength;
+            }
+            return originalSet.call(this, source, ...args);
+        };
+        if (base64Capabilities.setFromBase64) Uint8Array.prototype.setFromBase64 = function(...args) {
+            const result = originalDecode.apply(this, args);
+            base64Reads.direct_decode_calls++; base64Reads.direct_decoded_bytes += result.written;
+            return result;
+        };
+        restoreBase64Reads = () => {
+            Guacamole.ArrayBufferReader = OriginalReader; Uint8Array.prototype.set = originalSet;
+            if (base64Capabilities.setFromBase64) Uint8Array.prototype.setFromBase64 = originalDecode;
+            if (byobDescriptor?.get) Object.defineProperty(controllerPrototype, 'byobRequest', byobDescriptor);
+        };
+    }
     const tunnel = new Guacamole.WebSocketTunnel(config.websocket_url);
     const client = new Guacamole.Client(tunnel), display = client.getDisplay();
+    if (config.pipeline_diagnostics)
+        assert(client.setPipelineDiagnosticsEnabled?.(true), 'Pipeline diagnostics unavailable in selected client bundle');
     const layer = display.getDefaultLayer();
     document.body.appendChild(display.getElement());
     const records = [], drawQueue = [], acknowledgements = [], queueAtAck = [];
@@ -259,6 +323,9 @@ export async function imagePipelineReplay(config) {
             reference_webp_formats: oracleFormats,
             expected_frame_rgba_sha256: expectedHashes,
             decoder: window.ImageDecoder && window.ReadableStream ? 'ImageDecoder/ReadableStream' : 'Image/data-URI',
+            base64_capabilities: base64Capabilities,
+            base64_read_counts: base64Reads,
+            pipeline_diagnostics: config.pipeline_diagnostics ? client.getPipelineStatistics() : null,
             browser_image_dispatch_to_sync_ms: distribution(measured.map(record => record.sync_ms - record.first_image_ms)),
             browser_sync_dispatch_to_ack_ms: distribution(measured.map(record => record.ack_ms - record.sync_ms)),
             browser_last_end_to_first_draw_ms: distribution(measured.map(record => Math.max(0, record.first_draw_ms - record.last_end_ms))),
@@ -278,5 +345,6 @@ export async function imagePipelineReplay(config) {
     finally {
         active = false; clearTimeout(timeout); clearInterval(pollTimer); clearTimeout(probeTimer);
         inputChannel.port1.close(); inputChannel.port2.close(); client.disconnect(); display.getElement().remove();
+        restoreBase64Reads();
     }
 }

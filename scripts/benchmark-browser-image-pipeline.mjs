@@ -31,14 +31,15 @@ import { imagePipelineReplay, syntheticImageFixture } from './benchmarks/image-p
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const modulePath = 'client/guacamole-common-js/src/main/webapp/modules/';
 const modules = ['Layer.js', 'ArrayBufferReader.js', 'DataURIReader.js', 'InputStream.js', 'Parser.js', 'Status.js',
-    'Display.js', 'DisplayRecovery.js', 'IntegerPool.js', 'InstructionPump.js', 'DeadlineTimer.js', 'Tunnel.js', 'Client.js'];
+    'Display.js', 'DisplayRecovery.js', 'IntegerPool.js', 'InstructionPump.js', 'DeadlineTimer.js', 'Tunnel.js', 'PipelineDiagnostics.js', 'Client.js'];
+const optionalModules = new Set(['PipelineDiagnostics.js']);
 const options = { samples: 2, frames: 8, warmup: 2, interval: 16, browser: process.env.CHROME_BIN,
     baseline: null, 'client-ref': null, fixture: null, 'candidate-fixture': null, output: null,
-    profiles: Object.keys(profiles).join(','), cases: null, 'write-fixture': null };
+    profiles: Object.keys(profiles).join(','), cases: null, 'write-fixture': null, 'base64-counts': 'off', 'pipeline-diagnostics': 'off' };
 for (let index = 2; index < process.argv.length; index++) {
     const option = process.argv[index];
     if (!option.startsWith('--') || !(option.slice(2) in options) || !process.argv[index + 1])
-        throw new Error('Usage: benchmark-browser-image-pipeline.mjs [--fixture file] [--candidate-fixture file] [--baseline ref | --client-ref ref] [--samples1..20] [--frames1..60] [--warmup0..10] [--interval1..1000] [--profiles healthy,lan,constrained,jitter] [--cases id,...] [--browser executable] [--output file] [--write-fixture file]');
+        throw new Error('Usage: benchmark-browser-image-pipeline.mjs [--fixture file] [--candidate-fixture file] [--baseline ref | --client-ref ref] [--samples1..20] [--frames1..60] [--warmup0..10] [--interval1..1000] [--profiles healthy,lan,constrained,jitter] [--cases id,...] [--base64-counts on|off] [--pipeline-diagnostics on|off] [--browser executable] [--output file] [--write-fixture file]');
     options[option.slice(2)] = process.argv[++index];
 }
 for (const [name, minimum, maximum] of [['samples', 1, 20], ['frames', 1, 60], ['warmup', 0, 10], ['interval', 1, 1000]]) {
@@ -47,6 +48,8 @@ for (const [name, minimum, maximum] of [['samples', 1, 20], ['frames', 1, 60], [
         throw new Error('Invalid --' + name);
 }
 if (options.baseline && options['client-ref']) throw new Error('--baseline and --client-ref are mutually exclusive');
+if (!['on', 'off'].includes(options['base64-counts'])) throw new Error('Invalid --base64-counts');
+if (!['on', 'off'].includes(options['pipeline-diagnostics'])) throw new Error('Invalid --pipeline-diagnostics');
 if (options['candidate-fixture'] && (!options.fixture || options.baseline))
     throw new Error('Payload comparison needs --fixture and a shared --client-ref (default HEAD), not --baseline');
 const selectedProfiles = options.profiles.split(',');
@@ -72,10 +75,16 @@ if (!options.browser) {
 if (!options.browser) throw new Error('Set CHROME_BIN or --browser');
 const sourceAt = async ref => {
     const revision = git('rev-parse', (ref || 'HEAD') + '^{}').trim();
-    const source = ref ? modules.map(name => git('show', revision + ':' + modulePath + name)).join('\n')
-        : (await Promise.all(modules.map(name => readFile(path.join(root, modulePath, name), 'utf8')))).join('\n');
+    const available = ref ? new Set(git('ls-tree', '--name-only', revision, '--', ...modules.map(name => modulePath + name)).trim().split('\n')) : null;
+    const present = modules.filter(name => !ref || !optionalModules.has(name) || available.has(modulePath + name));
+    const source = ref ? present.map(name => git('show', revision + ':' + modulePath + name)).join('\n')
+        : (await Promise.all(present.map(async name => {
+            try { return await readFile(path.join(root, modulePath, name), 'utf8'); }
+            catch (error) { if (optionalModules.has(name) && error.code === 'ENOENT') return ''; throw error; }
+        }))).join('\n');
     return { revision, ref: ref || 'working-tree',
-        modified: ref ? false : git('diff', 'HEAD', '--', ...modules.map(name => modulePath + name)).length !== 0,
+        modified: ref ? false : git('diff', 'HEAD', '--', ...modules.map(name => modulePath + name)).length !== 0
+            || git('ls-files', '--others', '--exclude-standard', '--', ...modules.map(name => modulePath + name)).trim().length !== 0,
         source, bundle_sha256: sha256(source) };
 };
 const sharedRef = options['client-ref'] || (options['candidate-fixture'] ? 'HEAD' : null);
@@ -113,6 +122,8 @@ function newSession(version, fixture, scenario, profileName, verify) {
     let cumulative = 0;
     const config = { session: token, scenario, assets: [...used].map(id => assets.get(id)), verify,
         total_frames: totalFrames, warmup_frames: verify ? 0 : options.warmup,
+        count_base64_reads: verify && options['base64-counts'] === 'on',
+        pipeline_diagnostics: options['pipeline-diagnostics'] === 'on',
         images_before_frame: Array.from({ length: totalFrames }, (_, index) => {
             const before = cumulative; cumulative += scenario.frames[index % scenario.frames.length].images.length; return before;
         }), websocket_url: null };
@@ -377,13 +388,15 @@ try {
             'Pre-encoded payloads: native generation/encoder times are separate informational fixture metadata and excluded from all browser/sender timings.',
             'Browser first-img→sync combines data arrival/parser/handlers; sync→ACK combines remaining decode/frame wait/draw. Decode can overlap transfer; these are not independent additive decoder timings.',
             'Sender and browser clocks are separate; no timestamps are subtracted across domains. Writes do not prove immediate kernel delivery.',
-            'Instrumentation is test-only and identical for both versions. Per-frame pixels verified in separate ACK-gated runs; timing runs check final pixels, ordered draw coordinates/counts and exact ordered ACKs.',
+            'Instrumentation is test-only and identical for both versions. Per-frame pixels verified in separate ACK-gated runs; timing runs check final pixels, ordered draw coordinates/counts and exact ordered ACKs. Optional Base64/copy counters run only during untimed verification, after oracle creation; timings never install them.',
             'PNG reference uses Image/data-URI. WebP can produce I420 or BGRX depending on streamed timing, with1channel RGB conversion differences. Precomputed Image/RGB and complete-buffer native references are selected strictly by each actual VideoFrame.format, not pixel similarity or tolerance. Canonical RGB and native canvas hashes must both match across fixture versions. Native WebP reference is not an independent decoder algorithm; original lossy source pixels are not claimed.'
         ], browser: browserVersion.Browser, platform: process.platform + '-' + process.arch,
         ...harnessHashes, replay_sha256: replayHash,
         versions: sourceSummary, fixtures: { baseline: fixtureSummary(baselineFixture), candidate: fixtureSummary(candidateFixture) },
         requested: { samples_per_version: options.samples, measured_frames: options.frames, warmup_frames: options.warmup,
-            source_interval_ms: options.interval, profiles: selectedProfiles, scenarios: selectedCases, order: 'A/B, then B/A alternating per sample' },
+            source_interval_ms: options.interval, profiles: selectedProfiles, scenarios: selectedCases,
+            base64_read_counts_in_verification: options['base64-counts'] === 'on',
+            pipeline_diagnostics_enabled: options['pipeline-diagnostics'] === 'on', order: 'A/B, then B/A alternating per sample' },
         cross_fixture_canonical_frame_hashes_equal: true,
         summary_method: 'Arithmetic means of per-run nearest-rank p95/max/rate values, not pooled-frame percentiles. Raw observations retained.',
         summary, verification, samples };
