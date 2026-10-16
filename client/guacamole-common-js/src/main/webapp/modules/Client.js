@@ -107,6 +107,32 @@ Guacamole.Client = function(tunnel) {
      */
     var display = new Guacamole.Display();
 
+    /** Optional local-only diagnostics; absent helper is compatible with custom bundles. */
+    var pipelineDiagnostics = null;
+
+    /**
+     * Enables local numeric pipeline diagnostics for this client. Disabled by
+     * default. Calling with false cancels samples and releases retained totals.
+     * No setting or data is transmitted to the server.
+     * @param {boolean} enabled Whether to collect local pipeline measurements.
+     * @returns {boolean} Whether diagnostics are now enabled.
+     */
+    this.setPipelineDiagnosticsEnabled = function setPipelineDiagnosticsEnabled(enabled) {
+        if (enabled === true && !pipelineDiagnostics && Guacamole.PipelineDiagnostics)
+            pipelineDiagnostics = new Guacamole.PipelineDiagnostics();
+        else if (enabled !== true && pipelineDiagnostics) {
+            pipelineDiagnostics.cancel();
+            pipelineDiagnostics = null;
+        }
+        return pipelineDiagnostics !== null;
+    };
+
+    /** @returns {?Object} Numeric aggregate snapshot, or null when disabled. */
+    this.getPipelineStatistics = function getPipelineStatistics() {
+        return pipelineDiagnostics ? pipelineDiagnostics.getStatistics() : null;
+    };
+
+
     var displayRecovery = new Guacamole.DisplayRecovery(tunnel, function connectedTransport() {
         return isConnected() && tunnel.isConnected();
     });
@@ -1711,6 +1737,9 @@ Guacamole.Client = function(tunnel) {
             var timestamp = parseInt(parameters[0]);
             var frames = parameters[1] ? parseInt(parameters[1]) : 0;
 
+            var timing = pipelineDiagnostics;
+            var sample = timing ? timing.begin(display.getQueueStatistics()) : null;
+
             // Flush display, send sync when done
             display.flush(function displaySyncComplete() {
 
@@ -1720,6 +1749,12 @@ Guacamole.Client = function(tunnel) {
                     if (audioPlayer)
                         audioPlayer.sync();
                 }
+
+                // Measure local completion before the existing ACK attempt. This
+                // does not imply WebSocket delivery or a physical screen paint.
+                if (timing)
+                    timing.complete(sample, timestamp !== currentTimestamp,
+                            display.getQueueStatistics());
 
                 // Send sync response to server
                 if (timestamp !== currentTimestamp) {
@@ -1911,6 +1946,7 @@ Guacamole.Client = function(tunnel) {
                 return;
 
             displayRecovery.reset();
+            if (pipelineDiagnostics) pipelineDiagnostics.cancel();
             display.cancel();
 
             // Send disconnect message and disconnect
@@ -1942,6 +1978,7 @@ Guacamole.Client = function(tunnel) {
         keepAliveActive = true;
         var generation = keepAliveGeneration;
         displayRecovery.reset();
+        if (pipelineDiagnostics) pipelineDiagnostics.cancel();
         setState(Guacamole.Client.State.CONNECTING);
         if (generation !== keepAliveGeneration)
             return;

@@ -109,3 +109,123 @@ its opt-in `--render-diagnostics` and fixed-codec/quality controls to compare
 like-for-like work. Diagnostic-on timings include measurement overhead; the
 normal default-off build still needs a separate matched performance control.
 The harness treats an explicitly requested but invalid snapshot as a failure.
+
+
+## Optional sync and bridge diagnostics (private.12)
+
+The existing native opt-in also enables a small aggregate per user at user
+allocation. `GUAC_DISPLAY_DIAGNOSTICS=1` and guacd DEBUG logging produce
+`Sync diagnostics` summaries during inbound sync activity, at most once every
+ten seconds per user. No extra native diagnostic clock read is introduced:
+the existing sync handler supplies its server timestamp. Removing the setting
+and creating a new process/session disables collection. Allocation failure
+only disables this optional aggregate. Displays retain their existing worker
+statistics and independent logging interval.
+
+The sync summary is cumulative: advancing, duplicate and stale ACK counts;
+advancing-ACK age sum/maximum; existing estimated RTT/processing-lag maxima;
+and maximum sent-timestamp minus acknowledged-timestamp span. The last is a
+server-timeline backlog indicator, not a count of pending frames or bytes.
+Only strictly advancing ACKs contribute timings. ACK ages use the echoed
+server timestamp and the server clock; they include upstream serialization,
+Java forwarding, network and browser processing and are not network RTT alone.
+No browser clock is subtracted. The existing lag estimator is unchanged for
+normal ACKs; very old ages now saturate integer fields instead of narrowing or
+overflowing. Malformed, negative, overflowing, missing or extra sync timestamp
+arguments are rejected. Valid duplicate/stale callbacks preserve existing
+behavior. Guacd process/client context distinguishes separate connections;
+these numeric per-user lines do not distinguish viewers sharing one connection.
+
+For the standard JSR-356 Java WebSocket endpoint (the shipped Tomcat image),
+set trusted process environment `GUAC_WEBSOCKET_DIAGNOSTICS=1`, or JVM property
+`-Dguacamole.websocket-diagnostics=1`, before starting the web process. A present
+JVM property takes precedence, including a value that disables collection.
+Only exact `1` enables it. Configuration is sampled once when the class loads;
+no message or connection argument can enable diagnostics. Enable DEBUG for
+`org.apache.guacamole.websocket.GuacamoleWebSocketTunnelEndpoint` in the
+existing logging configuration to see summaries. These settings are optional
+operator actions, not additions to the release's production Compose settings.
+Legacy Jetty-specific tunnel endpoints and the HTTP tunnel are not instrumented.
+
+Java summaries contain an anonymous process-local numeric connection ordinal,
+`sync_ack` (parsed inbound sync instructions, including attempts that later fail),
+and these cumulative stage values: count, total/max microseconds, UTF-16 character
+count and failed-attempt count. Ordinals never wrap/reuse; theoretical ordinal
+exhaustion disables diagnostics for new endpoints. Clock differences use only
+`System.nanoTime()` inside this JVM.
+
+| Stage | Meaning / limit |
+| --- | --- |
+| `READ` | Native reader call duration, including normal idle waiting and final EOF/failed attempts; high values alone do not imply a stall |
+| `BUFFER` | First append until the existing batch is offered for sending; includes subsequent reads/availability checks, excludes send-lock and socket send |
+| `SEND_LOCK` | Waiting for the existing Java WebSocket send monitor |
+| `SEND` | Synchronous `sendText()` call duration, including ping responses; return does not prove browser receipt |
+| `WRITE_LOCK` | Waiting for the existing tunnel writer lock |
+| `WRITE` | Incoming character conversion/filtering/guacd write, including internal ping handling and writer release; counts attempted message characters |
+
+The Java helper retains six fixed aggregates and no per-frame records, payloads,
+addresses, identifiers, configuration or protocol argument values. Reports are
+activity-driven, at most one per ten seconds per endpoint. Closing stops
+collection without forcing a partial report. Native/Java counters saturate;
+clock reversals clip negative duration samples to zero. Default Java collection
+is null/disabled and adds no per-endpoint diagnostic allocation, clock reads or
+parsing.
+Global DEBUG logging may also show unrelated pre-existing Guacamole messages;
+the new summaries themselves contain numeric measurements only.
+
+### Local browser opt-in
+
+An embedded application holding its `Guacamole.Client` can call
+`client.setPipelineDiagnosticsEnabled(true)` and read
+`client.getPipelineStatistics()`. The helper is bundled automatically by the
+standard JavaScript build. Custom bundles may omit `PipelineDiagnostics.js`:
+enabling then returns false and ordinary client behavior is unchanged.
+
+In the standard Guacamole web app, an operator can run this in browser developer
+tools while one remote session is focused. It selects the existing managed
+client locally without printing the map's connection identifiers:
+
+```javascript
+var diagnosticManagedClients = Object.values(angular.element(document.documentElement)
+    .injector().get('guacClientManager').getManagedClients());
+var diagnosticFocusedClients = diagnosticManagedClients.filter(function(managed) {
+    return managed.clientProperties.focused;
+});
+if (diagnosticFocusedClients.length !== 1)
+    throw new Error('Focus exactly one remote session before collecting timing.');
+var diagnosticClient = diagnosticFocusedClients[0].client;
+diagnosticClient.setPipelineDiagnosticsEnabled(true);
+```
+
+Reproduce the pause, then read `diagnosticClient.getPipelineStatistics()`.
+Finish with `diagnosticClient.setPipelineDiagnosticsEnabled(false)` and clear the
+three diagnostic references when done. Enabling/disabling is local and immediate,
+with no persistence, timer, logging, remote control or network instructions.
+Disabled reads return null; a fresh enable starts fresh totals. Reconnect/stop
+cancels outstanding sample tokens so late callbacks cannot update a later
+connection's timings. Custom application code must continue using the existing
+client disconnect path when closing a connection.
+
+The fresh numeric snapshot reports sync instruction receipts/completions, ACK
+attempts, duplicate completions, canceled pending syncs, current/maximum in-flight
+syncs, summed/maximum local sync-receipt-to-ACK-attempt time, maximum local
+sync-arrival gap, sampled pending-frame/oldest-frame-age maxima and blocked-queue
+sample count. Timing ends immediately before the existing `sendMessage('sync')`
+attempt and includes display readiness/drawing and audio synchronization. It
+proves neither successful delivery nor physical screen paint. A duplicate sync
+can complete without sending another ACK. Queue sampling is at sync receipt and
+completion, not continuous; it excludes unframed tasks/currently executing work,
+and existing oldest-frame age uses the display's wall clock. Local intervals use
+`performance.now()` where available, falling back to the local wall clock with
+negative samples clipped. Numbers saturate at JavaScript's largest exact integer;
+only fixed aggregates and tokens already held by pending display callbacks exist.
+
+Use the three independent stage summaries for the same reproducible activity
+and short interval. They cannot be subtracted across hosts or matched frame by
+frame: no added wire data correlates timestamps, no synchronized clocks are
+assumed, and cumulative lifetime maxima cannot be differenced. High native ACK
+age with low local browser completion time and low Java sends suggests looking
+at network/upstream pacing; it does not prove packet loss. A high browser in-flight
+count/local completion maximum points to its receive/render/audio work. Compare
+matched diagnostics-off controls before claiming performance gains: optional
+instrumentation adds observer overhead.
