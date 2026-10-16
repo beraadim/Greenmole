@@ -763,6 +763,8 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
     render_statistics.pointer = dlsym(RTLD_DEFAULT, "guac_display_get_render_statistics");
     uint64_t render_start[16] = { 0 }, render_end[16] = { 0 }, render_previous[16] = { 0 };
     int render_available = 0;
+    const char* diagnostics_env = getenv("GUAC_DISPLAY_DIAGNOSTICS");
+    int render_requested = diagnostics_env && !strcmp(diagnostics_env, "1");
     uint64_t stats_start[10] = { 0 }, stats_end[10] = { 0 }, scratch_peak = 0;
     int stats_available = 0;
     int actual_workers = display->worker_thread_count;
@@ -797,6 +799,9 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
             if (statistics.pointer) stats_available = statistics.function(display, stats_start, 10);
             if (render_statistics.pointer) {
                 render_available = render_statistics.function(display, render_start, 16);
+                if (render_requested != !!render_available) {
+                    fprintf(stderr, "Requested render diagnostic state is unavailable or invalid.\n"); exit(1);
+                }
                 memcpy(render_previous, render_start, sizeof(render_start));
             }
             reset_encoder_observation();
@@ -979,7 +984,8 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
         else printf("%d,\"quality_max\":%d}", encoder_final.quality_min[codec], encoder_final.quality_max[codec]);
     }
     printf("}},");
-    printf("\"render_statistics\":");
+    printf("\"render_statistics_status\":\"%s\",\"render_statistics\":",
+            !render_statistics.pointer ? "unsupported" : render_available ? "enabled" : "disabled");
     if (!render_available) printf("null,");
     else {
         static const char* names[14] = { "images", "pixels", "queue_us", "last_frame_lock_wait_us", "format_us",

@@ -94,7 +94,12 @@ fixed overrides and observations and forces lossless output as before.
 
 `--render-diagnostics` enables the private numeric render getter in supporting
 libraries through `GUAC_DISPLAY_DIAGNOSTICS=1`. Older libraries such as private.7
-report `render_statistics: null`. Use a separate diagnostic run when the
+report `render_statistics: null`. Per-case status distinguishes `unsupported`,
+`disabled`, and `enabled`; an enabled display with zero work is still available
+telemetry. An invalid getter snapshot when diagnostics were requested fails the
+benchmark instead of silently publishing null. The wrapper explicitly passes
+zero when diagnostics are off, preventing image-default environment leakage.
+Use a separate diagnostic run when the
 baseline cannot collect equivalent telemetry, since new clocks add overhead.
 No image content or extra protocol fields are exposed.
 

@@ -69,8 +69,7 @@ exec /run/encoderbench/benchmark MODE SAMPLES WARMUP ACTIVE_CAP CASE_FILTER VERI
               f"type=bind,src={SOURCE},dst=/bench/display-production.c,readonly"]
     if cpuset:
         docker += ["--cpuset-cpus", cpuset]
-    if render_diagnostics:
-        docker += ["--env", "GUAC_DISPLAY_DIAGNOSTICS=1"]
+    docker += ["--env", f"GUAC_DISPLAY_DIAGNOSTICS={int(render_diagnostics)}"]
     # Run the inspected immutable identity so a tag change cannot invalidate
     # the recorded source/image provenance between inspection and execution.
     docker += [details["Id"], "/bin/sh", "-c", command]
@@ -89,6 +88,11 @@ exec /run/encoderbench/benchmark MODE SAMPLES WARMUP ACTIVE_CAP CASE_FILTER VERI
         control = case["encoder_control"]
         if not control["hooks_verified"] or control["codec"] != codec or control["quality"] != quality:
             raise RuntimeError(f"encoder controls not verified for {case['scenario']}")
+        status = case["render_statistics_status"]
+        if status not in ["unsupported", "disabled", "enabled"] or (status == "enabled") != (case["render_statistics"] is not None):
+            raise RuntimeError(f"inconsistent render diagnostic status for {case['scenario']}")
+        if (render_diagnostics and status == "disabled") or (not render_diagnostics and status == "enabled"):
+            raise RuntimeError(f"requested render diagnostic state not honored for {case['scenario']}")
     return {"image": image, "image_id": details["Id"], "mode": mode,
             "source_revision": source_revision,
             "expected_source_revision": expected_revision,
