@@ -57,7 +57,7 @@ never installed in timing trials. Verification records show that the baseline
 allocates/copies one full decoded payload per read while the candidate decodes
 directly with no such copy. Neither path is allocation-free overall.
 
-The frozen-driver Chrome 155 run found the candidate **2.8 to 6.3 times
+The frozen-driver Chrome 155 run found the candidate **2.8 to 6.4 times
 slower** across 6,144-byte, 65,535-byte and 1-MiB blobs, despite eliminating those
 buffers/copies. This is a synthetic generic stream experiment, not an isolated
 Base64 CPU test, garbage-collection measurement or live image/network benchmark.
