@@ -103,6 +103,10 @@
  */
 #define GUAC_DISPLAY_PLAN_OPERATION_INDEX_SIZE 0x10000
 
+/** Number of 64-bit words required for one occupied bit per hash bucket. */
+#define GUAC_DISPLAY_PLAN_OPERATION_BITMAP_WORDS \
+    (GUAC_DISPLAY_PLAN_OPERATION_INDEX_SIZE / 64)
+
 /** Maximum operation capacity retained between frames by each display. */
 #define GUAC_DISPLAY_PLAN_CACHED_OPS 4096
 
@@ -304,6 +308,13 @@ typedef struct guac_display_plan {
 
     /** Number of indexed operations that can still be found by copy search. */
     size_t indexed_count;
+
+    /**
+     * Exact membership of occupied hash buckets. Empty lookups check this 8 KiB
+     * bitmap before touching the larger operation index. Full hashes and pixels
+     * are still compared before accepting any copy.
+     */
+    uint64_t occupied_buckets[GUAC_DISPLAY_PLAN_OPERATION_BITMAP_WORDS];
 
     /** Unique buckets written during indexing, including consumed entries. */
     uint16_t touched_indices[GUAC_DISPLAY_PLAN_OPERATION_INDEX_SIZE];

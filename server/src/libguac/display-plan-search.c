@@ -54,6 +54,7 @@ static void guac_display_plan_store_indexed_op(guac_display_plan* plan, uint64_t
         plan->touched_indices[plan->touched_count++] = index;
         entry->hash = hash;
         entry->op = op;
+        plan->occupied_buckets[index / 64] |= UINT64_C(1) << (index % 64);
         plan->indexed_count++;
         plan->display->planner_statistics[GUAC_DISPLAY_PLANNER_CANDIDATES_INDEXED]++;
     }
@@ -79,6 +80,15 @@ static void guac_display_plan_store_indexed_op(guac_display_plan* plan, uint64_t
 static guac_display_plan_operation* guac_display_plan_remove_indexed_op(guac_display_plan* plan, uint64_t hash) {
 
     size_t index = GUAC_DISPLAY_PLAN_OPERATION_HASH(hash);
+    uint64_t* occupied = &plan->occupied_buckets[index / 64];
+    uint64_t mask = UINT64_C(1) << (index % 64);
+
+    /* Most rolling windows miss. Reject empty buckets using the compact
+     * bitmap before reading the 1 MiB operation index. This is exact bucket
+     * membership; full-hash and pixel comparisons below remain necessary. */
+    if (!(*occupied & mask))
+        return NULL;
+
     guac_display_plan_indexed_operation* entry = &(plan->ops_by_hash[index]);
 
     /* NOTE: We verify the hash value here because the lookup performed is
@@ -88,6 +98,7 @@ static guac_display_plan_operation* guac_display_plan_remove_indexed_op(guac_dis
     guac_display_plan_operation* op = entry->op;
     if (op != NULL && entry->hash == hash) {
         entry->op = NULL;
+        *occupied &= ~mask;
         GUAC_ASSERT(plan->indexed_count > 0);
         plan->indexed_count--;
         return op;

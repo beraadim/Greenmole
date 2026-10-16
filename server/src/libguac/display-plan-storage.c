@@ -28,8 +28,11 @@
 #include <string.h>
 
 void guac_display_plan_reset_index(guac_display_plan* plan) {
-    for (size_t i = 0; i < plan->touched_count; i++)
-        plan->ops_by_hash[plan->touched_indices[i]].op = NULL;
+    for (size_t i = 0; i < plan->touched_count; i++) {
+        size_t index = plan->touched_indices[i];
+        plan->ops_by_hash[index].op = NULL;
+        plan->occupied_buckets[index / 64] &= ~(UINT64_C(1) << (index % 64));
+    }
     plan->display->planner_statistics[GUAC_DISPLAY_PLANNER_BUCKETS_CLEARED]
         += plan->touched_count;
     plan->touched_count = 0;

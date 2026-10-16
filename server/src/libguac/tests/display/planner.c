@@ -104,6 +104,95 @@ void test_display__planner_counts_hash_collisions_exactly() {
     planner_display_free(display);
 }
 
+static void planner_assert_empty_bitmap(const guac_display_plan* plan) {
+    for (size_t i = 0; i < GUAC_DISPLAY_PLAN_OPERATION_BITMAP_WORDS; i++)
+        CU_ASSERT_EQUAL(plan->occupied_buckets[i], 0);
+}
+
+/** Boundary bits are independent, including the top bit of each 64-bit word. */
+void test_display__planner_bitmap_tracks_bucket_boundaries_and_collisions() {
+    guac_display* display = planner_display_alloc();
+    guac_display_plan* plan = PFW_guac_display_plan_alloc(display, 5);
+    const uint64_t hashes[] = { 0, 1, 63, 64, 65535 };
+    planner_assert_empty_bitmap(plan);
+    CU_ASSERT_EQUAL(sizeof(plan->occupied_buckets), 8192);
+    for (size_t i = 0; i < 5; i++)
+        guac_display_plan_store_indexed_op(plan, hashes[i], &plan->ops[i]);
+    CU_ASSERT_EQUAL(plan->occupied_buckets[0], UINT64_C(3) | (UINT64_C(1) << 63));
+    CU_ASSERT_EQUAL(plan->occupied_buckets[1], 1);
+    CU_ASSERT_EQUAL(plan->occupied_buckets[1023], UINT64_C(1) << 63);
+    /* A full-hash collision at bucket 63 must leave membership intact. */
+    CU_ASSERT_TRUE(guac_display_plan_remove_indexed_op(plan, UINT64_C(63) << 16) == NULL);
+    CU_ASSERT_EQUAL(plan->indexed_count, 5);
+    CU_ASSERT_EQUAL(plan->occupied_buckets[0], UINT64_C(3) | (UINT64_C(1) << 63));
+    CU_ASSERT_TRUE(guac_display_plan_remove_indexed_op(plan, 63) == &plan->ops[2]);
+    CU_ASSERT_EQUAL(plan->occupied_buckets[0], 3);
+    CU_ASSERT_TRUE(guac_display_plan_remove_indexed_op(plan, 63) == NULL);
+    CU_ASSERT_TRUE(guac_display_plan_remove_indexed_op(plan, 64) == &plan->ops[3]);
+    CU_ASSERT_EQUAL(plan->occupied_buckets[1], 0);
+    CU_ASSERT_EQUAL(plan->occupied_buckets[1023], UINT64_C(1) << 63);
+    guac_display_plan_free(plan);
+    planner_assert_empty_bitmap(plan);
+    planner_display_free(display);
+}
+
+/** Every bucket can be occupied, partially consumed, and cleared for reuse. */
+void test_display__planner_bitmap_resets_dense_and_consumed_indexes() {
+    guac_display* display = planner_display_alloc();
+    guac_display_plan* plan = PFW_guac_display_plan_alloc(display, 1);
+    for (uint64_t index = 0; index < GUAC_DISPLAY_PLAN_OPERATION_INDEX_SIZE; index++)
+        guac_display_plan_store_indexed_op(plan, index, &plan->ops[0]);
+    CU_ASSERT_EQUAL(plan->indexed_count, GUAC_DISPLAY_PLAN_OPERATION_INDEX_SIZE);
+    CU_ASSERT_EQUAL(plan->touched_count, GUAC_DISPLAY_PLAN_OPERATION_INDEX_SIZE);
+    for (size_t word = 0; word < GUAC_DISPLAY_PLAN_OPERATION_BITMAP_WORDS; word++)
+        CU_ASSERT_EQUAL(plan->occupied_buckets[word], UINT64_MAX);
+    size_t consumed = 0;
+    for (uint64_t index = 0; index < GUAC_DISPLAY_PLAN_OPERATION_INDEX_SIZE; index += 7) {
+        CU_ASSERT_TRUE(guac_display_plan_remove_indexed_op(plan, index) == &plan->ops[0]);
+        consumed++;
+    }
+    CU_ASSERT_EQUAL(plan->indexed_count, GUAC_DISPLAY_PLAN_OPERATION_INDEX_SIZE - consumed);
+    guac_display_plan_reset_index(plan);
+    planner_assert_empty_bitmap(plan);
+    CU_ASSERT_EQUAL(plan->indexed_count, 0);
+    CU_ASSERT_EQUAL(plan->touched_count, 0);
+    for (size_t index = 0; index < GUAC_DISPLAY_PLAN_OPERATION_INDEX_SIZE; index++)
+        CU_ASSERT_TRUE(plan->ops_by_hash[index].op == NULL);
+    guac_display_plan_store_indexed_op(plan, 65535, &plan->ops[0]);
+    CU_ASSERT_TRUE(guac_display_plan_remove_indexed_op(plan, 65535) == &plan->ops[0]);
+    guac_display_plan_free(plan);
+    planner_assert_empty_bitmap(plan);
+    planner_display_free(display);
+}
+
+/** Cached, simultaneous, and oversized plans never share membership bits. */
+void test_display__planner_bitmap_isolated_across_plan_lifetimes() {
+    guac_display* display = planner_display_alloc();
+    guac_display_plan* cached = PFW_guac_display_plan_alloc(display, 1);
+    guac_display_plan_store_indexed_op(cached, 63, &cached->ops[0]);
+    guac_display_plan* nested = PFW_guac_display_plan_alloc(display, 1);
+    planner_assert_empty_bitmap(nested);
+    guac_display_plan_store_indexed_op(nested, 64, &nested->ops[0]);
+    CU_ASSERT_EQUAL(cached->occupied_buckets[0], UINT64_C(1) << 63);
+    CU_ASSERT_EQUAL(cached->occupied_buckets[1], 0);
+    CU_ASSERT_EQUAL(nested->occupied_buckets[0], 0);
+    CU_ASSERT_EQUAL(nested->occupied_buckets[1], 1);
+    guac_display_plan_free(nested);
+    CU_ASSERT_TRUE(guac_display_plan_remove_indexed_op(cached, 63) == &cached->ops[0]);
+    guac_display_plan_free(cached);
+    cached = PFW_guac_display_plan_alloc(display, 1);
+    planner_assert_empty_bitmap(cached);
+    guac_display_plan_free(cached);
+    guac_display_plan* oversized = PFW_guac_display_plan_alloc(display,
+            GUAC_DISPLAY_PLAN_CACHED_OPS + 1);
+    planner_assert_empty_bitmap(oversized);
+    guac_display_plan_store_indexed_op(oversized, 65535, &oversized->ops[0]);
+    CU_ASSERT_EQUAL(oversized->occupied_buckets[1023], UINT64_C(1) << 63);
+    guac_display_plan_free(oversized);
+    planner_assert_empty_bitmap(cached);
+    planner_display_free(display);
+}
+
 static void planner_layer_init(guac_display* display, guac_display_layer* layer,
         uint32_t* pending, uint32_t* previous, int width, int height) {
     memset(layer, 0, sizeof(*layer));
@@ -222,6 +311,7 @@ void test_display__planner_hash_match_requires_identical_pixels() {
     PFR_LFR_guac_display_plan_find_copies(plan, 0, 0, 123, &layer);
     CU_ASSERT_EQUAL(plan->ops[0].type, GUAC_DISPLAY_PLAN_OPERATION_IMG);
     CU_ASSERT_EQUAL(plan->indexed_count, 0);
+    planner_assert_empty_bitmap(plan);
     CU_ASSERT_EQUAL(display->planner_statistics[GUAC_DISPLAY_PLANNER_COPY_MATCHES], 0);
     guac_display_plan_free(plan);
     planner_display_free(display);
@@ -346,6 +436,7 @@ void test_display__planner_reuses_storage_across_resized_frames() {
         guac_display_plan_free(plan);
         CU_ASSERT_EQUAL(plan->indexed_count, 0);
         CU_ASSERT_EQUAL(plan->touched_count, 0);
+        planner_assert_empty_bitmap(plan);
         for (size_t i = 0; i < GUAC_DISPLAY_PLAN_OPERATION_INDEX_SIZE; i++)
             CU_ASSERT_TRUE(plan->ops_by_hash[i].op == NULL);
         guac_mem_free(layer.pending_frame_cells);

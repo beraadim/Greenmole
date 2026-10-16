@@ -1,7 +1,8 @@
 # Display planner scratch and copy search
 
 The planner keeps one lazily allocated plan per display, including its 65,536
-hash buckets, a list of touched buckets, and up to 4,096 operation entries.
+hash buckets, an 8 KiB occupied-bucket bitmap, a list of touched buckets, and up
+to 4,096 operation entries.
 Operation capacity grows geometrically from 64 entries. A 4K desktop fits in
 that operation bound before combining its 64×64 cells. The retained storage is
 `sizeof(guac_display_plan) + capacity * sizeof(guac_display_plan_operation)`;
@@ -39,6 +40,17 @@ candidate, and the existing full pixel comparison still decides whether the
 operation can become a copy. A pixel mismatch keeps the image operation and
 bans that candidate, preserving the previous collision behavior.
 
+An exact bitmap rejects empty hash buckets before reading the larger operation
+index. An accepted insertion sets its bucket bit; consuming that full-hash
+candidate clears it. A different full hash in the same bucket preserves the
+bit and candidate. Pixel mismatches still consume and ban their candidate.
+Touched-bucket reset clears both the operation pointer and membership bit,
+including entries already consumed. Cached, nested and oversized plans each own
+their bitmap, with the same allocation and destruction lifetime as their index.
+The bitmap adds exactly 8,192 bytes to each plan, including the retained-scratch
+gauge. It does not alter candidate counts, scan order, hash comparisons, exact
+pixel checks, copy choices, encoded bytes or frame boundaries.
+
 Indexing computes each complete 64×64 cell's hash directly with row and cell
 accumulators. It uses the same unsigned 64-bit polynomial as the final window of
 the rolling search, without allocating or clearing that search's full-width
@@ -66,6 +78,9 @@ Hash tests use an independent weighted-sum reference for zero, white, maximum,
 high-bit, sparse, random, repeated-row and repeated-column pixels. Copy tests
 match fixed-cell index hashes to rolling search at nonzero source/destination
 offsets with unequal padded strides.
+Bitmap tests cover word boundaries and high bits, all 65,536 occupied buckets,
+partial consumption and full reset, hash collisions, pixel-mismatch consumption,
+cached reuse across resizes, simultaneous transient plans, and oversized plans.
 
 The private `guac_display_get_planner_statistics()` entrypoint accepts exactly ten
 `uint64_t` values and acquires the pending-frame read lock. It exposes numeric
@@ -91,3 +106,7 @@ compares complete planning/FIFO/encoding frame costs, retained work counts, and
 separate lossless protocol replay. The structural reductions do not establish a
 particular latency improvement: representative benchmarks, repeated in both
 orders against private.6, are needed before making a performance claim.
+The bitmap additionally requires comparison against an otherwise identical
+optimized private.7 baseline: avoiding operation-index reads may save cache
+traffic, but the membership test itself adds per-window work. Native tests and
+lossless replay establish correctness; they do not establish a throughput gain.
