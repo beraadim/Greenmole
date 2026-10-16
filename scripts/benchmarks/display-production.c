@@ -20,6 +20,9 @@
 /* Production-path benchmark: real display planning, copy search, FIFO, worker
  * admission, codecs, sync and serialization to a shared discard socket. */
 #include "display-priv.h"
+#include "encode-jpeg.h"
+#include "encode-png.h"
+#include "encode-webp.h"
 #include "guacamole/client.h"
 #include "guacamole/display.h"
 #include "guacamole/fifo.h"
@@ -41,6 +44,151 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
+
+/* Benchmark-only ELF interposition keeps the same fixed encoder controls
+ * available when testing older libguac builds. Every call forwards to that
+ * image's real encoder; no codec implementation is copied into the harness. */
+enum benchmark_codec { BENCH_AUTO, BENCH_PNG, BENCH_WEBP_LOSSLESS, BENCH_WEBP_LOSSY, BENCH_JPEG };
+static const char* codec_names[] = { "auto", "png", "webp-lossless", "webp-lossy", "jpeg" };
+static int selected_codec, selected_quality = 90, verification_active;
+static guac_display_image_format (*real_image_format)(guac_display_layer*, const guac_rect*, int);
+static int (*real_png_write)(guac_socket*, guac_stream*, cairo_surface_t*);
+static int (*real_webp_write)(guac_socket*, guac_stream*, cairo_surface_t*, int, int);
+static int (*real_jpeg_write)(guac_socket*, guac_stream*, cairo_surface_t*, int);
+static int (*real_send_blob)(guac_socket*, const guac_stream*, const void*, int);
+
+typedef struct encoder_observation {
+    uint64_t calls[3], pixels[3], encoded_bytes[3], wrapper_ns[3];
+    int quality_min[3], quality_max[3];
+    uint64_t webp_lossless, webp_lossy, selector_calls;
+} encoder_observation;
+static encoder_observation observed;
+static pthread_mutex_t observation_lock = PTHREAD_MUTEX_INITIALIZER;
+static _Thread_local int encoder_active;
+static _Thread_local uint64_t encoder_bytes;
+
+static uint64_t monotonic_ns(void) {
+    struct timespec value;
+    if (clock_gettime(CLOCK_MONOTONIC, &value)) { perror("clock_gettime"); exit(1); }
+    return (uint64_t) value.tv_sec * UINT64_C(1000000000) + (uint64_t) value.tv_nsec;
+}
+
+static void initialize_interposition(void) {
+    union { void* pointer; guac_display_image_format (*function)(guac_display_layer*, const guac_rect*, int); } format;
+    union { void* pointer; int (*function)(guac_socket*, guac_stream*, cairo_surface_t*); } png;
+    union { void* pointer; int (*function)(guac_socket*, guac_stream*, cairo_surface_t*, int, int); } webp;
+    union { void* pointer; int (*function)(guac_socket*, guac_stream*, cairo_surface_t*, int); } jpeg;
+    union { void* pointer; int (*function)(guac_socket*, const guac_stream*, const void*, int); } blob;
+    format.pointer = dlsym(RTLD_NEXT, "LFR_guac_display_layer_image_format");
+    png.pointer = dlsym(RTLD_NEXT, "guac_png_write");
+    webp.pointer = dlsym(RTLD_NEXT, "guac_webp_write");
+    jpeg.pointer = dlsym(RTLD_NEXT, "guac_jpeg_write");
+    blob.pointer = dlsym(RTLD_NEXT, "guac_protocol_send_blob");
+    if (!format.pointer || !png.pointer || !webp.pointer || !jpeg.pointer || !blob.pointer) {
+        fprintf(stderr, "Benchmark encoder interposition symbols unavailable.\n"); exit(1);
+    }
+    real_image_format = format.function; real_png_write = png.function;
+    real_webp_write = webp.function; real_jpeg_write = jpeg.function; real_send_blob = blob.function;
+}
+
+guac_display_image_format LFR_guac_display_layer_image_format(guac_display_layer* layer,
+        const guac_rect* rect, int framerate) {
+    if (verification_active) return real_image_format(layer, rect, framerate);
+    pthread_mutex_lock(&observation_lock); observed.selector_calls++; pthread_mutex_unlock(&observation_lock);
+    if (selected_codec == BENCH_AUTO) return real_image_format(layer, rect, framerate);
+    if (selected_codec == BENCH_PNG) return GUAC_DISPLAY_IMAGE_FORMAT_PNG;
+    if (selected_codec == BENCH_JPEG) {
+        if (!layer->opaque || layer->last_frame.lossless) {
+            fprintf(stderr, "Forced JPEG requires an opaque, lossy-eligible layer.\n"); exit(1);
+        }
+        return GUAC_DISPLAY_IMAGE_FORMAT_JPEG;
+    }
+    if (!guac_client_supports_webp(layer->display->client)) {
+        fprintf(stderr, "Forced WebP requires client WebP support.\n"); exit(1);
+    }
+    if (selected_codec == BENCH_WEBP_LOSSY && layer->last_frame.lossless) {
+        fprintf(stderr, "Forced lossy WebP cannot override a lossless layer.\n"); exit(1);
+    }
+    return GUAC_DISPLAY_IMAGE_FORMAT_WEBP;
+}
+
+int guac_protocol_send_blob(guac_socket* socket, const guac_stream* stream,
+        const void* data, int count) {
+    if (encoder_active) {
+        if (count < 0) { fprintf(stderr, "Negative encoded blob size.\n"); exit(1); }
+        encoder_bytes += (unsigned int) count;
+    }
+    return real_send_blob(socket, stream, data, count);
+}
+
+static uint64_t begin_encoder(void) {
+    if (encoder_active) { fprintf(stderr, "Unexpected nested image encoder.\n"); exit(1); }
+    encoder_active = 1; encoder_bytes = 0;
+    return monotonic_ns();
+}
+
+static void end_encoder(int codec, cairo_surface_t* surface, int quality, int lossless,
+        uint64_t started, int status) {
+    uint64_t duration = monotonic_ns() - started;
+    encoder_active = 0;
+    if (status) { fprintf(stderr, "Image encoder failed.\n"); exit(1); }
+    if (!encoder_bytes) { fprintf(stderr, "Encoded image bypassed blob observation.\n"); exit(1); }
+    pthread_mutex_lock(&observation_lock);
+    if (!observed.calls[codec] || quality < observed.quality_min[codec]) observed.quality_min[codec] = quality;
+    if (!observed.calls[codec] || quality > observed.quality_max[codec]) observed.quality_max[codec] = quality;
+    observed.calls[codec]++;
+    observed.pixels[codec] += (uint64_t) cairo_image_surface_get_width(surface) * cairo_image_surface_get_height(surface);
+    observed.encoded_bytes[codec] += encoder_bytes;
+    observed.wrapper_ns[codec] += duration;
+    if (codec == GUAC_DISPLAY_IMAGE_FORMAT_WEBP) {
+        if (lossless) observed.webp_lossless++;
+        else observed.webp_lossy++;
+    }
+    pthread_mutex_unlock(&observation_lock);
+}
+
+int guac_png_write(guac_socket* socket, guac_stream* stream, cairo_surface_t* surface) {
+    if (verification_active) return real_png_write(socket, stream, surface);
+    uint64_t started = begin_encoder();
+    int status = real_png_write(socket, stream, surface);
+    end_encoder(GUAC_DISPLAY_IMAGE_FORMAT_PNG, surface, -1, 1, started, status);
+    return status;
+}
+
+int guac_webp_write(guac_socket* socket, guac_stream* stream, cairo_surface_t* surface,
+        int quality, int lossless) {
+    if (verification_active) return real_webp_write(socket, stream, surface, quality, lossless);
+    if (selected_codec == BENCH_WEBP_LOSSLESS || selected_codec == BENCH_WEBP_LOSSY) {
+        quality = selected_quality;
+        lossless = selected_codec == BENCH_WEBP_LOSSLESS;
+    }
+    uint64_t started = begin_encoder();
+    int status = real_webp_write(socket, stream, surface, quality, lossless);
+    end_encoder(GUAC_DISPLAY_IMAGE_FORMAT_WEBP, surface, quality, lossless, started, status);
+    return status;
+}
+
+int guac_jpeg_write(guac_socket* socket, guac_stream* stream, cairo_surface_t* surface, int quality) {
+    if (verification_active) return real_jpeg_write(socket, stream, surface, quality);
+    if (selected_codec == BENCH_JPEG) quality = selected_quality;
+    uint64_t started = begin_encoder();
+    int status = real_jpeg_write(socket, stream, surface, quality);
+    end_encoder(GUAC_DISPLAY_IMAGE_FORMAT_JPEG, surface, quality, 0, started, status);
+    return status;
+}
+
+static encoder_observation encoder_snapshot(void) {
+    pthread_mutex_lock(&observation_lock);
+    encoder_observation value = observed;
+    pthread_mutex_unlock(&observation_lock);
+    return value;
+}
+
+static void reset_encoder_observation(void) {
+    pthread_mutex_lock(&observation_lock);
+    memset(&observed, 0, sizeof(observed));
+    pthread_mutex_unlock(&observation_lock);
+}
 
 /* This verifier is deliberately separate from measured rendering. It reads
  * serialized length-prefixed instructions, reconstructs opaque fixture layers
@@ -472,6 +620,7 @@ typedef struct verification_result {
 static int verify_case(const scenario* item, const char* mode, int active_cap,
         int count, verification_result* result) {
     if (!count) return 1;
+    verification_active = 1;
     verifier v = { .width = item->width, .height = item->height };
     sink output = { .verify = &v };
     pthread_mutex_init(&output.socket_lock, NULL);
@@ -557,6 +706,7 @@ static int verify_case(const scenario* item, const char* mode, int active_cap,
     free(expected); free(pixels); verify_destroy(&v);
     pthread_cond_destroy(&output.completed);
     pthread_mutex_destroy(&output.completion_lock); pthread_mutex_destroy(&output.socket_lock);
+    verification_active = 0;
     return 1;
 }
 
@@ -581,7 +731,9 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
     uint32_t* pixels = malloc((size_t) item->dirty_width * item->dirty_height * sizeof(uint32_t));
     double* elapsed = malloc((size_t) samples * sizeof(double));
     double* phases = malloc((size_t) samples * 5 * sizeof(double));
-    if (!client || !socket || !pixels || !elapsed || !phases) {
+    double* encoder_envelopes = malloc((size_t) samples * sizeof(double));
+    double* render_phases = malloc((size_t) samples * 7 * sizeof(double));
+    if (!client || !socket || !pixels || !elapsed || !phases || !encoder_envelopes || !render_phases) {
         fprintf(stderr, "Unable to allocate production benchmark.\n"); exit(1);
     }
     guac_socket_free(client->socket);
@@ -607,6 +759,10 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
     }
     union { void* pointer; int (*function)(guac_display*, uint64_t*, size_t); } statistics;
     statistics.pointer = dlsym(RTLD_DEFAULT, "guac_display_get_planner_statistics");
+    union { void* pointer; int (*function)(guac_display*, uint64_t*, size_t); } render_statistics;
+    render_statistics.pointer = dlsym(RTLD_DEFAULT, "guac_display_get_render_statistics");
+    uint64_t render_start[16] = { 0 }, render_end[16] = { 0 }, render_previous[16] = { 0 };
+    int render_available = 0;
     uint64_t stats_start[10] = { 0 }, stats_end[10] = { 0 }, scratch_peak = 0;
     int stats_available = 0;
     int actual_workers = display->worker_thread_count;
@@ -632,12 +788,18 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
     int active_min = 65, active_max = 0;
     uint64_t pixels_min = UINT64_MAX, pixels_max = 0;
     size_t images_min = SIZE_MAX, images_max = 0;
+    encoder_observation encoder_previous = { 0 }, encoder_final = { 0 };
     guac_rect dirty = { 0, 0, item->dirty_width, item->dirty_height };
     for (int i = -warmup; i < samples; i++) {
         fixture(pixels, item, (unsigned int) (i + warmup + 1));
         if (i == 0) {
             bytes = output.bytes;
             if (statistics.pointer) stats_available = statistics.function(display, stats_start, 10);
+            if (render_statistics.pointer) {
+                render_available = render_statistics.function(display, render_start, 16);
+                memcpy(render_previous, render_start, sizeof(render_start));
+            }
+            reset_encoder_observation();
         }
         output.planning_phase_mask = 0;
         double cpu_started = now(CLOCK_PROCESS_CPUTIME_ID);
@@ -651,6 +813,48 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
         if (i >= 0) {
             elapsed[i] = now(CLOCK_MONOTONIC) - started;
             cpu += now(CLOCK_PROCESS_CPUTIME_ID) - cpu_started;
+            encoder_final = encoder_snapshot();
+            uint64_t image_calls = 0, image_bytes = 0, image_ns = 0;
+            for (int codec = 0; codec < 3; codec++) {
+                image_calls += encoder_final.calls[codec] - encoder_previous.calls[codec];
+                image_bytes += encoder_final.encoded_bytes[codec] - encoder_previous.encoded_bytes[codec];
+                image_ns += encoder_final.wrapper_ns[codec] - encoder_previous.wrapper_ns[codec];
+            }
+            if (image_calls != output.plan_images || encoder_final.selector_calls - encoder_previous.selector_calls != image_calls
+                    || (image_calls && !image_bytes)) {
+                fprintf(stderr, "Encoder hooks missed production calls for %s, sample %i.\n", item->name, i);
+                exit(1);
+            }
+            if (selected_codec != BENCH_AUTO && image_calls) {
+                int expected_codec = selected_codec == BENCH_PNG ? GUAC_DISPLAY_IMAGE_FORMAT_PNG
+                    : selected_codec == BENCH_JPEG ? GUAC_DISPLAY_IMAGE_FORMAT_JPEG : GUAC_DISPLAY_IMAGE_FORMAT_WEBP;
+                if (encoder_final.calls[expected_codec] - encoder_previous.calls[expected_codec] != image_calls
+                        || (expected_codec != GUAC_DISPLAY_IMAGE_FORMAT_PNG
+                            && (encoder_final.quality_min[expected_codec] != selected_quality
+                                || encoder_final.quality_max[expected_codec] != selected_quality))
+                        || (selected_codec == BENCH_WEBP_LOSSLESS && encoder_final.webp_lossy)
+                        || (selected_codec == BENCH_WEBP_LOSSY && encoder_final.webp_lossless)) {
+                    fprintf(stderr, "Fixed encoder control was not honored for %s.\n", item->name); exit(1);
+                }
+            }
+            encoder_envelopes[i] = image_ns / 1000000.0;
+            encoder_previous = encoder_final;
+            if (render_available) {
+                if (!render_statistics.function(display, render_end, 16)) exit(1);
+                for (int slot = 0; slot < 14; slot++)
+                    if (render_end[slot] < render_previous[slot]) {
+                        fprintf(stderr, "Render statistics decreased.\n"); exit(1);
+                    }
+                if (render_end[11] - render_previous[11] != 1) {
+                    fprintf(stderr, "Render statistics did not publish exactly one completed frame.\n"); exit(1);
+                }
+                static const int phase_slots[7] = { 2, 3, 4, 5, 6, 12, 13 };
+                for (int phase = 0; phase < 7; phase++) {
+                    int slot = phase_slots[phase];
+                    render_phases[(size_t) phase * samples + i] = (render_end[slot] - render_previous[slot]) / 1000.0;
+                }
+                memcpy(render_previous, render_end, sizeof(render_end));
+            }
             if (output.planning_phase_mask != 31U) {
                 fprintf(stderr, "Incomplete planning phases for %s, sample %i.\n", item->name, i);
                 exit(1);
@@ -681,6 +885,11 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
      * their backing samples before allocating its image buffers. */
     double frame_p50 = percentile(elapsed, samples, 50);
     double frame_p95 = percentile(elapsed, samples, 95);
+    double encoder_mean = 0;
+    for (int i = 0; i < samples; i++) encoder_mean += encoder_envelopes[i];
+    encoder_mean /= samples;
+    qsort(encoder_envelopes, (size_t) samples, sizeof(double), compare_double);
+    double encoder_p95 = percentile(encoder_envelopes, samples, 95);
     double phase_mean[5] = { 0 }, phase_p95[5];
     for (int phase = 0; phase < 5; phase++) {
         double* values = phases + (size_t) phase * samples;
@@ -688,6 +897,30 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
         phase_mean[phase] /= samples;
         qsort(values, (size_t) samples, sizeof(double), compare_double);
         phase_p95[phase] = percentile(values, samples, 95);
+    }
+    double render_mean[7] = { 0 }, render_p95[7] = { 0 };
+    if (render_available) {
+        for (int phase = 0; phase < 7; phase++) {
+            double* values = render_phases + (size_t) phase * samples;
+            for (int i = 0; i < samples; i++) render_mean[phase] += values[i];
+            render_mean[phase] /= samples;
+            qsort(values, (size_t) samples, sizeof(double), compare_double);
+            render_p95[phase] = percentile(values, samples, 95);
+        }
+        uint64_t image_calls = 0, image_pixels = 0, image_bytes = 0;
+        for (int codec = 0; codec < 3; codec++) {
+            image_calls += encoder_final.calls[codec];
+            image_pixels += encoder_final.pixels[codec];
+            image_bytes += encoder_final.encoded_bytes[codec];
+        }
+        if (render_end[0] - render_start[0] != image_calls
+                || render_end[1] - render_start[1] != image_pixels
+                || render_end[7] - render_start[7] != image_bytes
+                || render_end[8] - render_start[8] != encoder_final.calls[GUAC_DISPLAY_IMAGE_FORMAT_PNG]
+                || render_end[9] - render_start[9] != encoder_final.calls[GUAC_DISPLAY_IMAGE_FORMAT_JPEG]
+                || render_end[10] - render_start[10] != encoder_final.calls[GUAC_DISPLAY_IMAGE_FORMAT_WEBP]) {
+            fprintf(stderr, "Render statistics disagree with independently observed encoder work.\n"); exit(1);
+        }
     }
     struct rusage usage;
     getrusage(RUSAGE_SELF, &usage);
@@ -698,7 +931,7 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
     int committed_width = layer->last_frame.width, committed_height = layer->last_frame.height;
     guac_display_free(display);
     guac_client_free(client);
-    free(pixels); free(elapsed); free(phases);
+    free(pixels); free(elapsed); free(phases); free(encoder_envelopes); free(render_phases);
     verification_result verification = { 0 };
     if (!verify_case(item, mode, active_cap, verify_frames, &verification)) exit(1);
     printf("{\"scenario\":\"%s\",\"mode\":\"%s\",\"pool_workers\":%d,"
@@ -730,6 +963,40 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
         printf("%s\"%s\":{\"samples\":%d,\"mean\":%.3f,\"p95\":%.3f}",
                 phase ? "," : "", phase_names[phase], samples, phase_mean[phase], phase_p95[phase]);
     printf("},");
+    printf("\"encoder_control\":{\"codec\":\"%s\",\"quality\":%d,\"hooks_verified\":true},",
+            codec_names[selected_codec], selected_quality);
+    printf("\"encoder_observation\":{\"selector_calls\":%" PRIu64 ",\"webp_lossless_calls\":%" PRIu64
+            ",\"webp_lossy_calls\":%" PRIu64 ",\"summed_wrapper_ms_per_frame_mean\":%.6f,"
+            "\"summed_wrapper_ms_per_frame_p95\":%.6f,\"codecs\":{",
+            encoder_final.selector_calls, encoder_final.webp_lossless, encoder_final.webp_lossy, encoder_mean, encoder_p95);
+    static const char* observed_codec_names[3] = { "png", "jpeg", "webp" };
+    for (int codec = 0; codec < 3; codec++) {
+        printf("%s\"%s\":{\"calls\":%" PRIu64 ",\"pixels\":%" PRIu64 ",\"encoded_bytes\":%" PRIu64
+                ",\"wrapper_ms\":%.6f,\"quality_min\":", codec ? "," : "", observed_codec_names[codec],
+                encoder_final.calls[codec], encoder_final.pixels[codec], encoder_final.encoded_bytes[codec],
+                encoder_final.wrapper_ns[codec] / 1000000.0);
+        if (!encoder_final.calls[codec] || codec == GUAC_DISPLAY_IMAGE_FORMAT_PNG) printf("null,\"quality_max\":null}");
+        else printf("%d,\"quality_max\":%d}", encoder_final.quality_min[codec], encoder_final.quality_max[codec]);
+    }
+    printf("}},");
+    printf("\"render_statistics\":");
+    if (!render_available) printf("null,");
+    else {
+        static const char* names[14] = { "images", "pixels", "queue_us", "last_frame_lock_wait_us", "format_us",
+            "stream_us", "blob_send_us", "encoded_bytes", "png_images", "jpeg_images", "webp_images",
+            "frames", "finish_us", "frame_elapsed_us" };
+        printf("{\"totals\":{");
+        for (int slot = 0; slot < 14; slot++)
+            printf("%s\"%s\":%" PRIu64, slot ? "," : "", names[slot], render_end[slot] - render_start[slot]);
+        printf("},\"lifetime_max_queue_us\":%" PRIu64 ",\"lifetime_max_stream_us\":%" PRIu64 ",\"per_frame_ms\":{",
+                render_end[14], render_end[15]);
+        static const char* phase_names[7] = { "summed_queue", "summed_last_frame_lock_wait", "summed_format",
+            "summed_stream", "summed_blob_send", "finish", "frame_elapsed" };
+        for (int phase = 0; phase < 7; phase++)
+            printf("%s\"%s\":{\"mean\":%.6f,\"p95\":%.6f}", phase ? "," : "", phase_names[phase],
+                    render_mean[phase], render_p95[phase]);
+        printf("}},");
+    }
     printf("\"planner_statistics\":");
     if (stats_available) {
         static const char* names[9] = { "plan_allocations", "plan_reuses", "op_array_allocations",
@@ -757,14 +1024,23 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
 }
 
 int main(int argc, char** argv) {
-    if (argc < 4 || argc > 7 || (strcmp(argv[1], "baseline") && strcmp(argv[1], "fixed")
+    if (argc < 4 || argc > 9 || (strcmp(argv[1], "baseline") && strcmp(argv[1], "fixed")
                 && strcmp(argv[1], "adaptive"))) return 1;
     int samples = atoi(argv[2]), warmup = atoi(argv[3]);
     int active_cap = argc >= 5 ? atoi(argv[4]) : 1;
     if (samples < 2 || samples > 1000 || warmup < 0 || warmup > 100) return 1;
     if (active_cap < 1 || active_cap > 64) return 1;
-    int verify_frames = argc == 7 ? atoi(argv[6]) : 4;
+    int verify_frames = argc >= 7 ? atoi(argv[6]) : 4;
     if (verify_frames < 0 || verify_frames > 10) return 1;
+    if (argc >= 8) {
+        selected_codec = -1;
+        for (int codec = 0; codec < 5; codec++)
+            if (!strcmp(argv[7], codec_names[codec])) selected_codec = codec;
+        if (selected_codec < 0) return 1;
+    }
+    if (argc == 9) selected_quality = atoi(argv[8]);
+    if (selected_quality < 0 || selected_quality > 100) return 1;
+    initialize_interposition();
     /* Each case starts in a fresh child so RSS and codec caches are local to
      * the workload. Pool startup and fixture generation precede timed frames. */
     for (unsigned int i = 0; i < sizeof(scenarios) / sizeof(*scenarios); i++) {

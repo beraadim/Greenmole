@@ -33,6 +33,88 @@ baseline, zero for fixed, one for default adaptive), and the observed limits to
 describe admission behavior. The pool defaults to 22 workers in every mode.
 Run both the normal mode order and `--reverse` to reveal host/order drift.
 
+## Controlled photo encoding
+
+Automatic encoding is the default (`--codec auto`). It preserves the tested
+library's format and quality decisions, including its existing framerate-based
+PNG/WebP/JPEG selection. A faster unpaced fixture can cross that threshold, so
+automatic full-frame time/CPU comparisons may include different encoded output.
+They cannot establish equal-quality encoder improvements merely because image
+area is unchanged.
+
+Use `--codec png`, `--codec webp-lossless`, `--codec webp-lossy`, or `--codec jpeg`
+to hold the encoder path fixed. `--quality 75` (the default control value)
+selects JPEG/WebP quality; for lossless WebP it controls compression effort,
+not visual quality. PNG ignores that value. Auto ignores it and records the
+actual quality range selected by the library. JPEG requires an opaque layer
+that permits lossy output. WebP requires client support, and forced lossy WebP
+cannot replace an explicitly lossless layer.
+
+For example, pass these options to the usual source-matched baseline/candidate
+invocation to compare the principal photo cases at WebP quality 75:
+
+```text
+--codec webp-lossy --quality 75 --samples 60 --warmup 10
+--cases wallpaper-4k partial-photo-on-4k small-photo-on-4k window-1920x944 window-2560x1304
+```
+
+The controls exist only inside the benchmark executable. ELF symbol
+interposition forwards auto selection to the original selector; fixed mode
+replaces its decision and bypasses content/framerate classification work. Every
+encoder call still uses that image's real implementation. No codec source is
+copied and no production setting is added. Fixed-mode format timings therefore
+do not measure the library's automatic classifier. This also works
+with private.7's own headers/library. Older or locally bound libraries that
+bypass the hooks fail coverage checks rather than silently reverting to auto.
+The harness verifies every measured frame's selector/encoder call counts against
+the production plan, the actual codec, quality and lossless mode. It also counts
+actual encoded blob bytes within each encoder's thread-local scope, excluding
+stream IDs, timestamps, base64 expansion and other serialized protocol text.
+No encoded payload is retained or logged by this observer.
+
+Before publishing a fixed-codec comparison, the wrapper requires identical
+codec calls, actual image pixels, encoder payload bytes, quality ranges and
+WebP lossless-mode counts across the requested runs. A mismatch fails the
+comparison. Total protocol bytes may differ slightly because concurrent stream
+IDs or timestamps differ; that does not indicate different image quality.
+Codec/quality equality controls workload confounds but is not a general visual
+quality assessment or proof that two different codec versions are bit-identical.
+
+`encoder_observation` records bounded numeric counts and wall times around the
+real encoder calls. Those envelopes include image conversion, codec work and
+interleaved streaming/serialization/socket waits. They are **not pure encoding
+CPU**. Summed parallel-worker durations can exceed frame wall time, and their
+p95 is the percentile of per-frame sums rather than per-image or frame-latency
+percentiles. Observation adds clocks and one statistics update per image plus
+a fixed increment per encoded blob on both old/new libraries; compare only
+records using the same harness. The separate correctness replay disables all
+fixed overrides and observations and forces lossless output as before.
+
+## Optional render diagnostics
+
+`--render-diagnostics` enables the private numeric render getter in supporting
+libraries through `GUAC_DISPLAY_DIAGNOSTICS=1`. Older libraries such as private.7
+report `render_statistics: null`. Use a separate diagnostic run when the
+baseline cannot collect equivalent telemetry, since new clocks add overhead.
+No image content or extra protocol fields are exposed.
+
+The harness snapshots the optional sixteen-value getter outside the full-frame
+timed interval. Counters are cumulative integer microseconds; measured-frame
+deltas produce per-frame mean/p95 of summed queue wait, committed-frame lock
+wait, format selection, codec/protocol streaming, blob sending, final frame
+completion, and batch elapsed wall time. It cross-checks image/codec/pixel/blob
+counts against the independent encoder observers and requires exactly one
+published completion per measured frame. Lifetime queue/stream maxima are
+explicitly labeled and include initialization and warm-up.
+
+Queue wait begins at batch publication and ends at image admission; later
+images naturally include time spent waiting behind earlier encoders. The
+stream envelope includes nested blob sending, so these durations overlap.
+Subtracting blob time leaves a codec/serialization/socket-lock residual, not
+standalone codec CPU. Final completion includes sync, backing-buffer copies and
+socket flush. None measures capture, browser presentation, network delivery or
+physical-input latency; sums and independent p95 values are not additive.
+
 ## Fixtures
 
 The original nine cases retain their dimensions and generation logic:

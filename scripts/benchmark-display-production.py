@@ -16,6 +16,7 @@ CASES = ["small-text", "scroll-text", "partial-text-redraw", "mixed-4k-desktop",
          "wallpaper-4k", "partial-photo-on-4k", "small-photo-on-4k",
          "window-1920x944", "window-2560x1304", "solid-color-4k", "no-copy-hit",
          "early-copy-hit", "late-copy-hit", "planner-reuse-alternating"]
+CODECS = ["auto", "png", "webp-lossless", "webp-lossy", "jpeg"]
 
 
 def bounded(minimum, maximum):
@@ -34,7 +35,7 @@ def revision(text):
 
 
 def run(image, mode, samples, warmup, workers, cpuset, selected_cases,
-        verify_frames, expected_revision):
+        verify_frames, expected_revision, codec, quality, render_diagnostics):
     details = json.loads(subprocess.check_output(["docker", "image", "inspect", image], text=True))[0]
     source_revision = (details.get("Config", {}).get("Labels") or {}).get("org.opencontainers.image.revision")
     if expected_revision and source_revision != expected_revision:
@@ -54,11 +55,12 @@ fi
 cc -O2 -std=gnu11 -Wall -Werror -pedantic -pthread $extra_flags \
     -I/tmp/guacamole-server/src/libguac $(pkg-config --cflags cairo libwebp) \
     /bench/display-production.c -L/opt/guacamole/lib \
-    -Wl,-rpath,/opt/guacamole/lib -Wl,-z,stack-size=8388608 \
+    -Wl,-rpath,/opt/guacamole/lib -Wl,-z,stack-size=8388608 -Wl,--export-dynamic \
     -lguac -ldl $(pkg-config --libs cairo libwebp) -o /run/encoderbench/benchmark
-exec /run/encoderbench/benchmark MODE SAMPLES WARMUP ACTIVE_CAP CASE_FILTER VERIFY_FRAMES
+exec /run/encoderbench/benchmark MODE SAMPLES WARMUP ACTIVE_CAP CASE_FILTER VERIFY_FRAMES CODEC_CONTROL QUALITY_CONTROL
 """.replace("MODE", shlex.quote(binary_mode)).replace("SAMPLES", str(samples)).replace("WARMUP", str(warmup)).replace(
-        "ACTIVE_CAP", str(cap)).replace("CASE_FILTER", shlex.quote(",".join(selected_cases))).replace("VERIFY_FRAMES", str(verify_frames))
+        "ACTIVE_CAP", str(cap)).replace("CASE_FILTER", shlex.quote(",".join(selected_cases))).replace("VERIFY_FRAMES", str(verify_frames)).replace(
+        "CODEC_CONTROL", shlex.quote(codec)).replace("QUALITY_CONTROL", str(quality))
     docker = ["docker", "run", "--rm", "--pull=never", "--network=none",
               "--read-only", "--tmpfs", "/run/encoderbench:rw,exec,size=128m",
               "--cap-drop=ALL", "--security-opt", "no-new-privileges",
@@ -67,6 +69,8 @@ exec /run/encoderbench/benchmark MODE SAMPLES WARMUP ACTIVE_CAP CASE_FILTER VERI
               f"type=bind,src={SOURCE},dst=/bench/display-production.c,readonly"]
     if cpuset:
         docker += ["--cpuset-cpus", cpuset]
+    if render_diagnostics:
+        docker += ["--env", "GUAC_DISPLAY_DIAGNOSTICS=1"]
     # Run the inspected immutable identity so a tag change cannot invalidate
     # the recorded source/image provenance between inspection and execution.
     docker += [details["Id"], "/bin/sh", "-c", command]
@@ -82,11 +86,36 @@ exec /run/encoderbench/benchmark MODE SAMPLES WARMUP ACTIVE_CAP CASE_FILTER VERI
         p50, p95, cpu = case["frame_p50_ms"], case["frame_p95_ms"], case["cpu_ms_per_frame"]
         if not all(math.isfinite(value) and value > 0 for value in (p50, p95, cpu)) or p50 > p95:
             raise RuntimeError(f"invalid timing summaries for {case['scenario']}")
+        control = case["encoder_control"]
+        if not control["hooks_verified"] or control["codec"] != codec or control["quality"] != quality:
+            raise RuntimeError(f"encoder controls not verified for {case['scenario']}")
     return {"image": image, "image_id": details["Id"], "mode": mode,
             "source_revision": source_revision,
             "expected_source_revision": expected_revision,
             "source_revision_verified": bool(expected_revision),
             "cases": cases}
+
+
+def controlled_workloads(runs, codec):
+    """Require equal realized encoding work before publishing fixed-codec runs."""
+    if codec == "auto":
+        return {"compared": False, "reason": "automatic format/quality decisions may differ"}
+    if len(runs) < 2:
+        return {"compared": False, "reason": "only one run requested"}
+    reference = {case["scenario"]: case for case in runs[0]["cases"]}
+    for run in runs[1:]:
+        for case in run["cases"]:
+            expected = reference[case["scenario"]]["encoder_observation"]
+            actual = case["encoder_observation"]
+            for key in ["selector_calls", "webp_lossless_calls", "webp_lossy_calls"]:
+                if actual[key] != expected[key]:
+                    raise RuntimeError(f"fixed-codec workload differs for {case['scenario']}: {key}")
+            for name in ["png", "jpeg", "webp"]:
+                for key in ["calls", "pixels", "encoded_bytes", "quality_min", "quality_max"]:
+                    if actual["codecs"][name][key] != expected["codecs"][name][key]:
+                        raise RuntimeError(f"fixed-codec workload differs for {case['scenario']}: {name}.{key}")
+    return {"compared": True, "matched": True,
+            "fields": "codec calls, actual image pixels, encoded image bytes, quality range and WebP lossless mode"}
 
 
 def main():
@@ -103,6 +132,12 @@ def main():
     parser.add_argument("--verify-frames", type=bounded(0, 10), default=4,
                         help="untimed lossless protocol/pixel checks per case (0 disables)")
     parser.add_argument("--cpuset-cpus")
+    parser.add_argument("--codec", choices=CODECS, default="auto",
+                        help="benchmark-only fixed encoder control; auto preserves the library's original decisions")
+    parser.add_argument("--quality", type=bounded(0, 100), default=75,
+                        help="fixed JPEG/WebP quality (WebP lossless: compression effort); ignored for auto/PNG")
+    parser.add_argument("--render-diagnostics", action="store_true",
+                        help="opt in to newer libguac numeric render telemetry; older libraries report null")
     parser.add_argument("--modes", nargs="+", choices=["baseline", "fixed", "adaptive", "adaptive-8", "adaptive-12", "adaptive-16"],
                         default=["baseline", "adaptive"],
                         help="baseline keeps its library's shipped admission policy; fixed is diagnostic only")
@@ -116,10 +151,11 @@ def main():
     if args.reverse:
         modes.reverse()
     runs = [run(image, mode, args.samples, args.warmup, args.workers, args.cpuset_cpus, args.cases,
-                args.verify_frames, args.baseline_revision if mode == "baseline" else args.candidate_revision)
+                args.verify_frames, args.baseline_revision if mode == "baseline" else args.candidate_revision,
+                args.codec, args.quality, args.render_diagnostics)
             for image, mode in modes]
     print(json.dumps({
-        "schema_version": 2,
+        "schema_version": 3,
         "measurement": "production display planner, copy search, FIFO, workers, codecs and serialization to a shared discard socket",
         "limitations": "synthetic fixtures; no capture, RDP transport, browser, Wi-Fi, physical input or frame pacing; copied pixels/planner/encoding included, fixture generation excluded",
         "fixture_note": "original nine scenarios preserved; added all-solid, zero-copy-hit, early/late exact-copy-hit and alternating-size planner-reuse fixtures",
@@ -129,6 +165,12 @@ def main():
         "verification_frames": args.verify_frames,
         "statistics_note": "planner counter deltas cover measured frames only; scratch bytes are retained-capacity gauges; unavailable baseline counters are null, not zero",
         "planning_phase_timing_note": "existing numeric TRACE phase durations captured without formatting; per-frame mean/p95 use integer-millisecond wall times; search includes both candidate indexing and copy search; zero phase durations are valid; phase quantiles cannot be subtracted from full-frame quantiles",
+        "encoder_control": {"codec": args.codec, "quality": args.quality,
+                            "method": "benchmark-only ELF symbol interposition: auto forwards the original selector, fixed mode replaces only its decision, encoders always forward to the image's real implementations; hook coverage verified for every image; forced-lossless correctness replay disables overrides"},
+        "controlled_workload_comparison": controlled_workloads(runs, args.codec),
+        "encoder_timing_note": "summed per-image encoder wrapper wall times include codec work plus streaming/serialization/socket waits; concurrent sums are not frame latency or standalone codec CPU; instrumentation is identical on old/new libraries",
+        "render_diagnostics": {"requested": args.render_diagnostics,
+                               "note": "optional numeric telemetry adds clocks only in supporting libraries; use separate diagnostic runs when an older baseline cannot collect it; microsecond cumulative measured-frame deltas, maxima include initialization/warmup; overlapping phase sums and quantiles are not additive; no network-delivery timing"},
         "worker_pool": args.workers, "cpuset_cpus": args.cpuset_cpus,
         "samples": args.samples, "warmup": args.warmup, "runs": runs,
     }, indent=2))
