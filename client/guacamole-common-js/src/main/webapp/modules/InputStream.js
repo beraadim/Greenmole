@@ -106,53 +106,6 @@ Guacamole.InputStream = function(client, index) {
 
                 var reader = new Guacamole.ArrayBufferReader(guac_stream);
 
-                // Keep the existing decoder for normal reads, oversized blobs,
-                // older browsers and noncanonical input. A malformed blob must
-                // never partly overwrite a consumer's outstanding BYOB view:
-                // setFromBase64() may write bytes before reporting an error.
-                var receiveBlob = guac_stream.onblob;
-                var decodeInto = Uint8Array.prototype.setFromBase64;
-                if (typeof decodeInto === 'function') {
-                    // Require the true end of the string. A JavaScript "$"
-                    // anchor would also match before a trailing line break.
-                    var canonicalBase64 = /^[A-Za-z0-9+/]*={0,2}(?![\s\S])/;
-                    guac_stream.onblob = function dataReceivedBlob(data) {
-
-                        if (!active)
-                            return;
-
-                        var request = controller.byobRequest;
-
-                        if (request && data.length && data.length % 4 === 0) {
-
-                            var padding = data.charAt(data.length - 2) === '=' ? 2
-                                    : data.charAt(data.length - 1) === '=' ? 1 : 0;
-                            var length = data.length / 4 * 3 - padding;
-
-                            // Validate the entire independent blob before writing.
-                            // Nonzero unused bits, missing padding and whitespace
-                            // retain the existing decoder's acceptance behavior.
-                            if (length <= request.view.byteLength
-                                    && canonicalBase64.test(data)
-                                    && (!padding || ('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-                                        .indexOf(data.charAt(data.length - padding - 1))
-                                            & (padding === 2 ? 15 : 3)) === 0)) {
-
-                                var view = request.view;
-                                decodeInto.call(new Uint8Array(view.buffer,
-                                        view.byteOffset, view.byteLength), data);
-                                request.respond(length);
-                                return;
-
-                            }
-
-                        }
-
-                        receiveBlob(data);
-
-                    };
-                }
-
                 // Provide any received blocks of data to the ReadableStream
                 // controller, such that they will be read by whatever is
                 // consuming the ReadableStream

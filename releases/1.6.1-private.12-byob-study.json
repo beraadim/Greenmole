@@ -1,0 +1,434 @@
+{
+  "schema": "guacamole-explicit-byob-study-v1",
+  "created_at": "2026-10-16T13:47:28.764Z",
+  "browser": "Chrome/155.0.8059.80",
+  "platform": "darwin-arm64",
+  "driver_sha256": "89add1fbb62f0b6f1f65583b550a302be58c2923fa6161c99cd6d55cc7f22c1d",
+  "browser_probe_sha256": "d3c9d071a01836f814be874be6377175a94cd7a580d8e1f20852fe74ca9d58ee",
+  "versions": [
+    {
+      "name": "baseline",
+      "ref": "1.6.1-private.11",
+      "revision": "0761e433f74dceaad4d4cd45c90aad16ecea5ba1",
+      "bundle_sha256": "f5d367b87b1526aa2785186e9131689e0d67c2517061dd3bd166a9ea24d47d75",
+      "modules_sha256": {
+        "ArrayBufferReader.js": "b8182970abf2dda17f946d3dfdd1544dadf8b4ddb2045ba1a9a26056a1a200e3",
+        "InputStream.js": "cbf6909ee83e4ba05e03865b111f300257ab5ac52e9c2832658c2db08bbad301"
+      }
+    },
+    {
+      "name": "candidate",
+      "ref": "6046fa964",
+      "revision": "6046fa964bef309066ab90514056d450f3334de9",
+      "bundle_sha256": "b586ac644105d81270bc32910a8ddc4eb6040702d0ce2710027186a6b16f6441",
+      "modules_sha256": {
+        "ArrayBufferReader.js": "b8182970abf2dda17f946d3dfdd1544dadf8b4ddb2045ba1a9a26056a1a200e3",
+        "InputStream.js": "12fe96ae42378aad6d55188a0e58af51079e989e54f41b273b15b7492a64b624"
+      }
+    }
+  ],
+  "samples_per_version": 4,
+  "method": "Actual native BYOB ReadableStream, canonical independent blob, offset3, reused returned backing buffer; 2countedverificationreads and128uncountedwarmupreads per version/size; alternating A/B and B/A order.",
+  "limitations": [
+    "Synthetic generic BYOB consumer, not ImageDecoder or network performance.",
+    "Canonical validation scan, stream delivery, buffer transfers and Promise continuation overhead are included in timings; this does not isolate Base64 CPU.",
+    "Counters run only in separate untimed verification; timed counts are null. Final full bytes/geometry/EOF checked after timing, not each timed blob.",
+    "Means of complete fixed-count trials, not frame percentiles; no garbage collection or heap-size measurement."
+  ],
+  "capabilities": {
+    "fromBase64": true,
+    "setFromBase64": true,
+    "toBase64": true,
+    "ReadableStream": true
+  },
+  "verification": [
+    {
+      "size": 6144,
+      "frames": 2,
+      "version": "baseline",
+      "elapsed_ms": 0.09999990463256836,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": {
+        "allocating_decode_calls": 2,
+        "allocated_payload_bytes": 12288,
+        "direct_decode_calls": 0,
+        "direct_payload_bytes": 0,
+        "payload_copy_calls": 2,
+        "payload_copy_bytes": 12288
+      }
+    },
+    {
+      "size": 6144,
+      "frames": 2,
+      "version": "candidate",
+      "elapsed_ms": 0.09999990463256836,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": {
+        "allocating_decode_calls": 0,
+        "allocated_payload_bytes": 0,
+        "direct_decode_calls": 2,
+        "direct_payload_bytes": 12288,
+        "payload_copy_calls": 0,
+        "payload_copy_bytes": 0
+      }
+    },
+    {
+      "size": 65535,
+      "frames": 2,
+      "version": "baseline",
+      "elapsed_ms": 0.09999990463256836,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": {
+        "allocating_decode_calls": 2,
+        "allocated_payload_bytes": 131070,
+        "direct_decode_calls": 0,
+        "direct_payload_bytes": 0,
+        "payload_copy_calls": 2,
+        "payload_copy_bytes": 131070
+      }
+    },
+    {
+      "size": 65535,
+      "frames": 2,
+      "version": "candidate",
+      "elapsed_ms": 0.3000001907348633,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": {
+        "allocating_decode_calls": 0,
+        "allocated_payload_bytes": 0,
+        "direct_decode_calls": 2,
+        "direct_payload_bytes": 131070,
+        "payload_copy_calls": 0,
+        "payload_copy_bytes": 0
+      }
+    },
+    {
+      "size": 1048576,
+      "frames": 2,
+      "version": "baseline",
+      "elapsed_ms": 0.6999998092651367,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": {
+        "allocating_decode_calls": 2,
+        "allocated_payload_bytes": 2097152,
+        "direct_decode_calls": 0,
+        "direct_payload_bytes": 0,
+        "payload_copy_calls": 2,
+        "payload_copy_bytes": 2097152
+      }
+    },
+    {
+      "size": 1048576,
+      "frames": 2,
+      "version": "candidate",
+      "elapsed_ms": 3.0999999046325684,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": {
+        "allocating_decode_calls": 0,
+        "allocated_payload_bytes": 0,
+        "direct_decode_calls": 2,
+        "direct_payload_bytes": 2097152,
+        "payload_copy_calls": 0,
+        "payload_copy_bytes": 0
+      }
+    }
+  ],
+  "observations": [
+    {
+      "iteration": 0,
+      "size": 6144,
+      "frames": 4000,
+      "version": "baseline",
+      "elapsed_ms": 15.800000190734863,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 0,
+      "size": 6144,
+      "frames": 4000,
+      "version": "candidate",
+      "elapsed_ms": 43.700000286102295,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 1,
+      "size": 6144,
+      "frames": 4000,
+      "version": "candidate",
+      "elapsed_ms": 44.299999713897705,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 1,
+      "size": 6144,
+      "frames": 4000,
+      "version": "baseline",
+      "elapsed_ms": 15.099999904632568,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 2,
+      "size": 6144,
+      "frames": 4000,
+      "version": "baseline",
+      "elapsed_ms": 13.299999713897705,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 2,
+      "size": 6144,
+      "frames": 4000,
+      "version": "candidate",
+      "elapsed_ms": 45.799999713897705,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 3,
+      "size": 6144,
+      "frames": 4000,
+      "version": "candidate",
+      "elapsed_ms": 42,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 3,
+      "size": 6144,
+      "frames": 4000,
+      "version": "baseline",
+      "elapsed_ms": 17.700000286102295,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 0,
+      "size": 65535,
+      "frames": 400,
+      "version": "baseline",
+      "elapsed_ms": 6.599999904632568,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 0,
+      "size": 65535,
+      "frames": 400,
+      "version": "candidate",
+      "elapsed_ms": 36.30000019073486,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 1,
+      "size": 65535,
+      "frames": 400,
+      "version": "candidate",
+      "elapsed_ms": 37.60000038146973,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 1,
+      "size": 65535,
+      "frames": 400,
+      "version": "baseline",
+      "elapsed_ms": 6.099999904632568,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 2,
+      "size": 65535,
+      "frames": 400,
+      "version": "baseline",
+      "elapsed_ms": 6.5,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 2,
+      "size": 65535,
+      "frames": 400,
+      "version": "candidate",
+      "elapsed_ms": 39,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 3,
+      "size": 65535,
+      "frames": 400,
+      "version": "candidate",
+      "elapsed_ms": 37.19999980926514,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 3,
+      "size": 65535,
+      "frames": 400,
+      "version": "baseline",
+      "elapsed_ms": 7.599999904632568,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 0,
+      "size": 1048576,
+      "frames": 32,
+      "version": "baseline",
+      "elapsed_ms": 7.199999809265137,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 0,
+      "size": 1048576,
+      "frames": 32,
+      "version": "candidate",
+      "elapsed_ms": 46.700000286102295,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 1,
+      "size": 1048576,
+      "frames": 32,
+      "version": "candidate",
+      "elapsed_ms": 45.69999980926514,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 1,
+      "size": 1048576,
+      "frames": 32,
+      "version": "baseline",
+      "elapsed_ms": 7.400000095367432,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 2,
+      "size": 1048576,
+      "frames": 32,
+      "version": "baseline",
+      "elapsed_ms": 7.199999809265137,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 2,
+      "size": 1048576,
+      "frames": 32,
+      "version": "candidate",
+      "elapsed_ms": 44.90000009536743,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 3,
+      "size": 1048576,
+      "frames": 32,
+      "version": "candidate",
+      "elapsed_ms": 45.59999990463257,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    },
+    {
+      "iteration": 3,
+      "size": 1048576,
+      "frames": 32,
+      "version": "baseline",
+      "elapsed_ms": 7.299999713897705,
+      "exact_final_bytes_verified": true,
+      "outside_view_bytes_verified": true,
+      "eof_verified": true,
+      "counts": null
+    }
+  ],
+  "summary": [
+    {
+      "size": 6144,
+      "baseline_mean_ms": 15.475000023841858,
+      "candidate_mean_ms": 43.949999928474426,
+      "candidate_over_baseline_ratio": 2.8400646113578034
+    },
+    {
+      "size": 65535,
+      "baseline_mean_ms": 6.699999928474426,
+      "candidate_mean_ms": 37.52500009536743,
+      "candidate_over_baseline_ratio": 5.600746342681198
+    },
+    {
+      "size": 1048576,
+      "baseline_mean_ms": 7.2749998569488525,
+      "candidate_mean_ms": 45.72500002384186,
+      "candidate_over_baseline_ratio": 6.285223494563614
+    }
+  ]
+}
