@@ -43,6 +43,7 @@ test_libguac_SOURCES =               \
     client/layer_pool.c              \
     display/concurrency.c            \
     display/diagnostics.c            \
+    display/diagnostics-pthread.c    \
     display/flush.c                  \
     display/image-format.c           \
     display/planner.c                \

@@ -22,14 +22,32 @@ or connection configuration contents. Enabling DEBUG can also enable existing
 unrelated Guacamole messages; collection does not require global TRACE logging.
 
 Collection is disabled by default, with no additional diagnostic clock reads.
-The disabled codec path has one `pthread_once`/TLS lookup per encoded image and
-an inline null-sample branch per blob; this is small work, not zero overhead.
-An enabled worker allocates at most one small TLS slot for its thread lifetime.
-The pthread key owns that slot and frees it at thread exit. A scope changes a
-pointer inside the slot; ending it does not call a fallible TLS setter. A failed
-TLS allocation/installation or clock read invalidates diagnostic snapshots and
-logs one warning instead of presenting partial timings as complete. Such a
-failure does not abort a frame or alter its encoded data.
+Private.9 replaces the per-image `pthread_once`/`pthread_getspecific` lookup with
+a compiler-managed thread-local pointer where supported. Configure compile-links
+a pointer using `_Thread_local`, then `__thread`, under the requested compiler
+flags and strict warnings. The test never runs a target executable, preserving
+cross-compilation. Its temporary warnings do not change the caller's `CFLAGS`.
+Reading, binding, and clearing that pointer need no pthread operation or heap
+allocation. The disabled path still has the thread-local lookup per image and
+an inline null-sample branch per blob; it is not zero overhead. Matched
+production-path benchmarks must establish its effect on frame latency and CPU.
+
+Other compilers retain the portable pthread backend. An enabled worker allocates
+at most one small slot for its thread lifetime; the pthread key frees it at
+thread exit. A scope changes a pointer inside that slot, so clearing it does not
+call a fallible TLS setter. On either backend the sample belongs to the worker's
+synchronous encoder scope and cannot be inherited by another thread. A failed
+fallback TLS allocation/installation or clock read invalidates diagnostic
+snapshots and logs one warning instead of presenting partial timings as complete.
+Such a failure does not abort a frame or alter its encoded data. Neither backend
+changes codec/quality selection, counter definitions, or encoded bytes.
+
+The diagnostics tests run the same numeric, clock-failure, thread-isolation,
+payload, and bounded-log checks against the selected backend and a forced pthread
+copy. The latter also injects slot allocation/installation failures and verifies
+that clearing remains infallible. For a whole-library fallback build, configure
+with `guac_cv_thread_local=no`; this is a build-time cache override, not a runtime
+setting.
 
 ## Private snapshot interface
 

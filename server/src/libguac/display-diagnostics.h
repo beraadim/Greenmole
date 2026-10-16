@@ -76,8 +76,10 @@ uint64_t guac_display_diagnostics_elapsed(uint64_t start, uint64_t end);
 
 /** Associates a stack sample with the current worker's synchronous encoder.
  * NULL clears it without a fallible pthread_setspecific() operation. Returns
- * zero if initial TLS slot allocation/installation failed. At most one small
- * slot is allocated per participating thread and freed by its TLS destructor.
+ * zero if initial fallback TLS slot allocation/installation failed. The
+ * configure-tested compiler TLS backend needs no allocation or pthread calls.
+ * Other compilers allocate at most one small slot per participating thread,
+ * freed by its TLS destructor.
  * No sample is inherited by another thread or display. */
 int guac_display_diagnostics_set_current(guac_display_render_sample* sample);
 guac_display_render_sample* guac_display_diagnostics_current(void);

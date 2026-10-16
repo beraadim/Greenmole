@@ -37,6 +37,31 @@ AC_PROG_CC
 AC_PROG_CC_C99
 AC_PROG_LIBTOOL
 
+# Prefer a compiler-managed pointer for optional per-worker diagnostics. Probe
+# with the same strict warnings as libguac, including for explicitly requested
+# C99 builds, and link without running so cross-compilation remains supported.
+AC_CACHE_CHECK([for compiler thread-local pointer storage],
+    [guac_cv_thread_local], [
+    guac_cv_thread_local=no
+    guac_saved_CFLAGS="$CFLAGS"
+    CFLAGS="$CFLAGS -Werror -pedantic"
+    for guac_thread_local in _Thread_local __thread; do
+        AC_LINK_IFELSE([AC_LANG_SOURCE([[
+static $guac_thread_local void* volatile current;
+int main(void) {
+    int value = 0;
+    current = &value;
+    return current != &value;
+}
+        ]])], [guac_cv_thread_local=$guac_thread_local; break], [])
+    done
+    CFLAGS="$guac_saved_CFLAGS"
+])
+AS_CASE([$guac_cv_thread_local], [_Thread_local|__thread], [
+    AC_DEFINE_UNQUOTED([GUAC_THREAD_LOCAL], [$guac_cv_thread_local],
+        [Compiler thread-local storage keyword, if supported.])
+])
+
 # Initialize pkg-config support
 PKG_PROG_PKG_CONFIG()
 

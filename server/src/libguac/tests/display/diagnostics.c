@@ -31,8 +31,10 @@ static int diagnostics_test_clock_gettime(clockid_t clock, struct timespec* now)
 #if !(defined(HAVE_CLOCK_GETTIME) && defined(CLOCK_MONOTONIC))
 static int diagnostics_test_gettimeofday(struct timeval* now, void* zone);
 #endif
+#ifndef GUAC_THREAD_LOCAL
 static int diagnostics_test_setspecific(pthread_key_t key, const void* value);
 static void* diagnostics_test_calloc(size_t count, size_t size);
+#endif
 static void diagnostics_test_log(guac_client* client, guac_client_log_level level,
         const char* format, ...);
 static int diagnostics_test_blob(guac_socket* socket, const guac_stream* stream,
@@ -81,8 +83,10 @@ static char* diagnostics_setting;
 static uint64_t diagnostics_clock = 100;
 static int diagnostics_clock_calls;
 static int diagnostics_clock_failure;
+#ifndef GUAC_THREAD_LOCAL
 static int diagnostics_allocation_failure;
 static int diagnostics_tls_failure;
+#endif
 static int diagnostics_warning_logs;
 static int diagnostics_debug_logs;
 static const void* diagnostics_blob_data;
@@ -114,6 +118,7 @@ static int diagnostics_test_gettimeofday(struct timeval* now, void* zone) {
 }
 #endif
 
+#ifndef GUAC_THREAD_LOCAL
 static int diagnostics_test_setspecific(pthread_key_t key, const void* value) {
     return diagnostics_tls_failure ? ENOMEM : pthread_setspecific(key, value);
 }
@@ -121,6 +126,7 @@ static int diagnostics_test_setspecific(pthread_key_t key, const void* value) {
 static void* diagnostics_test_calloc(size_t count, size_t size) {
     return diagnostics_allocation_failure ? NULL : calloc(count, size);
 }
+#endif
 
 static void diagnostics_test_log(guac_client* client, guac_client_log_level level,
         const char* format, ...) {
@@ -236,6 +242,7 @@ void test_display__diagnostics_clock_failure() {
 static void* diagnostics_tls_thread(void* unused) {
     guac_display_render_sample sample = { 0 };
     CU_ASSERT_PTR_NULL(diagnostics_test_current());
+#ifndef GUAC_THREAD_LOCAL
     diagnostics_allocation_failure = 1;
     CU_ASSERT_FALSE(diagnostics_test_set_current(&sample));
     CU_ASSERT_PTR_NULL(diagnostics_test_current());
@@ -244,21 +251,30 @@ static void* diagnostics_tls_thread(void* unused) {
     CU_ASSERT_FALSE(diagnostics_test_set_current(&sample));
     CU_ASSERT_PTR_NULL(diagnostics_test_current());
     diagnostics_tls_failure = 0;
+#endif
     CU_ASSERT_TRUE(diagnostics_test_set_current(&sample));
     CU_ASSERT_PTR_EQUAL(diagnostics_test_current(), &sample);
     /* Cleanup is independent of pthread_setspecific: force that API to fail. */
+#ifndef GUAC_THREAD_LOCAL
     diagnostics_tls_failure = 1;
+#endif
     CU_ASSERT_TRUE(diagnostics_test_set_current(NULL));
     CU_ASSERT_PTR_NULL(diagnostics_test_current());
+#ifndef GUAC_THREAD_LOCAL
     diagnostics_tls_failure = 0;
+#endif
     return NULL;
 }
 
 /** TLS setup fails closed; ending a scope cannot leave a stack pointer behind. */
 void test_display__diagnostics_tls_isolation_and_failures() {
+    guac_display_render_sample sample = { 0 };
+    CU_ASSERT_TRUE(diagnostics_test_set_current(&sample));
     pthread_t thread;
     CU_ASSERT_EQUAL_FATAL(pthread_create(&thread, NULL, diagnostics_tls_thread, NULL), 0);
     CU_ASSERT_EQUAL(pthread_join(thread, NULL), 0);
+    CU_ASSERT_PTR_EQUAL(diagnostics_test_current(), &sample);
+    CU_ASSERT_TRUE(diagnostics_test_set_current(NULL));
     CU_ASSERT_PTR_NULL(diagnostics_test_current());
 }
 

@@ -31,6 +31,19 @@
 
 #define GUAC_DISPLAY_DIAGNOSTICS_INTERVAL_US UINT64_C(10000000)
 
+#ifdef GUAC_THREAD_LOCAL
+
+/* Compiler-managed storage starts null in each thread and requires no heap
+ * slot, key initialization, or fallible installation/cleanup. The pointed-to
+ * sample still belongs to the worker's synchronous image-stream scope. */
+static GUAC_THREAD_LOCAL guac_display_render_sample* current_sample;
+
+static int initialize_samples(void) {
+    return 1;
+}
+
+#else
+
 static pthread_once_t sample_key_once = PTHREAD_ONCE_INIT;
 static pthread_key_t sample_key;
 static int sample_key_ready;
@@ -47,6 +60,8 @@ static int initialize_samples(void) {
     return pthread_once(&sample_key_once, initialize_sample_key) == 0
         && sample_key_ready;
 }
+
+#endif
 
 uint64_t guac_display_diagnostics_now(void) {
 #if defined(HAVE_CLOCK_GETTIME) && defined(CLOCK_MONOTONIC)
@@ -87,6 +102,10 @@ void guac_display_diagnostics_init(guac_display* display) {
 }
 
 int guac_display_diagnostics_set_current(guac_display_render_sample* sample) {
+#ifdef GUAC_THREAD_LOCAL
+    current_sample = sample;
+    return 1;
+#else
     if (!initialize_samples())
         return sample == NULL;
     guac_display_diagnostics_slot* slot = pthread_getspecific(sample_key);
@@ -104,13 +123,18 @@ int guac_display_diagnostics_set_current(guac_display_render_sample* sample) {
     if (slot != NULL)
         slot->sample = sample;
     return 1;
+#endif
 }
 
 guac_display_render_sample* guac_display_diagnostics_current(void) {
+#ifdef GUAC_THREAD_LOCAL
+    return current_sample;
+#else
     if (!initialize_samples())
         return NULL;
     guac_display_diagnostics_slot* slot = pthread_getspecific(sample_key);
     return slot == NULL ? NULL : slot->sample;
+#endif
 }
 
 static void add(uint64_t* value, uint64_t amount) {
