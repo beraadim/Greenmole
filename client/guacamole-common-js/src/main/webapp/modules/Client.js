@@ -326,7 +326,8 @@ Guacamole.Client = function(tunnel) {
         currentState = state.currentState;
         currentTimestamp = state.currentTimestamp;
 
-        // Cancel any pending display operations/frames
+        // Cancel any pending display operations/frames and their measurements.
+        if (pipelineDiagnostics) pipelineDiagnostics.cancel();
         display.cancel();
 
         // Dispose of all layers

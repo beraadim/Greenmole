@@ -109,6 +109,26 @@ describe('Guacamole.Client optional pipeline diagnostics', function() {
         client.setPipelineDiagnosticsEnabled(true);
         expect(client.getPipelineStatistics().syncReceived).toBe(0);
     });
+    it('cancels pending timing when imported state replaces queued display frames', function() {
+        client.setPipelineDiagnosticsEnabled(true);
+        tunnel.oninstruction('sync', ['123', '1']);
+        expect(client.getPipelineStatistics().inFlight).toBe(1);
+        client.importState({currentState: Guacamole.Client.State.IDLE,
+            currentTimestamp: 0, layers: {}});
+        callbacks = []; // Real Display.cancel discards these old frame callbacks.
+        expect(display.cancel).toHaveBeenCalled();
+        expect(client.getPipelineStatistics()).toEqual(jasmine.objectContaining({
+            canceledSync: 1, inFlight: 0, completedSync: 0
+        }));
+        time = 200;
+        tunnel.oninstruction('sync', ['124', '1']);
+        time = 210;
+        callbacks.shift()();
+        expect(client.getPipelineStatistics()).toEqual(jasmine.objectContaining({
+            syncReceived: 2, canceledSync: 1, completedSync: 1, ackAttempted: 1,
+            syncToAckSumMs: 10, syncGapMaxMs: 0, inFlight: 0
+        }));
+    });
     it('works with custom bundles which omit the optional helper', function() {
         var original = Guacamole.PipelineDiagnostics;
         Guacamole.PipelineDiagnostics = undefined;

@@ -166,7 +166,9 @@ exhaustion disables diagnostics for new endpoints. Clock differences use only
 The Java helper retains six fixed aggregates and no per-frame records, payloads,
 addresses, identifiers, configuration or protocol argument values. Reports are
 activity-driven, at most one per ten seconds per endpoint. Closing stops
-collection without forcing a partial report. Native/Java counters saturate;
+collection without forcing a partial report. An unexpected runtime failure from
+the diagnostic logger disables only that endpoint's collection; it cannot
+interrupt normal protocol forwarding or retain its writer lock. Native/Java counters saturate;
 clock reversals clip negative duration samples to zero. Default Java collection
 is null/disabled and adds no per-endpoint diagnostic allocation, clock reads or
 parsing.
@@ -201,7 +203,7 @@ Reproduce the pause, then read `diagnosticClient.getPipelineStatistics()`.
 Finish with `diagnosticClient.setPipelineDiagnosticsEnabled(false)` and clear the
 three diagnostic references when done. Enabling/disabling is local and immediate,
 with no persistence, timer, logging, remote control or network instructions.
-Disabled reads return null; a fresh enable starts fresh totals. Reconnect/stop
+Disabled reads return null; a fresh enable starts fresh totals. Reconnect/stop/state import
 cancels outstanding sample tokens so late callbacks cannot update a later
 connection's timings. Custom application code must continue using the existing
 client disconnect path when closing a connection.

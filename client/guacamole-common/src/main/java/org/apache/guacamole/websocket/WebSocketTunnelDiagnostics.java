@@ -115,7 +115,14 @@ final class WebSocketTunnelDiagnostics {
                     .append(" total_us=").append(data[1]).append(" max_us=").append(data[2])
                     .append(" chars=").append(data[3]).append(" failures=").append(data[4]);
             }
-            output.accept(report.toString());
+            try {
+                output.accept(report.toString());
+            }
+            catch (RuntimeException failedLogging) {
+                // Optional telemetry must not break forwarding, mask an I/O
+                // failure, or strand an already-acquired protocol writer.
+                stopped = true;
+            }
         }
     }
 

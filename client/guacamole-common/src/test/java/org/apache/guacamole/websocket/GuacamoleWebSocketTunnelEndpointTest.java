@@ -102,6 +102,22 @@ public class GuacamoleWebSocketTunnelEndpointTest {
         }
     }
 
+    @Test public void diagnosticLoggerFailureCannotStrandAnAcquiredWriter() throws Exception {
+        Tunnel tunnel = new Tunnel();
+        long[] time = {0};
+        WebSocketTunnelDiagnostics timing = new WebSocketTunnelDiagnostics(() -> time[0],
+                ignored -> { throw new IllegalStateException("Injected logger failure"); });
+        GuacamoleWebSocketTunnelEndpoint endpoint = endpoint(tunnel, timing, new ArrayList<>());
+        time[0] = 10000000000L;
+        String sync = new GuacamoleInstruction("sync", "123").toString();
+        endpoint.onMessage(sync);
+        assertEquals(sync, tunnel.output.toString());
+        assertEquals(1, tunnel.acquired);
+        assertEquals(1, tunnel.released);
+        assertEquals(1, timing.snapshot(WebSocketTunnelDiagnostics.Stage.WRITE_LOCK)[0]);
+        assertEquals(0, timing.snapshot(WebSocketTunnelDiagnostics.Stage.WRITE)[0]);
+    }
+
     @Test public void releasesWriterAfterCheckedAndUnexpectedFailure() throws Exception {
         for (int failure : new int[] { 1, 2 }) {
             Tunnel tunnel = new Tunnel();

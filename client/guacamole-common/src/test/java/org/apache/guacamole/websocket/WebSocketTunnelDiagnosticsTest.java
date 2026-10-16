@@ -78,6 +78,17 @@ public class WebSocketTunnelDiagnosticsTest {
     }
 
     @Test
+    public void failingDiagnosticOutputDisablesOnlyTelemetry() {
+        WebSocketTunnelDiagnostics stats = new WebSocketTunnelDiagnostics(() -> 0L,
+                ignored -> { throw new IllegalStateException("Injected logger failure"); });
+        stats.record(WebSocketTunnelDiagnostics.Stage.SEND, 0, 10000000000L, 12, true);
+        assertArrayEquals(new long[] {1, 10000000, 10000000, 12, 0},
+                stats.snapshot(WebSocketTunnelDiagnostics.Stage.SEND));
+        stats.record(WebSocketTunnelDiagnostics.Stage.SEND, 0, 20000000000L, 100, false);
+        assertEquals(1, stats.snapshot(WebSocketTunnelDiagnostics.Stage.SEND)[0]);
+    }
+
+    @Test
     public void concurrentDirectionsShareBoundedCounters() throws InterruptedException {
         WebSocketTunnelDiagnostics stats = new WebSocketTunnelDiagnostics(() -> 0L,
                 ignored -> fail("No report before deadline"));
