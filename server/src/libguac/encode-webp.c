@@ -33,6 +33,103 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef GUAC_THREAD_LOCAL
+static GUAC_THREAD_LOCAL guac_webp_workspace* guac_webp_current_workspace;
+#endif
+
+guac_webp_workspace* guac_webp_set_workspace(guac_webp_workspace* workspace) {
+#ifdef GUAC_THREAD_LOCAL
+    guac_webp_workspace* previous = guac_webp_current_workspace;
+    guac_webp_current_workspace = workspace;
+    return previous;
+#else
+    (void) workspace;
+    return NULL;
+#endif
+}
+
+void guac_webp_workspace_free(guac_webp_workspace* workspace) {
+    if (workspace != NULL) {
+        assert(!workspace->in_use);
+        free(workspace->argb);
+        memset(workspace, 0, sizeof(*workspace));
+    }
+}
+
+/**
+ * Prepares the same packed ARGB input as WebPPictureAlloc() plus the original
+ * row copy. Only the worker's input allocation is reused; picture-owned codec
+ * scratch is still released after every encode. Inputs are never zero-copy:
+ * RGB24's unused byte must become opaque alpha, and ARGB32 remains untouched.
+ */
+static int guac_webp_prepare_picture(WebPPicture* picture, cairo_surface_t* surface,
+        guac_webp_workspace* workspace, guac_webp_workspace** acquired) {
+    int width = cairo_image_surface_get_width(surface);
+    int height = cairo_image_surface_get_height(surface);
+    int stride = cairo_image_surface_get_stride(surface);
+    cairo_format_t format = cairo_image_surface_get_format(surface);
+    const unsigned char* data = cairo_image_surface_get_data(surface);
+    *acquired = NULL;
+    if (cairo_surface_status(surface) || (format != CAIRO_FORMAT_RGB24 && format != CAIRO_FORMAT_ARGB32)
+            || width <= 0 || height <= 0 || width > WEBP_MAX_DIMENSION || height > WEBP_MAX_DIMENSION
+            || data == NULL || (stride < 0 ? -(int64_t) stride : (int64_t) stride)
+                < (int64_t) width * (int) sizeof(uint32_t)) {
+        guac_error = GUAC_STATUS_INVALID_ARGUMENT;
+        guac_error_message = "Invalid Cairo image surface. Unable to create WebP.";
+        return 0;
+    }
+
+    picture->use_argb = 1;
+    picture->width = width;
+    picture->height = height;
+    size_t pixels = (size_t) width * (size_t) height;
+    if (workspace != NULL && !workspace->in_use
+            && pixels <= GUAC_WEBP_WORKSPACE_MAX_BYTES / sizeof(uint32_t)) {
+        workspace->in_use = 1;
+        if (pixels > workspace->capacity_pixels) {
+            size_t capacity = workspace->capacity_pixels ? workspace->capacity_pixels : 4096;
+            while (capacity < pixels) capacity *= 2;
+            uint32_t* argb = realloc(workspace->argb, capacity * sizeof(uint32_t));
+            if (argb == NULL) {
+                workspace->in_use = 0;
+            }
+            else {
+                workspace->argb = argb;
+                workspace->capacity_pixels = capacity;
+            }
+        }
+        if (workspace->in_use) {
+            picture->argb = workspace->argb;
+            picture->argb_stride = width;
+            *acquired = workspace;
+        }
+    }
+    /* Retention is optional: rounded cache growth may fail while the original
+     * exact-sized transient allocation can still succeed. Keep the old cache
+     * intact and try that path before failing the image. */
+    if (*acquired == NULL && !WebPPictureAlloc(picture)) {
+        guac_error = GUAC_STATUS_NO_MEMORY;
+        guac_error_message = "Unable to allocate WebP input picture.";
+        return 0;
+    }
+
+    uint32_t* output = picture->argb;
+    for (int y = 0; y < height; y++) {
+        const uint32_t* row = (const uint32_t*) data;
+        if (format == CAIRO_FORMAT_ARGB32)
+            memcpy(output, row, (size_t) width * sizeof(uint32_t));
+        else {
+            for (int x = 0; x < width; x++)
+                output[x] = row[x] | UINT32_C(0xFF000000);
+        }
+        if (y + 1 < height) {
+            data += stride;
+            output += picture->argb_stride;
+        }
+    }
+    return 1;
+}
+
 /**
  * Structure which describes the current state of the WebP image writer.
  */
@@ -171,21 +268,6 @@ int guac_webp_write(guac_socket* socket, guac_stream* stream,
 
     guac_webp_stream_writer writer;
     WebPPicture picture;
-    uint32_t* argb_output;
-
-    int x, y;
-
-    int width = cairo_image_surface_get_width(surface);
-    int height = cairo_image_surface_get_height(surface);
-    int stride = cairo_image_surface_get_stride(surface);
-    cairo_format_t format = cairo_image_surface_get_format(surface);
-    unsigned char* data = cairo_image_surface_get_data(surface);
-
-    if (format != CAIRO_FORMAT_RGB24 && format != CAIRO_FORMAT_ARGB32) {
-        guac_error = GUAC_STATUS_INTERNAL_ERROR;
-        guac_error_message = "Invalid Cairo image format. Unable to create WebP.";
-        return -1;
-    }
 
     /* Flush pending operations to surface */
     cairo_surface_flush(surface);
@@ -210,48 +292,18 @@ int guac_webp_write(guac_socket* socket, guac_stream* stream,
     if (!WebPPictureInit(&picture)) {
         return -1;
     }
-    picture.use_argb = 1;
-    picture.width = width;
-    picture.height = height;
-
-    /* Allocate and init writer */
-    if (!WebPPictureAlloc(&picture)) {
+    guac_webp_workspace* workspace = NULL;
+#ifdef GUAC_THREAD_LOCAL
+    workspace = guac_webp_current_workspace;
+#endif
+    guac_webp_workspace* acquired;
+    if (!guac_webp_prepare_picture(&picture, surface, workspace, &acquired)) {
+        WebPPictureFree(&picture);
         return -1;
     }
     picture.writer = guac_webp_stream_write;
     picture.custom_ptr = &writer;
     guac_webp_stream_writer_init(&writer, socket, stream);
-
-    /* Copy image data into WebP picture */
-    argb_output = picture.argb;
-    for (y = 0; y < height; y++) {
-
-        /* Get pixels at start of each row */
-        uint32_t* src = (uint32_t*) data;
-        uint32_t* dst = argb_output;
-
-        /* For each pixel in row */
-        for (x = 0; x < width; x++) {
-
-            /* Pull pixel data, removing alpha channel if necessary */
-            uint32_t src_pixel = *src;
-            if (format != CAIRO_FORMAT_ARGB32)
-                src_pixel |= 0xFF000000;
-
-            /* Store converted pixel data */
-            *dst = src_pixel;
-
-            /* Next pixel */
-            src++;
-            dst++;
-
-        }
-
-        /* Next row */
-        data += stride;
-        argb_output += picture.argb_stride;
-
-    }
 
     /* Encode image */
     const int result = WebPEncode(&config, &picture) ? 0 : -1;
@@ -261,6 +313,9 @@ int guac_webp_write(guac_socket* socket, guac_stream* stream,
 
     /* Ensure all data is written */
     guac_webp_flush_data(&writer);
+
+    if (acquired != NULL)
+        acquired->in_use = 0;
 
     return result;
 

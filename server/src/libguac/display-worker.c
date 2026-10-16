@@ -20,6 +20,9 @@
 #include "display-plan.h"
 #include "display-priv.h"
 #include "display-workers.h"
+#ifdef ENABLE_WEBP
+#include "encode-webp.h"
+#endif
 #include "guacamole/client.h"
 #include "guacamole/display.h"
 #include "guacamole/fifo.h"
@@ -278,6 +281,11 @@ void* guac_display_worker_thread(void* data) {
     guac_client* client = display->client;
     guac_socket* socket = client->socket;
 
+#ifdef ENABLE_WEBP
+    guac_webp_workspace webp_workspace = { 0 };
+    guac_webp_workspace* previous_webp_workspace = guac_webp_set_workspace(&webp_workspace);
+#endif
+
     /* The sample lives for the whole worker lifetime. It is associated only
      * with a synchronous image stream, never with another worker's encoder. */
     guac_display_render_sample sample;
@@ -511,6 +519,10 @@ void* guac_display_worker_thread(void* data) {
 
     }
 
+#ifdef ENABLE_WEBP
+    guac_webp_set_workspace(previous_webp_workspace);
+    guac_webp_workspace_free(&webp_workspace);
+#endif
     return NULL;
 
 }

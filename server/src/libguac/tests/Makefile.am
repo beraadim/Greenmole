@@ -94,10 +94,15 @@ test_libguac_CFLAGS =       \
     -Werror -Wall -pedantic \
     @LIBGUAC_INCLUDE@
 
+if ENABLE_WEBP
+test_libguac_SOURCES += encode/webp.c
+endif
+
 test_libguac_LDADD = \
     @CUNIT_LIBS@     \
     @CAIRO_LIBS@     \
     @PNG_LIBS@       \
+    @WEBP_LIBS@      \
     @PTHREAD_LIBS@   \
     @LIBGUAC_LTLIB@
 

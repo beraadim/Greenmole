@@ -24,6 +24,32 @@
 #include "guacamole/stream.h"
 
 #include <cairo/cairo.h>
+#include <stddef.h>
+#include <stdint.h>
+
+/** Maximum caller-owned ARGB bytes retained by one display worker. */
+#define GUAC_WEBP_WORKSPACE_MAX_BYTES (2U * 1024U * 1024U)
+
+/**
+ * Thread-confined reusable input pixels. Initialize to zero and release after
+ * the worker finishes all synchronous encodes. Libwebp owns its other scratch.
+ */
+typedef struct guac_webp_workspace {
+    uint32_t* argb;
+    size_t capacity_pixels;
+    int in_use;
+} guac_webp_workspace;
+
+/**
+ * Binds a worker-owned workspace and returns the preceding binding. A nested
+ * encode while it is in use falls back to transient storage. On platforms
+ * without configured compiler TLS this leaves all calls transient and returns
+ * NULL, avoiding another pthread lookup in the encoder path.
+ */
+guac_webp_workspace* guac_webp_set_workspace(guac_webp_workspace* workspace);
+
+/** Releases a workspace after its final encode. No active call may retain it. */
+void guac_webp_workspace_free(guac_webp_workspace* workspace);
 
 /**
  * Encodes the given surface as a WebP, and sends the resulting data over the
@@ -36,7 +62,8 @@
  *     The stream to associate with each blob.
  *
  * @param surface
- *     The Cairo surface to write to the given stream and socket as PNG blobs.
+ *     The Cairo image surface to write to the stream as WebP blobs. Source
+ *     pixels and row padding remain unchanged.
  *
  * @param quality
  *     The WebP image quality to use. For lossy images, larger values indicate
