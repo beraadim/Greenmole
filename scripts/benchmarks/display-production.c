@@ -28,6 +28,9 @@
 #include "guacamole/fifo.h"
 #include "guacamole/protocol.h"
 #include "guacamole/socket.h"
+#ifdef BENCH_PNG_CONTROLS
+#include "png-compression-control.h"
+#endif
 
 #include <dlfcn.h>
 #include <errno.h>
@@ -64,12 +67,23 @@ typedef struct encoder_observation {
     uint64_t max_image_pixels[3], input_gt_1mib[3], input_gt_2mib[3];
     int quality_min[3], quality_max[3];
     uint64_t webp_lossless, webp_lossy, selector_calls;
+#ifdef BENCH_PNG_CONTROLS
+    uint64_t png_indexed_calls, png_indexed_pixels;
+    uint64_t png_indexed_bytes, png_fallback_calls, png_fallback_pixels, png_fallback_bytes;
+    uint64_t png_fallback_payload_sum, png_fallback_payload_xor;
+#endif
 } encoder_observation;
 static encoder_observation observed;
 static pthread_mutex_t observation_lock = PTHREAD_MUTEX_INITIALIZER;
 static _Thread_local int encoder_active;
 static _Thread_local uint64_t encoder_bytes;
 static _Thread_local uint64_t encoder_fingerprint;
+#ifdef BENCH_PNG_CONTROLS
+static _Thread_local int encoder_capture_png;
+static _Thread_local unsigned int encoder_png_header_used;
+static _Thread_local unsigned char encoder_png_header[26];
+static _Thread_local uint64_t encoder_png_hook_start;
+#endif
 
 static uint64_t monotonic_ns(void) {
     struct timespec value;
@@ -120,6 +134,16 @@ int guac_protocol_send_blob(guac_socket* socket, const guac_stream* stream,
         const void* data, int count) {
     if (encoder_active) {
         if (count < 0) { fprintf(stderr, "Negative encoded blob size.\n"); exit(1); }
+#ifdef BENCH_PNG_CONTROLS
+        /* Header-only coverage verifies each indexed image reached its control
+         * hook. No image data is retained beyond this bounded header prefix. */
+        if (encoder_capture_png && encoder_png_header_used < sizeof(encoder_png_header)) {
+            size_t length = sizeof(encoder_png_header) - encoder_png_header_used;
+            if (length > (size_t) count) length = (size_t) count;
+            if (length) memcpy(encoder_png_header + encoder_png_header_used, data, length);
+            encoder_png_header_used += (unsigned int) length;
+        }
+#endif
         encoder_bytes += (unsigned int) count;
         /* Optional integrity run only: fingerprint each encoded image before
          * base64/stream identifiers. Never retain or print payload bytes. */
@@ -134,10 +158,17 @@ int guac_protocol_send_blob(guac_socket* socket, const guac_stream* stream,
     return real_send_blob(socket, stream, data, count);
 }
 
-static uint64_t begin_encoder(void) {
+static uint64_t begin_encoder(int codec) {
     if (encoder_active) { fprintf(stderr, "Unexpected nested image encoder.\n"); exit(1); }
     encoder_active = 1; encoder_bytes = 0;
     encoder_fingerprint = UINT64_C(14695981039346656037);
+#ifdef BENCH_PNG_CONTROLS
+    encoder_capture_png = codec == GUAC_DISPLAY_IMAGE_FORMAT_PNG;
+    encoder_png_header_used = 0;
+    encoder_png_hook_start = benchmark_png_control_thread_calls();
+#else
+    (void) codec;
+#endif
     return monotonic_ns();
 }
 
@@ -147,12 +178,43 @@ static void end_encoder(int codec, cairo_surface_t* surface, int quality, int lo
     encoder_active = 0;
     if (status) { fprintf(stderr, "Image encoder failed.\n"); exit(1); }
     if (!encoder_bytes) { fprintf(stderr, "Encoded image bypassed blob observation.\n"); exit(1); }
+#ifdef BENCH_PNG_CONTROLS
+    int indexed = 0;
+    if (codec == GUAC_DISPLAY_IMAGE_FORMAT_PNG) {
+        static const unsigned char signature[8] = { 137, 80, 78, 71, 13, 10, 26, 10 };
+        if (encoder_png_header_used != sizeof(encoder_png_header)
+                || memcmp(encoder_png_header, signature, sizeof(signature))
+                || memcmp(encoder_png_header + 12, "IHDR", 4)) {
+            fprintf(stderr, "PNG control coverage missed the image header.\n"); exit(1);
+        }
+        indexed = encoder_png_header[25] == 3;
+        if (benchmark_png_control_thread_calls() - encoder_png_hook_start != (uint64_t) indexed) {
+            fprintf(stderr, "PNG control hook missed or duplicated an indexed image.\n"); exit(1);
+        }
+    }
+#endif
     pthread_mutex_lock(&observation_lock);
     if (!observed.calls[codec] || quality < observed.quality_min[codec]) observed.quality_min[codec] = quality;
     if (!observed.calls[codec] || quality > observed.quality_max[codec]) observed.quality_max[codec] = quality;
     observed.calls[codec]++;
     uint64_t image_pixels = (uint64_t) cairo_image_surface_get_width(surface) * cairo_image_surface_get_height(surface);
     observed.pixels[codec] += image_pixels;
+#ifdef BENCH_PNG_CONTROLS
+    if (indexed) {
+        observed.png_indexed_calls++;
+        observed.png_indexed_pixels += image_pixels;
+        observed.png_indexed_bytes += encoder_bytes;
+    }
+    else if (codec == GUAC_DISPLAY_IMAGE_FORMAT_PNG) {
+        observed.png_fallback_calls++;
+        observed.png_fallback_pixels += image_pixels;
+        observed.png_fallback_bytes += encoder_bytes;
+        if (payload_fingerprints) {
+            observed.png_fallback_payload_sum += encoder_fingerprint;
+            observed.png_fallback_payload_xor ^= encoder_fingerprint;
+        }
+    }
+#endif
     if (image_pixels > observed.max_image_pixels[codec]) observed.max_image_pixels[codec] = image_pixels;
     if (image_pixels > UINT64_C(1048576) / 4) observed.input_gt_1mib[codec]++;
     if (image_pixels > UINT64_C(2097152) / 4) observed.input_gt_2mib[codec]++;
@@ -173,7 +235,7 @@ static void end_encoder(int codec, cairo_surface_t* surface, int quality, int lo
 
 int guac_png_write(guac_socket* socket, guac_stream* stream, cairo_surface_t* surface) {
     if (verification_active) return real_png_write(socket, stream, surface);
-    uint64_t started = begin_encoder();
+    uint64_t started = begin_encoder(GUAC_DISPLAY_IMAGE_FORMAT_PNG);
     int status = real_png_write(socket, stream, surface);
     end_encoder(GUAC_DISPLAY_IMAGE_FORMAT_PNG, surface, -1, 1, started, status);
     return status;
@@ -186,7 +248,7 @@ int guac_webp_write(guac_socket* socket, guac_stream* stream, cairo_surface_t* s
         quality = selected_quality;
         lossless = selected_codec == BENCH_WEBP_LOSSLESS;
     }
-    uint64_t started = begin_encoder();
+    uint64_t started = begin_encoder(GUAC_DISPLAY_IMAGE_FORMAT_WEBP);
     int status = real_webp_write(socket, stream, surface, quality, lossless);
     end_encoder(GUAC_DISPLAY_IMAGE_FORMAT_WEBP, surface, quality, lossless, started, status);
     return status;
@@ -195,7 +257,7 @@ int guac_webp_write(guac_socket* socket, guac_stream* stream, cairo_surface_t* s
 int guac_jpeg_write(guac_socket* socket, guac_stream* stream, cairo_surface_t* surface, int quality) {
     if (verification_active) return real_jpeg_write(socket, stream, surface, quality);
     if (selected_codec == BENCH_JPEG) quality = selected_quality;
-    uint64_t started = begin_encoder();
+    uint64_t started = begin_encoder(GUAC_DISPLAY_IMAGE_FORMAT_JPEG);
     int status = real_jpeg_write(socket, stream, surface, quality);
     end_encoder(GUAC_DISPLAY_IMAGE_FORMAT_JPEG, surface, quality, 0, started, status);
     return status;
@@ -815,6 +877,9 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
     uint64_t pixels_min = UINT64_MAX, pixels_max = 0;
     size_t images_min = SIZE_MAX, images_max = 0;
     encoder_observation encoder_previous = { 0 }, encoder_final = { 0 };
+#ifdef BENCH_PNG_CONTROLS
+    benchmark_png_statistics png_start = { 0 }, png_end;
+#endif
     guac_rect dirty = { 0, 0, item->dirty_width, item->dirty_height };
     for (int i = -warmup; i < samples; i++) {
         fixture(pixels, item, (unsigned int) (i + warmup + 1));
@@ -829,6 +894,9 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
                 memcpy(render_previous, render_start, sizeof(render_start));
             }
             reset_encoder_observation();
+#ifdef BENCH_PNG_CONTROLS
+            png_start = benchmark_png_control_snapshot();
+#endif
         }
         output.planning_phase_mask = 0;
         double cpu_started = now(CLOCK_PROCESS_CPUTIME_ID);
@@ -908,6 +976,13 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
         }
     }
     double cpu_per_frame = cpu / samples;
+#ifdef BENCH_PNG_CONTROLS
+    png_end = benchmark_png_control_snapshot();
+    if (png_end.indexed_calls - png_start.indexed_calls != encoder_final.png_indexed_calls
+            || png_end.indexed_pixels - png_start.indexed_pixels != encoder_final.png_indexed_pixels) {
+        fprintf(stderr, "PNG control statistics disagree with image-header observations.\n"); exit(1);
+    }
+#endif
     double bytes_per_frame = (double) (output.bytes - bytes) / samples;
     qsort(elapsed, (size_t) samples, sizeof(double), compare_double);
     /* Keep timing summaries independent of the untimed replay and release
@@ -994,6 +1069,19 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
     printf("},");
     printf("\"encoder_control\":{\"codec\":\"%s\",\"quality\":%d,\"hooks_verified\":true},",
             codec_names[selected_codec], selected_quality);
+    printf("\"png_compression_control\":");
+#ifdef BENCH_PNG_CONTROLS
+    benchmark_png_control_json(stdout, &png_start, &png_end);
+    printf(",\"png_scope_observation\":{\"indexed\":{\"calls\":%" PRIu64
+            ",\"pixels\":%" PRIu64 ",\"encoded_bytes\":%" PRIu64 "},\"cairo_fallback\":{"
+            "\"calls\":%" PRIu64 ",\"pixels\":%" PRIu64 ",\"encoded_bytes\":%" PRIu64
+            ",\"payload_sum\":\"%016" PRIx64 "\",\"payload_xor\":\"%016" PRIx64 "\"}},",
+            encoder_final.png_indexed_calls, encoder_final.png_indexed_pixels, encoder_final.png_indexed_bytes,
+            encoder_final.png_fallback_calls, encoder_final.png_fallback_pixels, encoder_final.png_fallback_bytes,
+            encoder_final.png_fallback_payload_sum, encoder_final.png_fallback_payload_xor);
+#else
+    printf("null,");
+#endif
     printf("\"encoder_observation\":{\"selector_calls\":%" PRIu64 ",\"webp_lossless_calls\":%" PRIu64
             ",\"webp_lossy_calls\":%" PRIu64 ",\"summed_wrapper_ms_per_frame_mean\":%.6f,"
             "\"summed_wrapper_ms_per_frame_p95\":%.6f,\"codecs\":{",
@@ -1063,8 +1151,15 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
 }
 
 int main(int argc, char** argv) {
-    if (argc < 4 || argc > 9 || (strcmp(argv[1], "baseline") && strcmp(argv[1], "fixed")
+    if (argc < 4 || (argc > 9 && argc != 12) || (strcmp(argv[1], "baseline") && strcmp(argv[1], "fixed")
                 && strcmp(argv[1], "adaptive"))) return 1;
+#ifdef BENCH_PNG_CONTROLS
+    if (argc != 12 || !benchmark_png_control_initialize(argv[9], argv[10], argv[11])) {
+        fprintf(stderr, "PNG benchmark control initialization failed.\n"); return 1;
+    }
+#else
+    if (argc > 9) return 1;
+#endif
     int samples = atoi(argv[2]), warmup = atoi(argv[3]);
     int active_cap = argc >= 5 ? atoi(argv[4]) : 1;
     if (samples < 2 || samples > 1000 || warmup < 0 || warmup > 100) return 1;
@@ -1077,7 +1172,7 @@ int main(int argc, char** argv) {
             if (!strcmp(argv[7], codec_names[codec])) selected_codec = codec;
         if (selected_codec < 0) return 1;
     }
-    if (argc == 9) selected_quality = atoi(argv[8]);
+    if (argc >= 9) selected_quality = atoi(argv[8]);
     if (selected_quality < 0 || selected_quality > 100) return 1;
     const char* fingerprints = getenv("GUAC_BENCH_PAYLOAD_FINGERPRINTS");
     if (fingerprints != NULL && strcmp(fingerprints, "0") && strcmp(fingerprints, "1"))
