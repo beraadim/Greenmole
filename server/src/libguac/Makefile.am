@@ -117,6 +117,7 @@ libguacprivinc_HEADERS =              \
 
 noinst_HEADERS =              \
     display-builtin-cursors.h \
+    display-diagnostics.h     \
     display-plan.h            \
     display-priv.h            \
     display-workers.h         \
@@ -137,6 +138,7 @@ libguac_la_SOURCES =          \
     display.c                 \
     display-builtin-cursors.c \
     display-cursor.c          \
+    display-diagnostics.c     \
     display-flush.c           \
     display-layer.c           \
     display-layer-list.c      \

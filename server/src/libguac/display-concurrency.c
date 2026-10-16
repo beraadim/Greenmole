@@ -61,6 +61,14 @@ void guac_display_configure_worker_frame(guac_display* display,
     if (!guac_fifo_is_valid(&display->ops))
         return;
 
+    /* Only opt-in diagnostics read a high-resolution clock. This timestamp
+     * precedes publication and any inline copy/fill instructions in the plan. */
+    if (display->diagnostics_enabled) {
+        display->diagnostics_batch_started_us = guac_display_diagnostics_now();
+        if (display->diagnostics_batch_started_us == 0)
+            guac_display_diagnostics_fail(display);
+    }
+
     size_t images = 0;
     uint64_t pixels = 0;
     for (size_t i = 0; i < plan->length; i++) {

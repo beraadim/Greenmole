@@ -21,6 +21,7 @@
 #define GUAC_DISPLAY_PRIV_H
 
 #include "display-plan.h"
+#include "display-diagnostics.h"
 #include "guacamole/client.h"
 #include "guacamole/display.h"
 #include "guacamole/fifo.h"
@@ -876,6 +877,15 @@ struct guac_display {
 
     /** Partial-batch ceiling; private benchmarks may tune subsequent frames. */
     int worker_medium_limit;
+
+    /** Initialization-only opt-in; immutable while workers are running. */
+    int diagnostics_enabled;
+
+    /** Bounded numeric timing totals and timestamps, protected by ops. */
+    int diagnostics_valid;
+    uint64_t render_statistics[GUAC_DISPLAY_RENDER_STATISTIC_COUNT];
+    uint64_t diagnostics_batch_started_us;
+    uint64_t diagnostics_last_log_us;
 
     /**
      * Whether least one pending frame has been deferred due to the encoding

@@ -17,6 +17,7 @@
  * under the License.
  */
 
+#include "display-diagnostics.h"
 #include "encode-webp.h"
 #include "guacamole/error.h"
 #include "guacamole/protocol.h"
@@ -57,6 +58,9 @@ typedef struct guac_webp_stream_writer {
      */
     int buffer_size;
 
+    /** Optional thread-confined numeric timing sample. */
+    guac_display_render_sample* sample;
+
 } guac_webp_stream_writer;
 
 /**
@@ -69,7 +73,8 @@ typedef struct guac_webp_stream_writer {
 static void guac_webp_flush_data(guac_webp_stream_writer* writer) {
 
     /* Send blob */
-    guac_protocol_send_blob(writer->socket, writer->stream,
+    guac_display_diagnostics_send_blob(writer->sample,
+            writer->socket, writer->stream,
             writer->buffer, writer->buffer_size);
 
     /* Clear buffer */
@@ -94,6 +99,7 @@ static void guac_webp_stream_writer_init(guac_webp_stream_writer* writer,
         guac_socket* socket, guac_stream* stream) {
 
     writer->buffer_size = 0;
+    writer->sample = guac_display_diagnostics_current();
 
     /* Store Guacamole-specific objects */
     writer->socket = socket;

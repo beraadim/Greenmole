@@ -17,6 +17,7 @@
  * under the License.
  */
 
+#include "display-diagnostics.h"
 #include "encode-jpeg.h"
 #include "guacamole/mem.h"
 #include "guacamole/error.h"
@@ -60,6 +61,9 @@ typedef struct guac_jpeg_destination_mgr {
      */
     unsigned char buffer[GUAC_PROTOCOL_BLOB_MAX_LENGTH];
 
+    /** Optional thread-confined numeric timing sample. */
+    guac_display_render_sample* sample;
+
 } guac_jpeg_destination_mgr;
 
 /**
@@ -95,7 +99,8 @@ static boolean guac_jpeg_empty_output_buffer(j_compress_ptr cinfo) {
     guac_jpeg_destination_mgr* dest = (guac_jpeg_destination_mgr*) cinfo->dest;
 
     /* Write blob */
-    guac_protocol_send_blob(dest->socket, dest->stream,
+    guac_display_diagnostics_send_blob(dest->sample,
+            dest->socket, dest->stream,
             dest->buffer, sizeof(dest->buffer));
 
     /* Update destination offset */
@@ -120,7 +125,8 @@ static void guac_jpeg_term_destination(j_compress_ptr cinfo) {
 
     /* Write final blob, if any */
     if (dest->parent.free_in_buffer != sizeof(dest->buffer))
-        guac_protocol_send_blob(dest->socket, dest->stream, dest->buffer,
+        guac_display_diagnostics_send_blob(dest->sample,
+                dest->socket, dest->stream, dest->buffer,
                 sizeof(dest->buffer) - dest->parent.free_in_buffer);
 
 }
@@ -160,6 +166,7 @@ static void jpeg_guac_dest(j_compress_ptr cinfo, guac_socket* socket,
     /* Store Guacamole-specific objects */
     dest->socket = socket;
     dest->stream = stream;
+    dest->sample = guac_display_diagnostics_current();
 
 }
 

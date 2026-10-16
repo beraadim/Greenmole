@@ -36,6 +36,7 @@
 #include <limits.h>
 #include <cairo/cairo.h>
 #include <pthread.h>
+#include <string.h>
 
 /**
  * Returns a new Cairo surface representing the contents of the given dirty
@@ -277,8 +278,22 @@ void* guac_display_worker_thread(void* data) {
     guac_client* client = display->client;
     guac_socket* socket = client->socket;
 
+    /* The sample lives for the whole worker lifetime. It is associated only
+     * with a synchronous image stream, never with another worker's encoder. */
+    guac_display_render_sample sample;
     guac_display_plan_operation op;
     while (guac_display_worker_dequeue_and_lock(display, &op)) {
+
+        uint64_t admitted = 0;
+        if (display->diagnostics_enabled) {
+            admitted = guac_display_diagnostics_now();
+            if (display->diagnostics_batch_started_us == 0)
+                display->diagnostics_batch_started_us = admitted;
+            memset(&sample, 0, sizeof(sample));
+            sample.failed = admitted == 0;
+            sample.queue_us = guac_display_diagnostics_elapsed(
+                    display->diagnostics_batch_started_us, admitted);
+        }
 
         /* Notify any watchers of render_state that a frame is now in progress */
         guac_flag_set_and_lock(&display->render_state, GUAC_DISPLAY_RENDER_STATE_FRAME_IN_PROGRESS);
@@ -291,7 +306,14 @@ void* guac_display_worker_thread(void* data) {
         display->active_workers++;
         guac_fifo_unlock(&display->ops);
 
+        uint64_t lock_started = display->diagnostics_enabled
+            ? guac_display_diagnostics_now() : 0;
         guac_rwlock_acquire_read_lock(&display->last_frame.lock);
+        if (display->diagnostics_enabled) {
+            uint64_t locked = guac_display_diagnostics_now();
+            sample.lock_wait_us = guac_display_diagnostics_elapsed(lock_started, locked);
+            sample.failed |= lock_started == 0 || locked == 0;
+        }
         guac_display_layer* display_layer = op.layer;
         switch (op.type) {
 
@@ -330,8 +352,22 @@ void* guac_display_worker_thread(void* data) {
 
                 /* Evaluate the content-dependent PNG preference only once,
                  * sharing the result across all eligible image formats. */
+                uint64_t format_started = display->diagnostics_enabled
+                    ? guac_display_diagnostics_now() : 0;
                 guac_display_image_format format =
                     LFR_guac_display_layer_image_format(display_layer, dirty, framerate);
+                uint64_t stream_started = 0;
+                if (display->diagnostics_enabled) {
+                    stream_started = guac_display_diagnostics_now();
+                    sample.format_us = guac_display_diagnostics_elapsed(
+                            format_started, stream_started);
+                    sample.failed |= format_started == 0 || stream_started == 0;
+                    sample.format = format;
+                    sample.pixels = (uint64_t) guac_rect_width(dirty)
+                        * (uint64_t) guac_rect_height(dirty);
+                    if (!guac_display_diagnostics_set_current(&sample))
+                        sample.failed = 1;
+                }
 
                 /* Prefer WebP when reasonable */
                 if (format == GUAC_DISPLAY_IMAGE_FORMAT_WEBP)
@@ -350,6 +386,14 @@ void* guac_display_worker_thread(void* data) {
                 else
                     guac_client_stream_png(client, socket, GUAC_COMP_OVER,
                             layer, dirty->left, dirty->top, rect);
+
+                if (display->diagnostics_enabled) {
+                    guac_display_diagnostics_set_current(NULL);
+                    uint64_t streamed = guac_display_diagnostics_now();
+                    sample.stream_us = guac_display_diagnostics_elapsed(
+                            stream_started, streamed);
+                    sample.failed |= streamed == 0;
+                }
 
                 cairo_surface_destroy(rect);
                 break;
@@ -372,10 +416,16 @@ void* guac_display_worker_thread(void* data) {
 
         guac_fifo_lock(&display->ops);
 
+        if (display->diagnostics_enabled && op.type == GUAC_DISPLAY_PLAN_OPERATION_IMG)
+            guac_display_diagnostics_record_image(display, &sample);
+
         /* If we're the only active worker and there are no further operations
          * pending, we've reached the end of the frame, and this is the worker
          * that will be sending that boundary to connected users */
         if (!(display->ops.state.value & GUAC_FIFO_STATE_NONEMPTY) && display->active_workers == 1) {
+
+            uint64_t finish_started = display->diagnostics_enabled
+                ? guac_display_diagnostics_now() : 0;
 
             /* Update the mouse cursor if it's been changed since the
              * last frame */
@@ -428,6 +478,10 @@ void* guac_display_worker_thread(void* data) {
             /* This is now absolutely everything for the current frame,
              * and it's safe to flush any outstanding data */
             guac_socket_flush(client->socket);
+
+            if (display->diagnostics_enabled)
+                guac_display_diagnostics_finish_frame(display, finish_started,
+                        guac_display_diagnostics_now());
 
             /* Notify any watchers of render_state that a frame is no longer in progress */
             guac_flag_set_and_lock(&display->render_state, GUAC_DISPLAY_RENDER_STATE_FRAME_NOT_IN_PROGRESS);

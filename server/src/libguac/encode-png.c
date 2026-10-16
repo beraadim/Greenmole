@@ -17,6 +17,7 @@
  * under the License.
  */
 
+#include "display-diagnostics.h"
 #include "encode-png.h"
 #include "guacamole/mem.h"
 #include "guacamole/error.h"
@@ -62,6 +63,9 @@ typedef struct guac_png_write_state {
      */
     int buffer_size;
 
+    /** Optional thread-confined numeric timing sample. */
+    guac_display_render_sample* sample;
+
 } guac_png_write_state;
 
 /**
@@ -74,7 +78,8 @@ typedef struct guac_png_write_state {
 static void guac_png_flush_data(guac_png_write_state* write_state) {
 
     /* Send blob */
-    guac_protocol_send_blob(write_state->socket, write_state->stream,
+    guac_display_diagnostics_send_blob(write_state->sample,
+            write_state->socket, write_state->stream,
             write_state->buffer, write_state->buffer_size);
 
     /* Clear buffer */
@@ -188,6 +193,7 @@ static int guac_png_cairo_write(guac_socket* socket, guac_stream* stream,
     write_state.socket = socket;
     write_state.stream = stream;
     write_state.buffer_size = 0;
+    write_state.sample = guac_display_diagnostics_current();
 
     /* Write surface as PNG */
     if (cairo_surface_write_to_png_stream(surface,
@@ -334,6 +340,7 @@ int guac_png_write(guac_socket* socket, guac_stream* stream,
     write_state.socket = socket;
     write_state.stream = stream;
     write_state.buffer_size = 0;
+    write_state.sample = guac_display_diagnostics_current();
 
     /* Set up writer */
     png_set_write_fn(png, &write_state,

@@ -62,6 +62,7 @@ guac_display* guac_display_alloc(guac_client* client) {
     guac_flag_set(&display->render_state, GUAC_DISPLAY_RENDER_STATE_FRAME_NOT_IN_PROGRESS);
 
     /* The display is fully initialized before workers may inspect it. */
+    guac_display_diagnostics_init(display);
     guac_display_start_workers(display);
 
     return display;
