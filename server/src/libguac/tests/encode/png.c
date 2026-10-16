@@ -41,6 +41,8 @@ static int png_test_send_blob(guac_display_render_sample* sample,
         guac_socket* socket, guac_stream* stream, const void* data, int length);
 
 guac_palette* png_test_palette_alloc(cairo_surface_t* surface);
+int png_test_palette_prepare(cairo_surface_t* surface, guac_palette** palette,
+        png_byte*** rows);
 int png_test_palette_find(guac_palette* palette, int color);
 void png_test_palette_free(guac_palette* palette);
 
@@ -50,6 +52,7 @@ void png_test_palette_free(guac_palette* palette);
 #define PRIV_guac_mem_zalloc png_test_zalloc
 #define PRIV_guac_mem_free png_test_free
 #define guac_palette_alloc png_test_palette_alloc
+#define guac_palette_prepare png_test_palette_prepare
 #define guac_palette_find png_test_palette_find
 #define guac_palette_free png_test_palette_free
 #include "../../palette.c"
@@ -64,6 +67,7 @@ void png_test_palette_free(guac_palette* palette);
 #undef PRIV_guac_mem_zalloc
 #undef PRIV_guac_mem_free
 #undef guac_palette_alloc
+#undef guac_palette_prepare
 #undef guac_palette_find
 #undef guac_palette_free
 #undef guac_png_write
@@ -78,6 +82,8 @@ static void* png_test_allocations[512];
 static int png_test_live;
 static int png_test_attempts;
 static int png_test_fail_allocation;
+static int png_test_fail_allocation_again;
+static size_t png_test_largest_allocation;
 static int png_test_fail_create;
 static int png_test_fail_write;
 static int png_test_write_calls;
@@ -90,6 +96,8 @@ static void png_test_reset(void) {
     memset(png_test_allocations, 0, sizeof(png_test_allocations));
     png_test_attempts = 0;
     png_test_fail_allocation = 0;
+    png_test_fail_allocation_again = 0;
+    png_test_largest_allocation = 0;
     png_test_fail_create = 0;
     png_test_fail_write = -1;
     png_test_write_calls = 0;
@@ -99,7 +107,14 @@ static void png_test_reset(void) {
 }
 
 static void* png_test_allocate(size_t count, const size_t* factors, int zero) {
-    if (++png_test_attempts == png_test_fail_allocation) {
+    size_t bytes = 1;
+    for (size_t i = 0; i < count; i++)
+        bytes *= factors[i];
+    if (bytes > png_test_largest_allocation)
+        png_test_largest_allocation = bytes;
+    ++png_test_attempts;
+    if (png_test_attempts == png_test_fail_allocation
+            || png_test_attempts == png_test_fail_allocation_again) {
         guac_error = GUAC_STATUS_NO_MEMORY;
         guac_error_message = "Injected PNG allocation failure";
         return NULL;
@@ -219,32 +234,65 @@ static cairo_status_t png_test_cairo_read(void* closure,
     return CAIRO_STATUS_SUCCESS;
 }
 
+/** Independent first-seen oracle. Linear color lookup deliberately shares no
+ * production hash, run cache or fused-index preparation logic. */
+static int png_test_reference_palette(cairo_surface_t* surface, png_color* colors,
+        png_bytep* rows) {
+    int width = cairo_image_surface_get_width(surface);
+    int height = cairo_image_surface_get_height(surface);
+    int stride = cairo_image_surface_get_stride(surface);
+    const unsigned char* source = cairo_image_surface_get_data(surface);
+    uint32_t values[256];
+    int size = 0;
+    for (int y = 0; y < height; y++) {
+        const uint32_t* row = (const uint32_t*) source;
+        for (int x = 0; x < width; x++) {
+            uint32_t color = row[x] & 0xFFFFFFU;
+            int index;
+            for (index = 0; index < size; index++)
+                if (values[index] == color)
+                    break;
+            if (index == size) {
+                if (size == 256)
+                    return 0;
+                values[index] = color;
+                colors[index].red = color >> 16;
+                colors[index].green = (color >> 8) & 255;
+                colors[index].blue = color & 255;
+                size++;
+            }
+            rows[y][x] = (png_byte) index;
+        }
+        if (y + 1 < height)
+            source += stride;
+    }
+    return size;
+}
+
 /** Compatibility oracle: private.8's separate-per-row staging and libpng API.
  * This intentionally uses the system libpng defaults rather than a golden
  * payload tied to one particular libpng/zlib release. */
 static void png_test_reference(cairo_surface_t* surface, png_test_buffer* buffer) {
-    guac_palette* palette = cairo_image_surface_get_format(surface) == CAIRO_FORMAT_RGB24
-        ? guac_palette_alloc(surface) : NULL;
-    if (palette == NULL) {
-        CU_ASSERT_EQUAL(cairo_surface_write_to_png_stream(surface,
-                    png_test_cairo_write, buffer), CAIRO_STATUS_SUCCESS);
-        return;
-    }
     int width = cairo_image_surface_get_width(surface);
     int height = cairo_image_surface_get_height(surface);
-    int stride = cairo_image_surface_get_stride(surface);
-    unsigned char* source = cairo_image_surface_get_data(surface);
-    int bpp = palette->size <= 2 ? 1 : palette->size <= 4 ? 2
-        : palette->size <= 16 ? 4 : 8;
     png_bytep* rows = calloc((size_t) height, sizeof(*rows));
     CU_ASSERT_PTR_NOT_NULL_FATAL(rows);
     for (int y = 0; y < height; y++) {
         rows[y] = malloc((size_t) width);
         CU_ASSERT_PTR_NOT_NULL_FATAL(rows[y]);
-        for (int x = 0; x < width; x++)
-            rows[y][x] = guac_palette_find(palette,
-                    ((uint32_t*) (source + y * stride))[x] & 0xFFFFFF);
     }
+    png_color colors[256];
+    int size = cairo_image_surface_get_format(surface) == CAIRO_FORMAT_RGB24
+        ? png_test_reference_palette(surface, colors, rows) : 0;
+    if (size == 0) {
+        CU_ASSERT_EQUAL(cairo_surface_write_to_png_stream(surface,
+                    png_test_cairo_write, buffer), CAIRO_STATUS_SUCCESS);
+        for (int y = 0; y < height; y++)
+            free(rows[y]);
+        free(rows);
+        return;
+    }
+    int bpp = size <= 2 ? 1 : size <= 4 ? 2 : size <= 16 ? 4 : 8;
     png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     CU_ASSERT_PTR_NOT_NULL_FATAL(png);
     png_infop info = png_create_info_struct(png);
@@ -253,7 +301,7 @@ static void png_test_reference(cairo_surface_t* surface, png_test_buffer* buffer
         png_set_write_fn(png, buffer, png_test_reference_write, NULL);
         png_set_IHDR(png, info, width, height, bpp, PNG_COLOR_TYPE_PALETTE,
                 PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
-        png_set_PLTE(png, info, palette->colors, palette->size);
+        png_set_PLTE(png, info, colors, size);
         png_set_rows(png, info, rows);
         png_write_png(png, info, PNG_TRANSFORM_PACKING, NULL);
     }
@@ -263,7 +311,6 @@ static void png_test_reference(cairo_surface_t* surface, png_test_buffer* buffer
     for (int y = 0; y < height; y++)
         free(rows[y]);
     free(rows);
-    guac_palette_free(palette);
 }
 
 typedef struct png_test_fixture {
@@ -304,6 +351,24 @@ static void png_test_free_surface(png_test_fixture* fixture) {
     free(fixture->storage);
 }
 
+/** Generic padded RGB24 image, including a negative-stride view whose last
+ * visible row reaches the bottom of its exact backing allocation. */
+static png_test_fixture png_test_custom_surface(int width, int height, int negative) {
+    int stride = (width + 9) * 4;
+    png_test_fixture fixture = { 0 };
+    fixture.storage_size = (size_t) height * stride;
+    fixture.storage = malloc(fixture.storage_size);
+    CU_ASSERT_PTR_NOT_NULL_FATAL(fixture.storage);
+    memset(fixture.storage, 0xCD, fixture.storage_size);
+    unsigned char* origin = fixture.storage + 3 * 4;
+    if (negative)
+        origin += (height - 1) * stride;
+    fixture.surface = cairo_image_surface_create_for_data(origin,
+            CAIRO_FORMAT_RGB24, width, height, negative ? -stride : stride);
+    CU_ASSERT_EQUAL_FATAL(cairo_surface_status(fixture.surface), CAIRO_STATUS_SUCCESS);
+    return fixture;
+}
+
 /** Compare every decoded pixel independently of the compatibility encoder. */
 static void png_test_pixels(cairo_surface_t* original, png_test_buffer* png) {
     cairo_surface_t* decoded = cairo_image_surface_create_from_png_stream(
@@ -325,6 +390,188 @@ static void png_test_pixels(cairo_surface_t* original, png_test_buffer* png) {
                     ((uint32_t*) (actual + y * decoded_stride))[x] & mask);
     }
     cairo_surface_destroy(decoded);
+}
+
+/** Success is checked against a separate palette implementation and a real
+ * decoder; allocation observations are saved before running the oracle. */
+static int png_test_check_fixture(png_test_fixture* fixture, int bpp, int type) {
+    unsigned char* before = malloc(fixture->storage_size);
+    CU_ASSERT_PTR_NOT_NULL_FATAL(before);
+    memcpy(before, fixture->storage, fixture->storage_size);
+    png_test_buffer actual = { 0 }, reference = { 0 };
+    guac_socket socket = { .data = &actual };
+    CU_ASSERT_EQUAL_FATAL(png_test_write(&socket, NULL, fixture->surface), 0);
+    CU_ASSERT_EQUAL(png_test_live, 0);
+    int attempts = png_test_attempts;
+    png_test_reference(fixture->surface, &reference);
+    CU_ASSERT_EQUAL_FATAL(actual.size, reference.size);
+    CU_ASSERT_EQUAL(memcmp(actual.data, reference.data, actual.size), 0);
+    CU_ASSERT_TRUE_FATAL(actual.size > 25);
+    CU_ASSERT_EQUAL(actual.data[24], bpp);
+    CU_ASSERT_EQUAL(actual.data[25], type);
+    png_test_pixels(fixture->surface, &actual);
+    CU_ASSERT_EQUAL(memcmp(before, fixture->storage, fixture->storage_size), 0);
+    free(before);
+    free(actual.data);
+    free(reference.data);
+    return attempts;
+}
+
+/** Grayscale, former XOR collisions and deliberately colliding new-hash colors
+ * all retain first-seen palette order and identical packed output. */
+void test_encode_png__fused_palette_order_collisions_and_signed_stride() {
+    for (int pattern = 0; pattern < 3; pattern++) {
+        uint32_t colors[256];
+        int found = 0;
+        for (uint32_t color = 0; found < 256; color++) {
+            if (pattern == 0)
+                colors[found++] = color * 0x010101U;
+            else if (pattern == 1)
+                colors[found++] = (color << 12) | color;
+            else if (guac_palette_hash((int) color) == 0)
+                colors[found++] = color;
+        }
+        for (int negative = 0; negative < 2; negative++) {
+            png_test_reset();
+            png_test_fixture fixture = png_test_custom_surface(257, 19, negative);
+            unsigned char* data = cairo_image_surface_get_data(fixture.surface);
+            int stride = cairo_image_surface_get_stride(fixture.surface);
+            for (int y = 0; y < 19; y++) {
+                uint32_t* row = (uint32_t*) (data + y * stride);
+                for (int x = 0; x < 257; x++)
+                    row[x] = colors[(x * 71 + y * 19) & 255]
+                        | ((uint32_t) ((x + y) & 255) << 24);
+            }
+            CU_ASSERT_EQUAL(png_test_check_fixture(&fixture, 8, PNG_COLOR_TYPE_PALETTE), 2);
+            guac_palette* palette = png_test_palette_alloc(fixture.surface);
+            CU_ASSERT_PTR_NOT_NULL_FATAL(palette);
+            CU_ASSERT_EQUAL(palette->size, 256);
+            for (int x = 0; x < 256; x++)
+                CU_ASSERT_EQUAL(png_test_palette_find(palette,
+                            colors[(x * 71) & 255]), x);
+            uint32_t absent = 0;
+            for (;;) {
+                int present = 0;
+                for (int i = 0; i < 256; i++)
+                    present |= colors[i] == absent;
+                if (!present)
+                    break;
+                absent++;
+            }
+            CU_ASSERT_EQUAL(png_test_palette_find(palette, (int) absent), -1);
+            png_test_palette_free(palette);
+            CU_ASSERT_EQUAL(png_test_live, 0);
+            png_test_free_surface(&fixture);
+        }
+    }
+}
+
+/** Colors introduced only after the fixed prefix still choose their final
+ * packing depth, and an initially solid run can still exceed palette capacity. */
+void test_encode_png__palette_growth_after_prefix_preserves_packing() {
+    int counts[] = { 2, 4, 16, 256, 257 };
+    int depths[] = { 1, 2, 4, 8, 8 };
+    for (size_t c = 0; c < sizeof(counts) / sizeof(*counts); c++) {
+        png_test_reset();
+        png_test_fixture fixture = png_test_custom_surface(257, 19, 0);
+        unsigned char* data = cairo_image_surface_get_data(fixture.surface);
+        int stride = cairo_image_surface_get_stride(fixture.surface);
+        for (int y = 0; y < 19; y++) {
+            uint32_t* row = (uint32_t*) (data + y * stride);
+            for (int x = 0; x < 257; x++) {
+                int position = y * 257 + x;
+                row[x] = position < GUAC_PALETTE_INDEX_PREFIX_SIZE ? 0
+                    : (uint32_t) ((position - GUAC_PALETTE_INDEX_PREFIX_SIZE) % counts[c]);
+            }
+        }
+        CU_ASSERT_EQUAL(png_test_check_fixture(&fixture, depths[c],
+                    counts[c] <= 256 ? PNG_COLOR_TYPE_PALETTE : PNG_COLOR_TYPE_RGB), 2);
+        png_test_free_surface(&fixture);
+    }
+}
+
+/** Rows above the speculation cap are allocated only after palette preflight.
+ * A very tall narrow image must include pointer bytes in that cap decision. */
+void test_encode_png__speculation_bound_includes_row_table() {
+    int widths[] = { 256 - (int) sizeof(png_byte*), 257 - (int) sizeof(png_byte*), 1 };
+    int heights[] = { 256, 256, 10000 };
+    for (int fixture_index = 0; fixture_index < 3; fixture_index++) {
+        int width = widths[fixture_index], height = heights[fixture_index];
+        png_test_reset();
+        png_test_fixture fixture = png_test_custom_surface(width, height, 0);
+        unsigned char* data = cairo_image_surface_get_data(fixture.surface);
+        int stride = cairo_image_surface_get_stride(fixture.surface);
+        for (int y = 0; y < height; y++) {
+            uint32_t* row = (uint32_t*) (data + y * stride);
+            for (int x = 0; x < width; x++)
+                row[x] = (uint32_t) ((y * width + x) & 255) * 0x010101U;
+        }
+        /* The 257th color arrives after the fixed prefix has been consumed. */
+        ((uint32_t*) (data + (height - 1) * stride))[width - 1] = 0x123456U;
+        int expected = ((size_t) width + sizeof(png_byte*)) * height
+            <= GUAC_PALETTE_INDEX_MAX_BYTES ? 2 : 1;
+        CU_ASSERT_EQUAL(png_test_check_fixture(&fixture, 8, PNG_COLOR_TYPE_RGB), expected);
+        CU_ASSERT_TRUE(png_test_largest_allocation <= GUAC_PALETTE_INDEX_MAX_BYTES);
+        png_test_free_surface(&fixture);
+    }
+}
+
+/** A large ordinary high-color image rejects the palette before allocating a
+ * whole-image index buffer; the late high-color case above also stays bounded. */
+void test_encode_png__large_high_color_fallback_does_not_stage_indices() {
+    png_test_reset();
+    png_test_fixture fixture = png_test_custom_surface(1024, 128, 0);
+    unsigned char* data = cairo_image_surface_get_data(fixture.surface);
+    int stride = cairo_image_surface_get_stride(fixture.surface);
+    for (int y = 0; y < 128; y++) {
+        uint32_t* row = (uint32_t*) (data + y * stride);
+        for (int x = 0; x < 1024; x++)
+            row[x] = (uint32_t) (y * 1024 + x);
+    }
+    CU_ASSERT_EQUAL(png_test_check_fixture(&fixture, 8, PNG_COLOR_TYPE_RGB), 1);
+    CU_ASSERT_EQUAL(png_test_largest_allocation, sizeof(guac_palette));
+    png_test_free_surface(&fixture);
+}
+
+/** Optional fused staging OOM must not prevent a later Cairo fallback, and an
+ * eligible palette retries the original final allocation after preflight. */
+void test_encode_png__speculative_oom_preflights_and_retries_safely() {
+    for (int high_color = 0; high_color < 2; high_color++) {
+        png_test_reset();
+        png_test_fail_allocation = 2;
+        png_test_fixture fixture = png_test_custom_surface(257, 19, 0);
+        unsigned char* data = cairo_image_surface_get_data(fixture.surface);
+        int stride = cairo_image_surface_get_stride(fixture.surface);
+        for (int y = 0; y < 19; y++) {
+            uint32_t* row = (uint32_t*) (data + y * stride);
+            for (int x = 0; x < 257; x++)
+                row[x] = (uint32_t) ((y * 257 + x) & 255) * 0x010101U;
+        }
+        if (high_color)
+            ((uint32_t*) (data + 18 * stride))[256] = 0x123456U;
+        CU_ASSERT_EQUAL(png_test_check_fixture(&fixture, 8,
+                    high_color ? PNG_COLOR_TYPE_RGB : PNG_COLOR_TYPE_PALETTE),
+                high_color ? 2 : 3);
+        png_test_free_surface(&fixture);
+    }
+}
+
+/** If both optional and final allocations fail, there is no partial output or
+ * leaked palette. This is the original indexed-staging allocation failure. */
+void test_encode_png__speculative_and_final_oom_cleans_up() {
+    png_test_reset();
+    png_test_fail_allocation = 2;
+    png_test_fail_allocation_again = 3;
+    png_test_fixture fixture = png_test_surface(17, 257, 0);
+    png_test_buffer output = { 0 };
+    guac_socket socket = { .data = &output };
+    CU_ASSERT_EQUAL(png_test_write(&socket, NULL, fixture.surface), -1);
+    CU_ASSERT_EQUAL(guac_error, GUAC_STATUS_NO_MEMORY);
+    CU_ASSERT_EQUAL(png_test_attempts, 3);
+    CU_ASSERT_EQUAL(png_test_live, 0);
+    CU_ASSERT_EQUAL(output.size, 0);
+    free(output.data);
+    png_test_free_surface(&fixture);
 }
 
 static void png_test_success(int colors, int height, int alpha, int expected_bpp) {

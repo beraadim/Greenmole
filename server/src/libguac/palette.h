@@ -38,6 +38,24 @@ typedef struct guac_palette {
 
 } guac_palette;
 
+/** Maximum speculative row-table and index bytes before palette eligibility. */
+#define GUAC_PALETTE_INDEX_MAX_BYTES (64U * 1024U)
+
+/**
+ * Prepares an RGB24 palette and the contiguous row table/index bytes required
+ * by libpng. First-seen row-major color order is retained. Small images fuse
+ * construction and indexing with bounded speculation; larger images retain
+ * the preflight pass before allocating their full row block.
+ *
+ * @return
+ *     One on success, zero if the caller should use the Cairo fallback (more
+ *     than 256 colors or palette OOM), or -1 if final index allocation fails.
+ *     On failure both output pointers are NULL. On success free rows with
+ *     guac_mem_free() and palette with guac_palette_free().
+ */
+int guac_palette_prepare(cairo_surface_t* surface, guac_palette** palette,
+        png_byte*** rows);
+
 guac_palette* guac_palette_alloc(cairo_surface_t* surface);
 int guac_palette_find(guac_palette* palette, int color);
 void guac_palette_free(guac_palette* palette);

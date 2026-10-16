@@ -278,15 +278,12 @@ int guac_png_write(guac_socket* socket, guac_stream* stream,
     png_byte** png_rows;
     int bpp;
 
-    int x, y;
-
     guac_png_write_state write_state;
 
     /* Get image surface properties and data */
     cairo_format_t format = cairo_image_surface_get_format(surface);
     int width = cairo_image_surface_get_width(surface);
     int height = cairo_image_surface_get_height(surface);
-    int stride = cairo_image_surface_get_stride(surface);
     unsigned char* data = cairo_image_surface_get_data(surface);
 
     /* If not RGB24, use Cairo PNG writer */
@@ -296,11 +293,15 @@ int guac_png_write(guac_socket* socket, guac_stream* stream,
     /* Flush pending operations to surface */
     cairo_surface_flush(surface);
 
-    /* Attempt to build palette */
-    guac_palette* palette = guac_palette_alloc(surface);
+    /* Prepare palette and index bytes together where bounded speculation is
+     * possible. More colorful images retain the existing Cairo fallback. */
+    guac_palette* palette;
+    int prepared = guac_palette_prepare(surface, &palette, &png_rows);
+    if (prepared < 0)
+        return -1;
 
     /* If not possible, resort to Cairo PNG writer */
-    if (palette == NULL)
+    if (!prepared)
         return guac_png_cairo_write(socket, stream, surface);
 
     /* Calculate BPP from palette size */
@@ -309,23 +310,8 @@ int guac_png_write(guac_socket* socket, guac_stream* stream,
     else if (palette->size <= 16) bpp = 4;
     else                          bpp = 8;
 
-    /* Store the row table and indexed pixels in one allocation. The table is
-     * naturally aligned at the start; byte-sized pixels follow it. Acquiring
-     * this block before setjmp() keeps its automatic pointer unchanged across
-     * a libpng longjmp, so error cleanup can reliably release all row data. */
-    size_t row_size;
-    if (guac_mem_ckd_add(&row_size, sizeof(png_byte*), (size_t) width)) {
-        guac_palette_free(palette);
-        guac_error = GUAC_STATUS_NO_MEMORY;
-        guac_error_message = "PNG row storage size overflow";
-        return -1;
-    }
-
-    png_rows = (png_byte**) guac_mem_alloc(row_size, (size_t) height);
-    if (png_rows == NULL) {
-        guac_palette_free(palette);
-        return -1;
-    }
+    /* Both owned pointers are acquired before setjmp() and remain unchanged
+     * through libpng calls, preserving cleanup after any output longjmp. */
 
     /* Set up PNG writer */
     png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
@@ -367,32 +353,6 @@ int guac_png_write(guac_socket* socket, guac_stream* stream,
     png_set_write_fn(png, &write_state,
             guac_png_write_handler,
             guac_png_flush_handler);
-
-    /* Copy data from surface into the contiguous indexed pixel region. */
-    png_byte* row = (png_byte*) (png_rows + height);
-    for (y=0; y<height; y++) {
-
-        png_rows[y] = row;
-
-        /* Copy data from surface into current row */
-        for (x=0; x<width; x++) {
-
-            /* Get pixel color */
-            int color = ((uint32_t*) data)[x] & 0xFFFFFF;
-
-            /* Set index in row */
-            row[x] = guac_palette_find(palette, color);
-
-        }
-
-        /* A subrectangle may reach the bottom of a larger surface with a
-         * nonzero X origin. Avoid forming an unused pointer beyond its backing
-         * allocation after the final row. */
-        if (y + 1 < height)
-            data += stride;
-        row += width;
-
-    }
 
     /* Write image info */
     png_set_IHDR(
