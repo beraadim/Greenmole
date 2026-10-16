@@ -27,6 +27,7 @@
 #include "guacamole/display.h"
 #include "guacamole/fifo.h"
 #include "guacamole/layer.h"
+#include "guacamole/mem.h"
 #include "guacamole/proctitle.h"
 #include "guacamole/protocol-types.h"
 #include "guacamole/protocol.h"
@@ -157,10 +158,9 @@ static int guac_display_suggest_quality(guac_client* client) {
 }
 
 /**
- * Guesses whether a rectangle within a particular layer would be better
- * compressed as PNG or using a lossy format like JPEG. Positive values
- * indicate PNG is likely to be superior, while negative values indicate the
- * opposite.
+ * Returns whether a rectangle is preferred as PNG under the existing adjacent
+ * pixel repetition heuristic. The decision is identical to a complete scan,
+ * but rows after a mathematically certain decision need not be read.
  *
  * @param layer
  *     The layer containing the image data to check.
@@ -169,60 +169,72 @@ static int guac_display_suggest_quality(guac_client* client) {
  *     The rect to check within the given layer.
  *
  * @return
- *     Positive values if PNG compression is likely to perform better than
- *     lossy alternatives, or negative values if PNG is likely to perform
- *     worse.
+ *     Non-zero if PNG is preferred, zero otherwise. Empty rectangles retain
+ *     the existing PNG preference.
  */
-static int LFR_guac_display_layer_png_optimality(guac_display_layer* layer,
+static int LFR_guac_display_layer_prefers_png(guac_display_layer* layer,
         const guac_rect* rect) {
 
-    int x, y;
+    int64_t width = (int64_t) rect->right - rect->left;
+    int64_t height = (int64_t) rect->bottom - rect->top;
+    if (width <= 0 || height <= 0)
+        return 1;
 
-    int num_same = 0;
-    int num_different = 1;
+    /* There are no horizontal comparisons in a one-pixel-wide image. The
+     * original different count starts at one, so that image does not prefer
+     * PNG under this heuristic, regardless of its row count. */
+    if (width == 1)
+        return 0;
 
-    /* Get buffer from layer */
+    /* Bound all counters before obtaining the source pointer. The extra one
+     * accounts for the original different-count bias and guarantees that
+     * different + remaining and same + remaining cannot overflow. Valid
+     * display rectangles are bounded by the display's maximum dimensions. */
+    size_t comparisons, biased_comparisons;
+    if (guac_mem_ckd_mul(&comparisons, (size_t) (width - 1), (size_t) height)
+            || guac_mem_ckd_add(&biased_comparisons, comparisons, (size_t) 1))
+        return 1;
+
+    uint64_t same = 0;
+    uint64_t different = 1;
+    uint64_t remaining = comparisons;
     size_t stride = layer->last_frame.buffer_stride;
     const unsigned char* buffer = GUAC_DISPLAY_LAYER_STATE_CONST_BUFFER(layer->last_frame, *rect);
 
-    /* Image must be at least 1x1 */
-    if (rect->right - rect->left < 1 || rect->bottom - rect->top< 1)
-        return 0;
+    for (int64_t y = 0; y < height; y++) {
 
-    /* For each row */
-    for (y = rect->top; y < rect->bottom; y++) {
-
-        uint32_t* row = (uint32_t*) buffer;
+        const uint32_t* row = (const uint32_t*) buffer;
         uint32_t last_pixel = *(row++) | 0xFF000000;
-
-        /* For each pixel in current row */
-        for (x = rect->left + 1; x < rect->right; x++) {
-
-            /* Get next pixel */
+        for (int64_t x = 1; x < width; x++) {
             uint32_t current_pixel = *(row++) | 0xFF000000;
-
-            /* Update same/different counts according to pixel value */
             if (current_pixel == last_pixel)
-                num_same++;
+                same++;
             else
-                num_different++;
-
+                different++;
             last_pixel = current_pixel;
-
         }
 
-        /* Advance to next row */
-        buffer += stride;
+        remaining -= (uint64_t) (width - 1);
 
+        /* Test-only structural observation; absent from production builds. */
+#ifdef GUAC_DISPLAY_CLASSIFY_ROW
+        GUAC_DISPLAY_CLASSIFY_ROW((uint64_t) (width - 1));
+#endif
+
+        /* The old score was floor(256 * same / different) - 1024, whose
+         * nonnegative predicate is exactly same >= 4 * different. Test both
+         * possible extreme completions once per row, never per pixel. Divide
+         * by four instead of scaling counters to avoid overflow. */
+        if (same / 4 >= different + remaining)
+            return 1;
+        if ((same + remaining) / 4 < different)
+            return 0;
+
+        if (y + 1 < height)
+            buffer += stride;
     }
 
-    /* Return rough approximation of optimality for PNG compression. As PNG
-     * leverages lossless DEFLATE compression (which works by reducing the
-     * number of bytes required to represent repeated data), an approximation
-     * of the amount of repeated image data within the image is a reasonable
-     * approximation for how well an image will compress. */
-    return 0x100 * num_same / num_different - 0x400;
-
+    return same / 4 >= different;
 }
 
 /**
@@ -259,7 +271,7 @@ guac_display_image_format LFR_guac_display_layer_image_format(guac_display_layer
     /* Avoid inspecting pixel data at all if no alternative format is usable.
      * WebP can still be used in its lossless mode for lossless layers. */
     if ((!use_webp && !use_jpeg)
-            || LFR_guac_display_layer_png_optimality(layer, rect) >= 0)
+            || LFR_guac_display_layer_prefers_png(layer, rect))
         return GUAC_DISPLAY_IMAGE_FORMAT_PNG;
 
     /* Retain the existing preference for WebP over JPEG. */
