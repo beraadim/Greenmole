@@ -23,6 +23,7 @@ import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { trackBrowserProcess } from './benchmarks/browser-process.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const options = { baseline: '1.6.1-private.11', candidate: '6046fa964', samples: 4,
@@ -50,6 +51,8 @@ const versions = ['baseline', 'candidate'].map(name => {
         modules_sha256: Object.fromEntries(modules.map(module => [module.file, module.sha256])) };
 });
 const driverPath = fileURLToPath(import.meta.url), driverHash = hash(await readFile(driverPath));
+const processHelperPath = path.join(root, 'scripts/benchmarks/browser-process.mjs');
+const processHelperHash = hash(await readFile(processHelperPath));
 
 /** Only a real native BYOB byte stream is measured. No image decoder, timers,
  * JavaScript Base64 polyfill or instrumentation substitutes for that stream. */
@@ -136,11 +139,12 @@ async function probe(config) {
 }
 
 const temporary = await mkdtemp(path.join(tmpdir(), 'guacamole-byob-study-'));
-let browser, socket;
+let browser, socket, stopBrowser;
 try {
     browser = spawn(options.browser, ['--headless', '--remote-debugging-address=127.0.0.1', '--remote-debugging-port=0',
         '--user-data-dir=' + path.join(temporary, 'profile'), '--disable-background-networking', '--disable-component-update',
         '--disable-extensions', '--no-first-run', '--no-default-browser-check', 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+    stopBrowser = trackBrowserProcess(browser);
     const endpoint = await new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error('Chrome did not start')), 10000);
         let output = '';
@@ -176,6 +180,7 @@ try {
             awaitPromise: true, returnByValue: true } }));
     });
     if (hash(await readFile(driverPath)) !== driverHash) throw new Error('Study driver changed while measuring');
+    if (hash(await readFile(processHelperPath)) !== processHelperHash) throw new Error('Browser lifecycle helper changed while measuring');
     const summary = [...new Set(result.observations.map(row => row.size))].map(size => {
         const means = Object.fromEntries(['baseline', 'candidate'].map(name => {
             const values = result.observations.filter(row => row.size === size && row.version === name);
@@ -186,6 +191,7 @@ try {
     const report = { schema: 'guacamole-explicit-byob-study-v1', created_at: new Date().toISOString(),
         browser: browserVersion.Browser, platform: process.platform + '-' + process.arch,
         driver_sha256: driverHash, browser_probe_sha256: hash(probe.toString()),
+        process_helper_sha256: processHelperHash,
         versions: versions.map(({ source, ...version }) => version), samples_per_version: options.samples,
         method: 'Actual native BYOB ReadableStream, canonical independent blob, offset3, reused returned backing buffer; 2countedverificationreads and128uncountedwarmupreads per version/size; alternating A/B and B/A order.',
         limitations: ['Synthetic generic BYOB consumer, not ImageDecoder or network performance.',
@@ -198,12 +204,10 @@ try {
 }
 finally {
     socket?.close();
-    if (browser && browser.exitCode === null) {
-        const exited = new Promise(resolve => browser.once('exit', resolve)); browser.kill('SIGTERM');
-        let timeout;
-        try { await Promise.race([exited, new Promise(resolve => { timeout = setTimeout(() => { browser.kill('SIGKILL'); resolve(); }, 3000); })]); }
-        finally { clearTimeout(timeout); }
-        await exited;
+    try {
+        if (stopBrowser && !await stopBrowser()) throw new Error('Browser did not stop within the bounded cleanup deadline');
     }
-    await rm(temporary, { recursive: true, force: true });
+    finally {
+        await rm(temporary, { recursive: true, force: true });
+    }
 }
