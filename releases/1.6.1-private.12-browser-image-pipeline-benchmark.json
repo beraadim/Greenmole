@@ -51,7 +51,7 @@
     "final_client_component_tree": "b400738a1880251b04255e867e6819f27f7edda9",
     "final_javascript_modules_tree": "8e49dcb8593389c0aeaf19780223a1b4bb7ba17c",
     "final_replay_client_bundle_sha256": "e787f05bf4d74a5344ff9685bda500d5efb9430f1efd7fbad4ba6ae7c5b49224",
-    "equivalence": "The main record captured working-tree revision 3dfbedc494141733a76978cc6b9b906688894ee3 with modified=false. Its entire client component tree and replay module tree are byte-identical to final implementation bb94cc2370419cb628c0b1600b149a75502406fb and the client source tree at evidence creation; both replay source bundle hashes equal the final bundle. Later changes only affect standalone study tooling/release evidence, not these client sources. Recorded revisions are retained without relabeling.",
+    "equivalence": "The main record captured working-tree revision 3dfbedc494141733a76978cc6b9b906688894ee3 with modified=false. Its entire client component tree and replay module tree are byte-identical to final implementation bb94cc2370419cb628c0b1600b149a75502406fb and the client source tree at evidence creation; the main candidate bundle and both diagnostic-on label bundles equal the final bundle; the recorded private.11 baseline remains a different bundle. Later changes only affect standalone study tooling/release evidence, not these client sources. Recorded revisions are retained without relabeling.",
     "baseline_javascript_modules_tree": "0e6b0a7a43341417228c53135e9ff34636b0ba56",
     "production_input_stream_matches_private11": true
   },
