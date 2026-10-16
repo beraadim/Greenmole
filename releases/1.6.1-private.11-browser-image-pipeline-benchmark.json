@@ -1,0 +1,775 @@
+{
+  "schema": "guacamole-browser-image-pipeline-evidence-v1",
+  "harness_source_revision": "0761e433f74dceaad4d4cd45c90aad16ecea5ba1",
+  "browser_client_bundle_sha256": "2dae0180319a730c16e417619563bc9bfe9653c8d6171cb60868138a10b81b06",
+  "native_payload_source": {
+    "source_revision": "e1d2762776905f68b5a35b1b957b82b35a02311b",
+    "image_id": "sha256:737d50e9c81e6a0c3560d9d9c17336977e35ec91963eec5b1bd330dbe57fe0e6",
+    "generator": "scripts/benchmarks/export-image-assets.c",
+    "generator_sha256": "da2122af04c4d886d050ea50db5b920406da2a201fab485325d0f8344639a1e9",
+    "encoder_note": "Actual guac_png_write/guac_webp_write and real blob serialization to a discard socket. WebP is lossy quality90, method2; PNG uses the image production policy. Browser replay constructs img/blob/end/sync instructions around these encoded bytes. One sequential encode time per asset is informational, not a performance comparison."
+  },
+  "production_compression_policy_changed": false,
+  "validated_checks": {
+    "driver_helpers_replay_client_module_and_fixture_hashes": true,
+    "native_generator_and_control_source_hashes": true,
+    "payload_sha256_and_exact_protocol_bytes_fragments": true,
+    "alternating_A_B_then_B_A_order": true,
+    "ordered_exactly_once_acks_and_image_draw_metadata": true,
+    "all_canonical_RGB_native_reference_hashes_equal": true,
+    "sender_and_browser_causal_timestamp_ordering": true,
+    "timestamp_derived_stage_quantiles_rates_and_summary_means_recomputed": true,
+    "all_complete_display_queues_drained": true,
+    "png_source_hashes_and_webp_payloads_unchanged_by_level1": true,
+    "limit": "Per-blob gaps/input-probe/draw-call aggregates are retained but their individual event timestamps are not all in the record; their internal quantiles were checked through frozen source/nearest-rank tests rather than reconstructed from missing individual events.",
+    "final_private11_export_all20_assets_and_geometry_byte_equivalent_to_control": true
+  },
+  "audit_counts": {
+    "same_client_same_payload_control": {
+      "timing_runs": 192,
+      "per_frame_verification_runs": 12,
+      "total_display_frames": 2712,
+      "measured_frames": 2304,
+      "image_draws": 152776,
+      "exact_checked_rgba_pixels": 279134208,
+      "ping_echoes": 224,
+      "deferred_ping_echoes": 224,
+      "actual_decoder_format_counts": {
+        "BGRX": 89681,
+        "I420": 63095
+      },
+      "frames_started_over_0_51_ms_before_target": 45,
+      "maximum_source_target_early_ms": 1.4736250000059954
+    },
+    "png_level1_study": {
+      "timing_runs": 96,
+      "per_frame_verification_runs": 6,
+      "total_display_frames": 1356,
+      "measured_frames": 1152,
+      "image_draws": 76388,
+      "exact_checked_rgba_pixels": 139567104,
+      "ping_echoes": 8,
+      "deferred_ping_echoes": 8,
+      "actual_decoder_format_counts": {
+        "BGRX": 76388
+      },
+      "frames_started_over_0_51_ms_before_target": 15,
+      "maximum_source_target_early_ms": 1.3423750000001746
+    }
+  },
+  "control_profile_observed_ranges": [
+    {
+      "profile": "healthy",
+      "achieved_protocol_bytes_per_second": {
+        "min": 532351.4990957205,
+        "median": 6103767.3677000115,
+        "max": 26271320.78862941
+      },
+      "per_run_p95_send_gap_ms": {
+        "min": 0.030750000005355105,
+        "median": 7.321583500008273,
+        "max": 16.984124999988126
+      },
+      "maximum_pending_display_frames": 1,
+      "maximum_sampled_oldest_frame_age_ms": 12,
+      "maximum_started_unacknowledged_frames": 2,
+      "maximum_source_schedule_delay_ms": 1.8422499999996944
+    },
+    {
+      "profile": "lan",
+      "achieved_protocol_bytes_per_second": {
+        "min": 533044.4478410598,
+        "median": 5875503.04797034,
+        "max": 12535437.552391596
+      },
+      "per_run_p95_send_gap_ms": {
+        "min": 1.1782079999975394,
+        "median": 5.946645999998509,
+        "max": 16.373875000000226
+      },
+      "maximum_pending_display_frames": 1,
+      "maximum_sampled_oldest_frame_age_ms": 3,
+      "maximum_started_unacknowledged_frames": 2,
+      "maximum_source_schedule_delay_ms": 195.64587500000198
+    },
+    {
+      "profile": "constrained",
+      "achieved_protocol_bytes_per_second": {
+        "min": 529726.5100695585,
+        "median": 1251444.8210308054,
+        "max": 1256941.7461121539
+      },
+      "per_run_p95_send_gap_ms": {
+        "min": 11.19512500000019,
+        "median": 14.70141650000005,
+        "max": 15.099249999999302
+      },
+      "maximum_pending_display_frames": 1,
+      "maximum_sampled_oldest_frame_age_ms": 4,
+      "maximum_started_unacknowledged_frames": 2,
+      "maximum_source_schedule_delay_ms": 3834.7983749999985
+    },
+    {
+      "profile": "jitter",
+      "achieved_protocol_bytes_per_second": {
+        "min": 482475.9296172858,
+        "median": 2505696.563120435,
+        "max": 2550763.011219242
+      },
+      "per_run_p95_send_gap_ms": {
+        "min": 12.044500000003609,
+        "median": 14.349187499999971,
+        "max": 20.090250000008382
+      },
+      "maximum_pending_display_frames": 2,
+      "maximum_sampled_oldest_frame_age_ms": 6,
+      "maximum_started_unacknowledged_frames": 3,
+      "maximum_source_schedule_delay_ms": 1811.8710000000028
+    }
+  ],
+  "control_slot_differences": [
+    {
+      "scenario": "png-1",
+      "profile": "healthy",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 4.825000047683716,
+        "candidate": 4.599999904632568,
+        "difference_ms": -0.22500014305114746,
+        "percent": -4.6632153539389245
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 5.912864750002086,
+        "candidate": 5.9778125000013915,
+        "difference_ms": 0.06494774999930542,
+        "percent": 1.0984142669470411
+      }
+    },
+    {
+      "scenario": "png-1",
+      "profile": "lan",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 5.299999952316284,
+        "candidate": 4.950000047683716,
+        "difference_ms": -0.34999990463256836,
+        "percent": -6.6037718449338145
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 6.755177249996905,
+        "candidate": 6.837458249999941,
+        "difference_ms": 0.08228100000303584,
+        "percent": 1.2180435384293364
+      }
+    },
+    {
+      "scenario": "png-1",
+      "profile": "constrained",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 10.24999988079071,
+        "candidate": 10.174999952316284,
+        "difference_ms": -0.07499992847442627,
+        "percent": -0.7317066277725711
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 31.934551999994255,
+        "candidate": 31.966093750006166,
+        "difference_ms": 0.03154175001191106,
+        "percent": 0.09876997808491798
+      }
+    },
+    {
+      "scenario": "png-1",
+      "profile": "jitter",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 24.725000023841858,
+        "candidate": 24.399999976158142,
+        "difference_ms": -0.3250000476837158,
+        "percent": -1.3144592411337688
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 45.41595824999604,
+        "candidate": 45.103958249995685,
+        "difference_ms": -0.3120000000003529,
+        "percent": -0.6869831927423443
+      }
+    },
+    {
+      "scenario": "png-40",
+      "profile": "healthy",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 2.8999998569488525,
+        "candidate": 2.825000047683716,
+        "difference_ms": -0.07499980926513672,
+        "percent": -2.5862004470595217
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 4.013343750000331,
+        "candidate": 4.292364499991436,
+        "difference_ms": 0.2790207499911048,
+        "percent": 6.952326224014123
+      }
+    },
+    {
+      "scenario": "png-40",
+      "profile": "lan",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 4.3500001430511475,
+        "candidate": 4.199999928474426,
+        "difference_ms": -0.1500002145767212,
+        "percent": -3.4482806814693356
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 5.6163857499984715,
+        "candidate": 5.687854000000016,
+        "difference_ms": 0.07146825000154422,
+        "percent": 1.2724953944191542
+      }
+    },
+    {
+      "scenario": "png-40",
+      "profile": "constrained",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 19.325000166893005,
+        "candidate": 19.450000047683716,
+        "difference_ms": 0.12499988079071045,
+        "percent": 0.6468299079492708
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 41.409853999999314,
+        "candidate": 40.95914574999847,
+        "difference_ms": -0.4507082500008437,
+        "percent": -1.0884082083478275
+      }
+    },
+    {
+      "scenario": "png-40",
+      "profile": "jitter",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 24.77500009536743,
+        "candidate": 24.199999809265137,
+        "difference_ms": -0.5750002861022949,
+        "percent": -2.3208891377958527
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 45.77043725000658,
+        "candidate": 45.85860425000669,
+        "difference_ms": 0.08816700000011224,
+        "percent": 0.19262870380400302
+      }
+    },
+    {
+      "scenario": "png-128",
+      "profile": "healthy",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 7.349999904632568,
+        "candidate": 7.075000047683716,
+        "difference_ms": -0.27499985694885254,
+        "percent": -3.741494700911836
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 8.575490000001082,
+        "candidate": 8.211437250008203,
+        "difference_ms": -0.3640527499928794,
+        "percent": -4.245270532562378
+      }
+    },
+    {
+      "scenario": "png-128",
+      "profile": "lan",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 8.125,
+        "candidate": 8.275000095367432,
+        "difference_ms": 0.15000009536743164,
+        "percent": 1.846155019906851
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 9.712302000004911,
+        "candidate": 9.79353075000563,
+        "difference_ms": 0.08122875000071872,
+        "percent": 0.8363490962356571
+      }
+    },
+    {
+      "scenario": "png-128",
+      "profile": "constrained",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 53.97500002384186,
+        "candidate": 53.75,
+        "difference_ms": -0.2250000238418579,
+        "percent": -0.4168597012366296
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 504.53515650000327,
+        "candidate": 504.65176075000363,
+        "difference_ms": 0.11660425000036412,
+        "percent": 0.023111223964897946
+      }
+    },
+    {
+      "scenario": "png-128",
+      "profile": "jitter",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 47.84999990463257,
+        "candidate": 47.449999928474426,
+        "difference_ms": -0.3999999761581421,
+        "percent": -0.8359456153717073
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 152.4156767500017,
+        "candidate": 152.3882709999957,
+        "difference_ms": -0.027405750005982554,
+        "percent": -0.017980925971896294
+      }
+    },
+    {
+      "scenario": "webp-1",
+      "profile": "healthy",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 14.5,
+        "candidate": 14.675000071525574,
+        "difference_ms": 0.17500007152557373,
+        "percent": 1.2068970450039567
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 15.063396000002285,
+        "candidate": 15.083708500000284,
+        "difference_ms": 0.02031249999799911,
+        "percent": 0.1348467503476376
+      }
+    },
+    {
+      "scenario": "webp-1",
+      "profile": "lan",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 32.97499990463257,
+        "candidate": 33.10000002384186,
+        "difference_ms": 0.12500011920928955,
+        "percent": 0.37907541947173323
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 227.8598857500001,
+        "candidate": 227.60690624999916,
+        "difference_ms": -0.25297950000094716,
+        "percent": -0.1110241494101807
+      }
+    },
+    {
+      "scenario": "webp-1",
+      "profile": "constrained",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 318.6750000715256,
+        "candidate": 316.77500009536743,
+        "difference_ms": -1.899999976158142,
+        "percent": -0.5962187105143777
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 4146.229656499997,
+        "candidate": 4145.753562499994,
+        "difference_ms": -0.47609400000328606,
+        "percent": -0.011482576688845947
+      }
+    },
+    {
+      "scenario": "webp-1",
+      "profile": "jitter",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 180.200000166893,
+        "candidate": 178.3750001192093,
+        "difference_ms": -1.8250000476837158,
+        "percent": -1.0127636215280156
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 1987.4906562500028,
+        "candidate": 1984.9341874999982,
+        "difference_ms": -2.5564687500045693,
+        "percent": -0.128627963204019
+      }
+    },
+    {
+      "scenario": "webp-40",
+      "profile": "healthy",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 3.2499998807907104,
+        "candidate": 3.0999999046325684,
+        "difference_ms": -0.1499999761581421,
+        "percent": -4.615384051080265
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 4.407260499995573,
+        "candidate": 4.681177250005021,
+        "difference_ms": 0.27391675000944815,
+        "percent": 6.215125019492796
+      }
+    },
+    {
+      "scenario": "webp-40",
+      "profile": "lan",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 10.87500011920929,
+        "candidate": 10.924999952316284,
+        "difference_ms": 0.04999983310699463,
+        "percent": 0.4597685752543244
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 12.191281250004977,
+        "candidate": 12.221853749993898,
+        "difference_ms": 0.030572499988920754,
+        "percent": 0.25077347788123805
+      }
+    },
+    {
+      "scenario": "webp-40",
+      "profile": "constrained",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 98.22500014305115,
+        "candidate": 101.10000014305115,
+        "difference_ms": 2.875,
+        "percent": 2.9269534190002133
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 1143.5441877499998,
+        "candidate": 1145.5724997499938,
+        "difference_ms": 2.0283119999940027,
+        "percent": 0.17737067108747614
+      }
+    },
+    {
+      "scenario": "webp-40",
+      "profile": "jitter",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 65.5,
+        "candidate": 65.22499990463257,
+        "difference_ms": -0.27500009536743164,
+        "percent": -0.4198474738434071
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 471.0331664999976,
+        "candidate": 470.6813334999915,
+        "difference_ms": -0.3518330000060814,
+        "percent": -0.07469389100991962
+      }
+    },
+    {
+      "scenario": "webp-128",
+      "profile": "healthy",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 6.975000023841858,
+        "candidate": 7.1499998569488525,
+        "difference_ms": 0.17499983310699463,
+        "percent": 2.5089581721693532
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 8.142646250000325,
+        "candidate": 8.359801999993579,
+        "difference_ms": 0.21715574999325327,
+        "percent": 2.6668940701340746
+      }
+    },
+    {
+      "scenario": "webp-128",
+      "profile": "lan",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 32.625,
+        "candidate": 32.875,
+        "difference_ms": 0.25,
+        "percent": 0.7662835249042146
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 220.7615210000058,
+        "candidate": 220.32823950000056,
+        "difference_ms": -0.43328150000525056,
+        "percent": -0.19626676698120735
+      }
+    },
+    {
+      "scenario": "webp-128",
+      "profile": "constrained",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 315.4499999284744,
+        "candidate": 311.22500002384186,
+        "difference_ms": -4.224999904632568,
+        "percent": -1.3393564449486608
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 4075.479010500003,
+        "candidate": 4074.177020749994,
+        "difference_ms": -1.3019897500089428,
+        "percent": -0.03194691339728449
+      }
+    },
+    {
+      "scenario": "webp-128",
+      "profile": "jitter",
+      "browser_dispatch_to_ack_p95": {
+        "baseline": 162.125,
+        "candidate": 162.45000004768372,
+        "difference_ms": 0.3250000476837158,
+        "percent": 0.20046263542557646
+      },
+      "scheduled_source_due_to_ack_p95": {
+        "baseline": 1938.009104499999,
+        "candidate": 1936.3841357499914,
+        "difference_ms": -1.6249687500076107,
+        "percent": -0.08384732281362775
+      }
+    }
+  ],
+  "png_level1_study": {
+    "PNG_asset_bytes": {
+      "baseline": 14012,
+      "candidate": 22545
+    },
+    "PNG_asset_bytes_change_percent": 60.897801884099344,
+    "production_policy_unchanged": true,
+    "differences": [
+      {
+        "scenario": "png-1",
+        "profile": "healthy",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 4.550000071525574,
+          "candidate": 4.625,
+          "difference_ms": 0.07499992847442627,
+          "percent": 1.6483500504491087
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 5.510801750001292,
+          "candidate": 5.6044064999997545,
+          "difference_ms": 0.09360474999846247,
+          "percent": 1.6985686338370005
+        }
+      },
+      {
+        "scenario": "png-1",
+        "profile": "lan",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 5.1249998807907104,
+          "candidate": 5.474999785423279,
+          "difference_ms": 0.34999990463256836,
+          "percent": 6.829266590706118
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 6.9181872499993915,
+          "candidate": 7.12320850000026,
+          "difference_ms": 0.20502125000086835,
+          "percent": 2.9635111423283083
+        }
+      },
+      {
+        "scenario": "png-1",
+        "profile": "constrained",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 10.100000143051147,
+          "candidate": 17.62499988079071,
+          "difference_ms": 7.524999737739563,
+          "percent": 74.50494684316219
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 31.724677250000013,
+          "candidate": 39.39753100000087,
+          "difference_ms": 7.672853750000854,
+          "percent": 24.185758264887788
+        }
+      },
+      {
+        "scenario": "png-1",
+        "profile": "jitter",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 24.90000009536743,
+          "candidate": 24.75,
+          "difference_ms": -0.15000009536743164,
+          "percent": -0.6024100192487095
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 45.361020999999596,
+          "candidate": 45.630177249999406,
+          "difference_ms": 0.2691562499998099,
+          "percent": 0.5933646202536145
+        }
+      },
+      {
+        "scenario": "png-40",
+        "profile": "healthy",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 2.6750001907348633,
+          "candidate": 3.100000023841858,
+          "difference_ms": 0.42499983310699463,
+          "percent": 15.887843095451919
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 4.133031250000613,
+          "candidate": 4.077167000000827,
+          "difference_ms": -0.0558642499997859,
+          "percent": -1.3516532206181022
+        }
+      },
+      {
+        "scenario": "png-40",
+        "profile": "lan",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 4.325000047683716,
+          "candidate": 4.325000047683716,
+          "difference_ms": 0.0,
+          "percent": 0.0
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 5.714656500000274,
+          "candidate": 5.642177249999349,
+          "difference_ms": -0.07247925000092437,
+          "percent": -1.268304577902817
+        }
+      },
+      {
+        "scenario": "png-40",
+        "profile": "constrained",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 19.399999976158142,
+          "candidate": 21.350000023841858,
+          "difference_ms": 1.9500000476837158,
+          "percent": 10.051546649897894
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 41.20185400000014,
+          "candidate": 57.405572999999094,
+          "difference_ms": 16.203718999998955,
+          "percent": 39.32764530450232
+        }
+      },
+      {
+        "scenario": "png-40",
+        "profile": "jitter",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 24.475000023841858,
+          "candidate": 32.424999952316284,
+          "difference_ms": 7.949999928474426,
+          "percent": 32.48212429307491
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 45.7239894999982,
+          "candidate": 46.72365599999944,
+          "difference_ms": 0.9996665000012399,
+          "percent": 2.1863063808141225
+        }
+      },
+      {
+        "scenario": "png-128",
+        "profile": "healthy",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 7.049999833106995,
+          "candidate": 7.2749998569488525,
+          "difference_ms": 0.2250000238418579,
+          "percent": 3.1914897754359024
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 8.549875249998877,
+          "candidate": 8.762073000000328,
+          "difference_ms": 0.2121977500014509,
+          "percent": 2.4818812415009073
+        }
+      },
+      {
+        "scenario": "png-128",
+        "profile": "lan",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 8.474999904632568,
+          "candidate": 8.725000023841858,
+          "difference_ms": 0.25000011920928955,
+          "percent": 2.949853947168018
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 9.996291500001007,
+          "candidate": 10.134729499999594,
+          "difference_ms": 0.13843799999858675,
+          "percent": 1.3848935877727535
+        }
+      },
+      {
+        "scenario": "png-128",
+        "profile": "constrained",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 53.924999952316284,
+          "candidate": 58.625,
+          "difference_ms": 4.700000047683716,
+          "percent": 8.715809090106143
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 504.4523437499997,
+          "candidate": 592.1694684999993,
+          "difference_ms": 87.71712474999958,
+          "percent": 17.38858503420317
+        }
+      },
+      {
+        "scenario": "png-128",
+        "profile": "jitter",
+        "browser_dispatch_to_ack_p95": {
+          "baseline": 47.77499985694885,
+          "candidate": 45.424999952316284,
+          "difference_ms": -2.3499999046325684,
+          "percent": -4.918890448286965
+        },
+        "scheduled_source_due_to_ack_p95": {
+          "baseline": 152.11900000000105,
+          "candidate": 211.87004150000075,
+          "difference_ms": 59.7510414999997,
+          "percent": 39.27914428835273
+        }
+      }
+    ]
+  },
+  "scope_and_limitations": [
+    "The main record is a same-client/same-payload A/A control. Baseline and candidate are execution-slot labels, not different software. No performance improvement is inferred from their differences.",
+    "The PNG study uses the same client and native image with benchmark-only indexed-PNG level1 interposition. Exact decoded source pixels are preserved, WebP bytes are unchanged, and production compression defaults were not changed.",
+    "Native libguac payload source is e1d2762776905f68b5a35b1b957b82b35a02311b/image737d50e9..., not a runtime comparison of private11native policy or live desktop capture/planning. Browser/harness source is0761e433...; bundle hashes are identical for both labels.",
+    "Sender/source pacing target16ms is approximate. Timers sometimes wake early (worst1.474ms for source start in the control); release timing errors and actual gaps/rates are retained. Scheduled-source-due\u2192ACK is a scheduled-time/backlog proxy, not latency from an actual captured frame or kernel transmission.",
+    "Application-level byte pacing/release delay/seeded jitter and unshaped loopback ACKs do not emulate Wi-Fi loss, TCP congestion, RTT, physical input or physical paint/FPS.",
+    "Transfer overlaps decode. Browser first-img\u2192sync includes arrival/parsing/handlers; sync\u2192ACK includes remaining decode/frame wait/draw. Draw/handler aggregates overlap other intervals and are not independent additive stages.",
+    "Exact per-frame RGBA checks run separately with ACK gating. Timed runs check final RGBA, all ordered draw coordinates/counts and exact ordered sync ACKs. A decoder-mode-specific reference is selected strictly by actual VideoFrame.format, never by pixel similarity or tolerance.",
+    "PNG reference is independent Image/dataURI. WebP reference uses both CPU Image/RGB and complete-buffer native decode; the native reference is not an independent decoder algorithm. Canonical RGB/native canvas SHA256 values match across every source/payload label and run.",
+    "Display queue snapshots omit partial/not-yet-arrived frames and can miss short spikes. Low display queue age does not establish low source-to-update latency; source schedule debt and actual transfer rates must be read alongside it.",
+    "All p95 summaries here are arithmetic means of four per-run nearest-rank p95 values, not pooled percentiles. Short-run sub-ms label differences in this A/A control are not evidence of a speedup.",
+    "One sequential encode_ms per exported asset is informational, excluded from browser/sender timing and not an encoder speed comparison. Candidate generic encoder_note is inherited; its explicit png_compression_control object authoritatively records level1 override."
+  ],
+  "raw_record_sha256": {
+    "same_client_same_payload_control": "55987f7c3ef0ea99ff98466c0b481c72d8609957223c06c1185830d778ec2041",
+    "png_level1_study": "67b8b3c7f534da0a3bd68aa8302d164b573dad0e0542cf58427c766270fb1b31"
+  },
+  "records": {
+    "same_client_same_payload_control": {
+      "file": "1.6.1-private.11-browser-image-control.json.gz",
+      "format": "gzip-compressed UTF-8 JSON, original complete raw record bytes",
+      "sha256": "55be01dfb3a88020ef0ea320b705cdff4daa7e4b232e661b4229d38666fd9db2",
+      "uncompressed_sha256": "55987f7c3ef0ea99ff98466c0b481c72d8609957223c06c1185830d778ec2041",
+      "uncompressed_bytes": 7308498,
+      "compressed_bytes": 474422
+    },
+    "png_level1_study": {
+      "file": "1.6.1-private.11-browser-image-png-level1.json.gz",
+      "format": "gzip-compressed UTF-8 JSON, original complete raw record bytes",
+      "sha256": "5105ae2d5be993fc54518dac0d0d9cd69a5af08b4cd89828a2c058cdd8e9cfb9",
+      "uncompressed_sha256": "67b8b3c7f534da0a3bd68aa8302d164b573dad0e0542cf58427c766270fb1b31",
+      "uncompressed_bytes": 3564246,
+      "compressed_bytes": 212824
+    }
+  },
+  "final_private11_payload_equivalence": {
+    "source_revision": "0761e433f74dceaad4d4cd45c90aad16ecea5ba1",
+    "native_image_id": "sha256:2ef9ded01b721d4c30be13791413a948c1f1ea2f1262b17fd58c068b02ab3ced",
+    "fixture_sha256": "a9dd7228713c51e1b66408444162bd82748b9e77b87cc721b97901c8f54e147a",
+    "baseline_fixture_sha256": "999a30f50c8557c33e3ffd3624f99784e5c9d974e6fb4bed6bc08cfd52068166",
+    "native_generator_sha256": "da2122af04c4d886d050ea50db5b920406da2a201fab485325d0f8344639a1e9",
+    "assets_checked": 20,
+    "scenario_geometry_and_frame_placements_identical": true,
+    "all_asset_checks_equal": [
+      "id",
+      "mimetype",
+      "width",
+      "height",
+      "data_base64",
+      "encoded_sha256",
+      "source_rgb_fnv1a64",
+      "png_source_pixels_verified"
+    ],
+    "production_compression_control_absent": true,
+    "applies_to_control": "The complete static encoded payloads and constructed protocol work used by the same-client/same-payload control are byte-identical to the final private.11 native export. No second identical-byte replay was necessary. This proves equivalence for these fixtures, not all possible surfaces, codec-selection/planner behavior, native encode speed, live RDP or capture."
+  },
+  "raw_record_storage": "Complete original synthetic records are preserved in adjacent deterministic gzip files, referenced by compressed/uncompressed hashes; no observations are removed. Summary/check/provenance fields remain directly readable here."
+}
