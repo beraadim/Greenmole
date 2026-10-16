@@ -51,6 +51,7 @@
 enum benchmark_codec { BENCH_AUTO, BENCH_PNG, BENCH_WEBP_LOSSLESS, BENCH_WEBP_LOSSY, BENCH_JPEG };
 static const char* codec_names[] = { "auto", "png", "webp-lossless", "webp-lossy", "jpeg" };
 static int selected_codec, selected_quality = 90, verification_active;
+static int payload_fingerprints;
 static guac_display_image_format (*real_image_format)(guac_display_layer*, const guac_rect*, int);
 static int (*real_png_write)(guac_socket*, guac_stream*, cairo_surface_t*);
 static int (*real_webp_write)(guac_socket*, guac_stream*, cairo_surface_t*, int, int);
@@ -59,6 +60,7 @@ static int (*real_send_blob)(guac_socket*, const guac_stream*, const void*, int)
 
 typedef struct encoder_observation {
     uint64_t calls[3], pixels[3], encoded_bytes[3], wrapper_ns[3];
+    uint64_t payload_sum[3], payload_xor[3];
     int quality_min[3], quality_max[3];
     uint64_t webp_lossless, webp_lossy, selector_calls;
 } encoder_observation;
@@ -66,6 +68,7 @@ static encoder_observation observed;
 static pthread_mutex_t observation_lock = PTHREAD_MUTEX_INITIALIZER;
 static _Thread_local int encoder_active;
 static _Thread_local uint64_t encoder_bytes;
+static _Thread_local uint64_t encoder_fingerprint;
 
 static uint64_t monotonic_ns(void) {
     struct timespec value;
@@ -117,6 +120,15 @@ int guac_protocol_send_blob(guac_socket* socket, const guac_stream* stream,
     if (encoder_active) {
         if (count < 0) { fprintf(stderr, "Negative encoded blob size.\n"); exit(1); }
         encoder_bytes += (unsigned int) count;
+        /* Optional integrity run only: fingerprint each encoded image before
+         * base64/stream identifiers. Never retain or print payload bytes. */
+        if (payload_fingerprints) {
+            const unsigned char* bytes = data;
+            for (int i = 0; i < count; i++) {
+                encoder_fingerprint ^= bytes[i];
+                encoder_fingerprint *= UINT64_C(1099511628211);
+            }
+        }
     }
     return real_send_blob(socket, stream, data, count);
 }
@@ -124,6 +136,7 @@ int guac_protocol_send_blob(guac_socket* socket, const guac_stream* stream,
 static uint64_t begin_encoder(void) {
     if (encoder_active) { fprintf(stderr, "Unexpected nested image encoder.\n"); exit(1); }
     encoder_active = 1; encoder_bytes = 0;
+    encoder_fingerprint = UINT64_C(14695981039346656037);
     return monotonic_ns();
 }
 
@@ -140,6 +153,12 @@ static void end_encoder(int codec, cairo_surface_t* surface, int quality, int lo
     observed.pixels[codec] += (uint64_t) cairo_image_surface_get_width(surface) * cairo_image_surface_get_height(surface);
     observed.encoded_bytes[codec] += encoder_bytes;
     observed.wrapper_ns[codec] += duration;
+    if (payload_fingerprints) {
+        /* Commutative aggregation tolerates worker completion order. Both
+         * sum and XOR supplement image counts; this is not a security hash. */
+        observed.payload_sum[codec] += encoder_fingerprint;
+        observed.payload_xor[codec] ^= encoder_fingerprint;
+    }
     if (codec == GUAC_DISPLAY_IMAGE_FORMAT_WEBP) {
         if (lossless) observed.webp_lossless++;
         else observed.webp_lossy++;
@@ -984,6 +1003,13 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
         else printf("%d,\"quality_max\":%d}", encoder_final.quality_min[codec], encoder_final.quality_max[codec]);
     }
     printf("}},");
+    printf("\"encoded_payload_fingerprints\":{\"enabled\":%s,\"codecs\":{",
+            payload_fingerprints ? "true" : "false");
+    for (int codec = 0; codec < 3; codec++)
+        printf("%s\"%s\":{\"sum\":\"%016" PRIx64 "\",\"xor\":\"%016" PRIx64 "\"}",
+                codec ? "," : "", observed_codec_names[codec],
+                encoder_final.payload_sum[codec], encoder_final.payload_xor[codec]);
+    printf("}},");
     printf("\"render_statistics_status\":\"%s\",\"render_statistics\":",
             !render_statistics.pointer ? "unsupported" : render_available ? "enabled" : "disabled");
     if (!render_available) printf("null,");
@@ -1046,6 +1072,10 @@ int main(int argc, char** argv) {
     }
     if (argc == 9) selected_quality = atoi(argv[8]);
     if (selected_quality < 0 || selected_quality > 100) return 1;
+    const char* fingerprints = getenv("GUAC_BENCH_PAYLOAD_FINGERPRINTS");
+    if (fingerprints != NULL && strcmp(fingerprints, "0") && strcmp(fingerprints, "1"))
+        return 1;
+    payload_fingerprints = fingerprints != NULL && !strcmp(fingerprints, "1");
     initialize_interposition();
     /* Each case starts in a fresh child so RSS and codec caches are local to
      * the workload. Pool startup and fixture generation precede timed frames. */

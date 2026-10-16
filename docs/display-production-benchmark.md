@@ -92,6 +92,18 @@ fixed overrides and observations and forces lossless output as before.
 
 ## Optional render diagnostics
 
+For a separate encoded-output integrity run, add `--encoded-fingerprints` to a
+fixed-codec comparison. This opt-in computes FNV-1a64 over each image's encoded
+bytes before base64 and stream identifiers, then records unsigned sum and XOR
+per codec independent of worker completion order. Fixed comparisons reject
+mismatched fingerprints as well as mismatched byte counts. No image bytes are
+retained or printed. These non-cryptographic multiset fingerprints supplement
+the exact lossless pixel replay; they are not a security proof or a check of
+image placement/order. Disabled runs explicitly report unavailable fingerprint
+evidence. Fingerprinting adds per-byte work inside the encoder envelope: keep
+these integrity runs separate from performance claims, and use the same
+harness on both versions.
+
 `--render-diagnostics` enables the private numeric render getter in supporting
 libraries through `GUAC_DISPLAY_DIAGNOSTICS=1`. Older libraries such as private.7
 report `render_statistics: null`. Per-case status distinguishes `unsupported`,

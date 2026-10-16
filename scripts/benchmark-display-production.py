@@ -35,7 +35,8 @@ def revision(text):
 
 
 def run(image, mode, samples, warmup, workers, cpuset, selected_cases,
-        verify_frames, expected_revision, codec, quality, render_diagnostics):
+        verify_frames, expected_revision, codec, quality, render_diagnostics,
+        encoded_fingerprints):
     details = json.loads(subprocess.check_output(["docker", "image", "inspect", image], text=True))[0]
     source_revision = (details.get("Config", {}).get("Labels") or {}).get("org.opencontainers.image.revision")
     if expected_revision and source_revision != expected_revision:
@@ -70,6 +71,7 @@ exec /run/encoderbench/benchmark MODE SAMPLES WARMUP ACTIVE_CAP CASE_FILTER VERI
     if cpuset:
         docker += ["--cpuset-cpus", cpuset]
     docker += ["--env", f"GUAC_DISPLAY_DIAGNOSTICS={int(render_diagnostics)}"]
+    docker += ["--env", f"GUAC_BENCH_PAYLOAD_FINGERPRINTS={int(encoded_fingerprints)}"]
     # Run the inspected immutable identity so a tag change cannot invalidate
     # the recorded source/image provenance between inspection and execution.
     docker += [details["Id"], "/bin/sh", "-c", command]
@@ -93,6 +95,8 @@ exec /run/encoderbench/benchmark MODE SAMPLES WARMUP ACTIVE_CAP CASE_FILTER VERI
             raise RuntimeError(f"inconsistent render diagnostic status for {case['scenario']}")
         if (render_diagnostics and status == "disabled") or (not render_diagnostics and status == "enabled"):
             raise RuntimeError(f"requested render diagnostic state not honored for {case['scenario']}")
+        if case["encoded_payload_fingerprints"]["enabled"] != encoded_fingerprints:
+            raise RuntimeError(f"requested payload fingerprints not honored for {case['scenario']}")
     return {"image": image, "image_id": details["Id"], "mode": mode,
             "source_revision": source_revision,
             "expected_source_revision": expected_revision,
@@ -118,8 +122,12 @@ def controlled_workloads(runs, codec):
                 for key in ["calls", "pixels", "encoded_bytes", "quality_min", "quality_max"]:
                     if actual["codecs"][name][key] != expected["codecs"][name][key]:
                         raise RuntimeError(f"fixed-codec workload differs for {case['scenario']}: {name}.{key}")
+            fingerprints = case["encoded_payload_fingerprints"]
+            expected_fingerprints = reference[case["scenario"]]["encoded_payload_fingerprints"]
+            if fingerprints != expected_fingerprints:
+                raise RuntimeError(f"fixed-codec payload fingerprints differ for {case['scenario']}")
     return {"compared": True, "matched": True,
-            "fields": "codec calls, actual image pixels, encoded image bytes, quality range and WebP lossless mode"}
+            "fields": "codec calls, actual image pixels, encoded image bytes, quality range, WebP lossless mode and encoded payload fingerprints when enabled"}
 
 
 def main():
@@ -142,6 +150,8 @@ def main():
                         help="fixed JPEG/WebP quality (WebP lossless: compression effort); ignored for auto/PNG")
     parser.add_argument("--render-diagnostics", action="store_true",
                         help="opt in to newer libguac numeric render telemetry; older libraries report null")
+    parser.add_argument("--encoded-fingerprints", action="store_true",
+                        help="separate integrity run: fingerprint encoded image bytes; adds per-byte work, exclude from performance claims")
     parser.add_argument("--modes", nargs="+", choices=["baseline", "fixed", "adaptive", "adaptive-8", "adaptive-12", "adaptive-16"],
                         default=["baseline", "adaptive"],
                         help="baseline keeps its library's shipped admission policy; fixed is diagnostic only")
@@ -156,10 +166,10 @@ def main():
         modes.reverse()
     runs = [run(image, mode, args.samples, args.warmup, args.workers, args.cpuset_cpus, args.cases,
                 args.verify_frames, args.baseline_revision if mode == "baseline" else args.candidate_revision,
-                args.codec, args.quality, args.render_diagnostics)
+                args.codec, args.quality, args.render_diagnostics, args.encoded_fingerprints)
             for image, mode in modes]
     print(json.dumps({
-        "schema_version": 3,
+        "schema_version": 4,
         "measurement": "production display planner, copy search, FIFO, workers, codecs and serialization to a shared discard socket",
         "limitations": "synthetic fixtures; no capture, RDP transport, browser, Wi-Fi, physical input or frame pacing; copied pixels/planner/encoding included, fixture generation excluded",
         "fixture_note": "original nine scenarios preserved; added all-solid, zero-copy-hit, early/late exact-copy-hit and alternating-size planner-reuse fixtures",
@@ -172,6 +182,9 @@ def main():
         "encoder_control": {"codec": args.codec, "quality": args.quality,
                             "method": "benchmark-only ELF symbol interposition: auto forwards the original selector, fixed mode replaces only its decision, encoders always forward to the image's real implementations; hook coverage verified for every image; forced-lossless correctness replay disables overrides"},
         "controlled_workload_comparison": controlled_workloads(runs, args.codec),
+        "encoded_fingerprints": {"enabled": args.encoded_fingerprints,
+                                 "method": "per-image FNV-1a64 over concatenated encoded bytes before base64, aggregated as unsigned sum and XOR per codec independent of completion order; non-cryptographic integrity evidence alongside pixel replay, not a security proof",
+                                 "timing_note": "enabled runs add per-byte hashing and must be excluded from headline performance comparisons; no encoded payloads retained or printed"},
         "encoder_timing_note": "summed per-image encoder wrapper wall times include codec work plus streaming/serialization/socket waits; concurrent sums are not frame latency or standalone codec CPU; instrumentation is identical on old/new libraries",
         "render_diagnostics": {"requested": args.render_diagnostics,
                                "note": "optional numeric telemetry adds clocks only in supporting libraries; use separate diagnostic runs when an older baseline cannot collect it; microsecond cumulative measured-frame deltas, maxima include initialization/warmup; overlapping phase sums and quantiles are not additive; no network-delivery timing"},
