@@ -82,6 +82,39 @@ Bitmap tests cover word boundaries and high bits, all 65,536 occupied buckets,
 partial consumption and full reset, hash collisions, pixel-mismatch consumption,
 cached reuse across resizes, simultaneous transient plans, and oversized plans.
 
+## Row hashing and warm-up regions
+
+The unsigned polynomial uses base 62, with arithmetic modulo 2^64. Four
+independent Horner chains at base `62^4 = 14,776,336` hash the 63-pixel row
+prefixes and complete 64-pixel index rows. Combining those chains in their
+original pixel order, then appending any remaining pixels, produces exactly
+the original polynomial. This reduces the dependent arithmetic chain without
+introducing architecture-specific vector instructions or changing pixel bits.
+
+The rolling search handles its first 63 rows separately because they cannot
+produce a complete window. Each row first hashes its 63-pixel prefix, then
+updates only the vertical accumulators that can become complete windows.
+The first 63 columns therefore need no vertical storage or updates. Subsequent
+rows visit every complete window directly, with no per-pixel warm-up checks.
+Their lookup order remains top to bottom, left to right. A consumed last
+candidate still finishes the same row, preserving the examined-window counts.
+
+The stack allocation retains its existing maximum width bound; only the
+`width - 63` active accumulators are cleared. No pixel buffer, operation index,
+candidate bit, or admission state is cached differently. Fixed-cell hashing,
+rolling search and exact pixel comparison avoid advancing a row pointer after
+their final access, including bottom-reaching views with nonzero left offsets
+and padded strides.
+
+Additional tests independently evaluate 414 weighted row hashes, exercise all
+441 window positions across 64-through-69-pixel region dimensions, and check
+the maximum 8,192-pixel width, padded bottom-reaching views, unreadable
+incomplete regions, row-major duplicate selection, and full-hash collisions
+that must consume a candidate before a later exact match. The isolated local
+hash microbenchmark is useful for checking dependency reductions, but complete
+planning/encoding benchmarks on the deployment platform are still required
+before making end-to-end performance claims.
+
 The private `guac_display_get_planner_statistics()` entrypoint accepts exactly ten
 `uint64_t` values and acquires the pending-frame read lock. It exposes numeric
 work and allocation counts, never pixels, hashes, layer identifiers, or pointers.

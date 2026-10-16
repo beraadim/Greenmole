@@ -109,9 +109,34 @@ static guac_display_plan_operation* guac_display_plan_remove_indexed_op(guac_dis
 }
 
 /**
+ * Hashes one row using the unsigned base-62 polynomial used by copy search.
+ * Four independent chains reduce the serial multiply/add dependency, with
+ * 62^4 as the base. Recombining the chains and appending the final zero to
+ * three pixels is exactly equivalent to ordinary Horner evaluation, including
+ * all modulo-2^64 wraparound. Callers use fixed lengths of 63 or 64 pixels.
+ */
+static inline uint64_t guac_hash_row(const uint32_t* row, int length) {
+
+    uint64_t a = 0, b = 0, c = 0, d = 0;
+    int grouped = length & ~3;
+    for (int x = 0; x < grouped; x += 4) {
+        a = a * UINT64_C(14776336) + row[x];
+        b = b * UINT64_C(14776336) + row[x + 1];
+        c = c * UINT64_C(14776336) + row[x + 2];
+        d = d * UINT64_C(14776336) + row[x + 3];
+    }
+
+    uint64_t hash = ((a * 62 + b) * 62 + c) * 62 + d;
+    for (int x = grouped; x < length; x++)
+        hash = hash * 62 + row[x];
+    return hash;
+
+}
+
+/**
  * Hashes one complete 64x64 cell. This is the same polynomial as the final
- * window of the rolling search, but needs only two accumulators. In particular,
- * indexing a single cell does not clear the full-width rolling-hash array.
+ * window of the rolling search, but needs only scalar accumulators. Indexing
+ * a single cell does not clear the full-width rolling-hash array.
  * The caller must constrain the cell to a complete in-bounds 64x64 rectangle.
  */
 static uint64_t guac_hash_cell(const guac_display_layer_state* layer_state,
@@ -120,11 +145,10 @@ static uint64_t guac_hash_cell(const guac_display_layer_state* layer_state,
     uint64_t cell_hash = 0;
     for (int y = 0; y < GUAC_DISPLAY_CELL_SIZE; y++) {
         const uint32_t* row = (const uint32_t*) data;
-        uint64_t row_hash = 0;
-        for (int x = 0; x < GUAC_DISPLAY_CELL_SIZE; x++)
-            row_hash = ((row_hash * 31) << 1) + row[x];
+        uint64_t row_hash = guac_hash_row(row, GUAC_DISPLAY_CELL_SIZE);
         cell_hash = ((cell_hash * 31) << 1) + row_hash;
-        data += layer_state->buffer_stride;
+        if (y + 1 < GUAC_DISPLAY_CELL_SIZE)
+            data += layer_state->buffer_stride;
     }
     return cell_hash;
 }
@@ -151,61 +175,49 @@ static size_t PFR_LFR_guac_display_plan_search_layer(guac_display_plan* plan,
     size_t stride = layer_state->buffer_stride;
     const unsigned char* data = GUAC_DISPLAY_LAYER_STATE_CONST_BUFFER(*layer_state, *rect);
 
-    int x, y;
-    uint64_t cell_hash[GUAC_DISPLAY_MAX_WIDTH] = { 0 };
+    const int prefix = GUAC_DISPLAY_CELL_SIZE - 1;
+    const int windows_per_row = guac_rect_width(rect) - prefix;
+    const int window_rows = guac_rect_height(rect) - prefix;
+    uint64_t cell_hash[GUAC_DISPLAY_MAX_WIDTH];
+    memset(cell_hash, 0, (size_t) windows_per_row * sizeof(uint64_t));
 
-    /* NOTE: Because the hash value of the sliding 64x64 window is available
-     * only upon reaching the bottom-right corner of that window, we offset the
-     * coordinates here by the relative location of the bottom-right corner
-     * (GUAC_DISPLAY_CELL_SIZE - 1) so that we have easy access to the
-     * coordinates of the upper-left corner of the sliding window, as required
-     * by the copy lookup.
-     *
-     * This also allows us to easily determine when the hash is valid and it's
-     * safe to look for copies. Once the coordinates are within the given
-     * rect, we have evaluated a full 64x64 rectangle and have a valid hash. */
-
-    int start_x = rect->left   - GUAC_DISPLAY_CELL_SIZE + 1;
-    int end_x   = rect->right  - GUAC_DISPLAY_CELL_SIZE + 1;
-    int start_y = rect->top    - GUAC_DISPLAY_CELL_SIZE + 1;
-    int end_y   = rect->bottom - GUAC_DISPLAY_CELL_SIZE + 1;
-
-    for (y = start_y; y < end_y; y++) {
-
-        uint64_t* current_cell_hash = cell_hash;
-
-        /* Get current row */
-        uint32_t* row = (uint32_t*) data;
+    /* The first 63 rows cannot form a complete window. The first 63 columns
+     * of every row contribute to its row hash, but never need a vertical
+     * accumulator. Keep both warm-up regions out of the lookup loop. */
+    for (int y = 0; y < prefix; y++) {
+        const uint32_t* row = (const uint32_t*) data;
+        uint64_t row_hash = guac_hash_row(row, prefix);
+        row += prefix;
+        for (int x = 0; x < windows_per_row; x++) {
+            row_hash = row_hash * 62 + row[x];
+            cell_hash[x] = cell_hash[x] * 62 + row_hash;
+        }
         data += stride;
+    }
 
-        /* Calculate row segment hashes for entire row */
-        uint64_t row_hash = 0;
-        for (x = start_x; x < end_x; x++) {
-
-            /* Get current pixel */
-            uint32_t pixel = *(row++);
-
-            /* Update hash value for current row segment */
-            row_hash = ((row_hash * 31) << 1) + pixel;
-
-            /* Incorporate row hash value into overall cell hash */
-            uint64_t cell_hash = ((*current_cell_hash * 31) << 1) + row_hash;
-            *(current_cell_hash++) = cell_hash;
-
-            /* Check every complete window in this row directly. */
-            if (y >= rect->top && x >= rect->left)
-                PFR_LFR_guac_display_plan_find_copies(plan, x, y, cell_hash, layer);
-
+    for (int y = 0; y < window_rows; y++) {
+        const uint32_t* row = (const uint32_t*) data;
+        uint64_t row_hash = guac_hash_row(row, prefix);
+        row += prefix;
+        for (int x = 0; x < windows_per_row; x++) {
+            row_hash = row_hash * 62 + row[x];
+            uint64_t hash = cell_hash[x] * 62 + row_hash;
+            cell_hash[x] = hash;
+            PFR_LFR_guac_display_plan_find_copies(plan,
+                    rect->left + x, rect->top + y, hash, layer);
         }
 
         /* Empty buckets cannot produce more copies. Finish this row before
          * stopping so misses do not pay an extra branch for every window. */
-        if (y >= rect->top && plan->indexed_count == 0)
-            return (size_t) (y - rect->top + 1) * (end_x - rect->left);
+        if (plan->indexed_count == 0)
+            return (size_t) (y + 1) * windows_per_row;
+
+        if (y + 1 < window_rows)
+            data += stride;
 
     } /* end for each row */
 
-    return (size_t) (end_y - rect->top) * (end_x - rect->left);
+    return (size_t) window_rows * windows_per_row;
 
 }
 
@@ -313,9 +325,12 @@ static int guac_image_cmp(const unsigned char* restrict data_a, int width_a, int
         if (cmp_result != 0)
             return cmp_result;
 
-        /* Next row */
-        data_a += stride_a;
-        data_b += stride_b;
+        /* Do not form pointers beyond a bottom-reaching subregion after its
+         * final comparison. Its left offset need not exist in the next row. */
+        if (y + 1 < height_a) {
+            data_a += stride_a;
+            data_b += stride_b;
+        }
 
     }
 

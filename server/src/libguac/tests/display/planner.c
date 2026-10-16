@@ -364,6 +364,185 @@ void test_display__planner_fixed_cell_hash_matches_reference() {
     }
 }
 
+/** Independent weighted sums cover both fixed prefix lengths and every tail. */
+void test_display__planner_row_hash_matches_weighted_reference() {
+    uint32_t pixels[96];
+    uint64_t powers[96];
+    powers[0] = 1;
+    for (size_t x = 1; x < 96; x++)
+        powers[x] = powers[x - 1] * UINT64_C(62);
+
+    for (int pattern = 0; pattern < 6; pattern++) {
+        planner_fill(pixels, 96, 123);
+        for (size_t x = 0; x < 96; x++) {
+            if (pattern == 0) pixels[x] = 0;
+            else if (pattern == 1) pixels[x] = UINT32_MAX;
+            else if (pattern == 2) pixels[x] = UINT32_C(0x80000000) | x;
+            else if (pattern == 3) pixels[x] = x % 4 == 0 ? UINT32_MAX : 0;
+            else if (pattern == 4) pixels[x] = x % 4 == 3 ? UINT32_MAX : 0;
+        }
+        for (int length = 0; length <= 68; length++) {
+            uint64_t reference = 0;
+            for (int x = 0; x < length; x++)
+                reference += (uint64_t) pixels[x + 5] * powers[length - x - 1];
+            CU_ASSERT_EQUAL(guac_hash_row(pixels + 5, length), reference);
+        }
+    }
+}
+
+/** Find a known window using an independent hash, not the indexing helper. */
+static void planner_assert_window_matches(guac_display* display,
+        guac_display_layer* source, const guac_rect* region, int source_x,
+        int source_y) {
+    const size_t stride = source->last_frame.buffer_stride / sizeof(uint32_t);
+    const uint32_t* previous = (const uint32_t*) source->last_frame.buffer;
+    uint32_t pending[GUAC_DISPLAY_CELL_SIZE * GUAC_DISPLAY_CELL_SIZE];
+    for (int y = 0; y < GUAC_DISPLAY_CELL_SIZE; y++)
+        memcpy(pending + y * GUAC_DISPLAY_CELL_SIZE,
+                previous + (source_y + y) * stride + source_x,
+                GUAC_DISPLAY_CELL_SIZE * sizeof(uint32_t));
+
+    guac_display_layer destination;
+    planner_layer_init(display, &destination, pending, NULL,
+            GUAC_DISPLAY_CELL_SIZE, GUAC_DISPLAY_CELL_SIZE);
+    guac_display_plan* plan = PFW_guac_display_plan_alloc(display, 1);
+    plan->ops[0] = (guac_display_plan_operation) {
+        .layer = &destination, .type = GUAC_DISPLAY_PLAN_OPERATION_IMG,
+        .dest = { 0, 0, GUAC_DISPLAY_CELL_SIZE, GUAC_DISPLAY_CELL_SIZE }
+    };
+    guac_display_plan_store_indexed_op(plan,
+            planner_reference_hash(previous, stride, source_x, source_y),
+            &plan->ops[0]);
+
+    size_t windows = PFR_LFR_guac_display_plan_search_layer(plan, source, region);
+    CU_ASSERT_EQUAL(windows, (size_t) (source_y - region->top + 1)
+            * (guac_rect_width(region) - GUAC_DISPLAY_CELL_SIZE + 1));
+    CU_ASSERT_EQUAL(plan->indexed_count, 0);
+    CU_ASSERT_EQUAL(plan->ops[0].type, GUAC_DISPLAY_PLAN_OPERATION_COPY);
+    CU_ASSERT_EQUAL(plan->ops[0].src.layer_rect.rect.left, source_x);
+    CU_ASSERT_EQUAL(plan->ops[0].src.layer_rect.rect.top, source_y);
+    planner_assert_empty_bitmap(plan);
+    guac_display_plan_free(plan);
+}
+
+/** Every complete window near both 63/64 warm-up boundaries remains reachable. */
+void test_display__planner_search_matches_all_small_window_coordinates() {
+    guac_display* display = planner_display_alloc();
+    for (int width = 64; width <= 69; width++) {
+        for (int height = 64; height <= 69; height++) {
+            const int left = 3, top = 5;
+            size_t stride = left + width + 7;
+            size_t length = (top + height - 1) * stride + left + width;
+            uint32_t* previous = guac_mem_alloc(length, sizeof(uint32_t));
+            uint32_t* original = guac_mem_alloc(length, sizeof(uint32_t));
+            planner_fill(previous, length, width * 101 + height);
+            memcpy(original, previous, length * sizeof(uint32_t));
+            guac_display_layer source;
+            planner_layer_init(display, &source, NULL, previous,
+                    left + width, top + height);
+            source.last_frame.buffer_stride = stride * sizeof(uint32_t);
+            guac_rect region = { left, top, left + width, top + height };
+            for (int y = top; y <= top + height - 64; y++)
+                for (int x = left; x <= left + width - 64; x++)
+                    planner_assert_window_matches(display, &source, &region, x, y);
+            CU_ASSERT_EQUAL(memcmp(previous, original, length * sizeof(uint32_t)), 0);
+            guac_mem_free(original);
+            guac_mem_free(previous);
+        }
+    }
+    planner_display_free(display);
+}
+
+/** The maximum supported width and final window use only their valid pixels. */
+void test_display__planner_search_covers_maximum_width_and_bottom_view() {
+    guac_display* display = planner_display_alloc();
+    const int top = 5, height = 65;
+    const size_t stride = GUAC_DISPLAY_MAX_WIDTH + 7;
+    size_t length = (top + height - 1) * stride + GUAC_DISPLAY_MAX_WIDTH;
+    uint32_t* previous = guac_mem_alloc(length, sizeof(uint32_t));
+    planner_fill(previous, length, 987654321);
+    guac_display_layer source;
+    planner_layer_init(display, &source, NULL, previous,
+            GUAC_DISPLAY_MAX_WIDTH, top + height);
+    source.last_frame.buffer_stride = stride * sizeof(uint32_t);
+    for (int left = 0; left <= 3; left += 3) {
+        guac_rect region = { left, top, GUAC_DISPLAY_MAX_WIDTH, top + height };
+        planner_assert_window_matches(display, &source, &region,
+                region.right - 64, region.bottom - 64);
+    }
+
+    guac_rect cell = { GUAC_DISPLAY_MAX_WIDTH - 64, top + height - 64,
+        GUAC_DISPLAY_MAX_WIDTH, top + height };
+    CU_ASSERT_EQUAL(guac_hash_cell(&source.last_frame, &cell),
+            planner_reference_hash(previous, stride, cell.left, cell.top));
+    guac_mem_free(previous);
+    planner_display_free(display);
+}
+
+/** Incomplete regions do not touch source pixels or consume indexed entries. */
+void test_display__planner_search_rejects_incomplete_windows() {
+    guac_display* display = planner_display_alloc();
+    guac_display_plan* plan = PFW_guac_display_plan_alloc(display, 1);
+    guac_display_plan_store_indexed_op(plan, 123, &plan->ops[0]);
+    guac_display_layer source;
+    planner_layer_init(display, &source, NULL, NULL, 128, 128);
+    const guac_rect regions[] = {
+        { 3, 5, 66, 69 }, { 3, 5, 67, 68 }, { 3, 5, 3, 69 },
+        { 3, 5, 67, 5 }, { 3, 5, 2, 69 }, { 3, 5, 67, 4 }
+    };
+    for (size_t i = 0; i < sizeof(regions) / sizeof(regions[0]); i++) {
+        CU_ASSERT_EQUAL(PFR_LFR_guac_display_plan_search_layer(
+                    plan, &source, &regions[i]), 0);
+        CU_ASSERT_EQUAL(plan->indexed_count, 1);
+    }
+    guac_display_plan_free(plan);
+    planner_display_free(display);
+}
+
+/** A duplicate at the end of a row wins over an earlier column in a later row. */
+void test_display__planner_search_preserves_row_major_first_match() {
+    guac_display* display = planner_display_alloc();
+    uint32_t previous[128 * 128];
+    planner_fill(previous, 128 * 128, 12345);
+    for (int y = 0; y < 64; y++)
+        memcpy(previous + (y + 64) * 128, previous + y * 128 + 64, 64 * 4);
+    guac_display_layer source;
+    planner_layer_init(display, &source, NULL, previous, 128, 128);
+    guac_rect region = { 0, 0, 128, 128 };
+    planner_assert_window_matches(display, &source, &region, 64, 0);
+    planner_display_free(display);
+}
+
+/** A real rolling-hash collision still consumes and bans its candidate. */
+void test_display__planner_search_preserves_collision_consumption() {
+    guac_display* display = planner_display_alloc();
+    uint32_t previous[128 * 64] = { 0 };
+    uint32_t pending[64 * 64] = { 0 };
+    pending[0] = 1;
+    for (int y = 0; y < 64; y++)
+        memcpy(previous + y * 128 + 64, pending + y * 64, 64 * 4);
+    /* A change at the top-left has zero weight modulo 2^64. The first
+     * window collides, although the final window is an exact pixel match. */
+    CU_ASSERT_EQUAL(planner_reference_hash(previous, 128, 0, 0),
+            planner_reference_hash(pending, 64, 0, 0));
+    guac_display_layer source, destination;
+    planner_layer_init(display, &source, NULL, previous, 128, 64);
+    planner_layer_init(display, &destination, pending, NULL, 64, 64);
+    guac_display_plan* plan = PFW_guac_display_plan_alloc(display, 1);
+    plan->ops[0] = (guac_display_plan_operation) {
+        .layer = &destination, .type = GUAC_DISPLAY_PLAN_OPERATION_IMG,
+        .dest = { 0, 0, 64, 64 }
+    };
+    planner_test_index_dirty_cells(plan);
+    guac_rect region = { 0, 0, 128, 64 };
+    CU_ASSERT_EQUAL(PFR_LFR_guac_display_plan_search_layer(plan, &source, &region), 65);
+    CU_ASSERT_EQUAL(plan->ops[0].type, GUAC_DISPLAY_PLAN_OPERATION_IMG);
+    CU_ASSERT_EQUAL(plan->indexed_count, 0);
+    planner_assert_empty_bitmap(plan);
+    guac_display_plan_free(plan);
+    planner_display_free(display);
+}
+
 /** Fixed indexing hashes find the same rolling windows with unequal strides. */
 void test_display__planner_fixed_index_matches_offset_rolling_copies() {
     guac_display* display = planner_display_alloc();
