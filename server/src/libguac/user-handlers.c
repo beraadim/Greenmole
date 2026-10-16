@@ -70,37 +70,6 @@ __guac_instruction_handler_mapping __guac_handshake_handler_map[] = {
     {NULL,       NULL}
 };
 
-/**
- * Parses a 64-bit integer from the given string. It is assumed that the string
- * will contain only decimal digits, with an optional leading minus sign.
- * The result of parsing a string which does not conform to this pattern is
- * undefined.
- *
- * @param str
- *     The string to parse, which must contain only decimal digits and an
- *     optional leading minus sign.
- *
- * @return
- *     The 64-bit integer value represented by the given string.
- */
-static int64_t __guac_parse_int(const char* str) {
-
-    int sign = 1;
-    int64_t num = 0;
-
-    for (; *str != '\0'; str++) {
-
-        if (*str == '-')
-            sign = -sign;
-        else
-            num = num * 10 + (*str - '0');
-
-    }
-
-    return num * sign;
-
-}
-
 /* Guacamole instruction handlers */
 
 int __guac_handle_sync(guac_user* user, int argc, char** argv) {
