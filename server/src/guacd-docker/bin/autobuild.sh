@@ -53,9 +53,13 @@
 VAR_BASE="$1"
 LOCATION="$2"
 
+# Supplying CFLAGS suppresses Autoconf's default optimization. Keep a portable
+# optimized default while honoring explicitly supplied flags (including an
+# empty value for diagnostic builds), and always retain the dependency headers.
+export CFLAGS="${CFLAGS--O2} -I${PREFIX_DIR}/include"
+
 # Pre-populate build control variables such that the custom build prefix is
-# used for C headers, locating libraries, etc.
-export CFLAGS="-I${PREFIX_DIR}/include"
+# used for locating libraries, etc.
 export LDFLAGS="-L${PREFIX_DIR}/lib"
 export PKG_CONFIG_PATH="${PREFIX_DIR}/lib/pkgconfig" 
 
