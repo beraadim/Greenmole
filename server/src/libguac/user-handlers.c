@@ -26,6 +26,7 @@
 #include "guacamole/timestamp.h"
 #include "guacamole/user.h"
 #include "user-handlers.h"
+#include "user-sync-diagnostics.h"
 
 #include <inttypes.h>
 #include <stdio.h>
@@ -106,8 +107,12 @@ int __guac_handle_sync(guac_user* user, int argc, char** argv) {
 
     int frame_duration;
 
+    guac_timestamp timestamp;
+    if (argc != 1 || !argv || !guac_user_sync_parse_timestamp(argv[0], &timestamp))
+        return -1;
+
     guac_timestamp current = guac_timestamp_current();
-    guac_timestamp timestamp = __guac_parse_int(argv[0]);
+    guac_timestamp previous = user->last_received_timestamp;
 
     /* Error if timestamp is in future */
     if (timestamp > user->client->last_sent_timestamp)
@@ -120,7 +125,7 @@ int __guac_handle_sync(guac_user* user, int argc, char** argv) {
         user->last_received_timestamp = timestamp;
 
         /* Calculate length of frame, including network and processing lag */
-        frame_duration = current - timestamp;
+        frame_duration = guac_user_sync_elapsed(current, timestamp);
 
         /* Calculate processing lag portion of length of frame */
         int frame_processing_lag = 0;
@@ -142,13 +147,16 @@ int __guac_handle_sync(guac_user* user, int argc, char** argv) {
         user->last_frame_duration = estimated_rtt;
 
         /* Calculate cumulative accumulated processing lag relative to server timeline */
-        int processing_lag = current - user->last_received_timestamp - estimated_rtt;
+        int processing_lag = frame_duration - estimated_rtt;
         if (processing_lag < 0)
             processing_lag = 0;
 
         user->processing_lag = processing_lag;
 
     }
+
+    if (user->__sync_diagnostics)
+        guac_user_sync_diagnostics_record(user, current, timestamp, previous);
 
     /* Log received timestamp and calculated lag (at TRACE level only) */
     guac_user_log(user, GUAC_LOG_TRACE,

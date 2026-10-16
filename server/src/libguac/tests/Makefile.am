@@ -90,7 +90,9 @@ test_libguac_SOURCES =               \
     unicode/charsize.c               \
     unicode/read.c                   \
     unicode/strlen.c                 \
-    unicode/write.c
+    unicode/write.c                  \
+    user/sync-diagnostics.c          \
+    user/sync-handler.c
 
 test_libguac_CFLAGS =       \
     -Werror -Wall -pedantic \

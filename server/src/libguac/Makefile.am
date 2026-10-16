@@ -128,6 +128,7 @@ noinst_HEADERS =              \
     palette.h                 \
     raw_encoder.h             \
     user-handlers.h           \
+    user-sync-diagnostics.h   \
     wait-fd.h
 
 libguac_la_SOURCES =          \
@@ -181,6 +182,7 @@ libguac_la_SOURCES =          \
     unicode.c                 \
     user.c                    \
     user-handlers.c           \
+    user-sync-diagnostics.c   \
     user-handshake.c          \
     wait-fd.c	              \
     wol.c

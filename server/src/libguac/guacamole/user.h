@@ -545,6 +545,9 @@ struct guac_user {
      */
     guac_user_touch_handler* touch_handler;
 
+    /** Private optional numeric sync diagnostic state; owned by libguac. */
+    void* __sync_diagnostics;
+
 };
 
 /**

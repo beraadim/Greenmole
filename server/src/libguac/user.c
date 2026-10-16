@@ -32,6 +32,7 @@
 #include "guacamole/user.h"
 #include "id.h"
 #include "user-handlers.h"
+#include "user-sync-diagnostics.h"
 
 #include <errno.h>
 #include <limits.h>
@@ -54,6 +55,7 @@ guac_user* guac_user_alloc() {
     user->last_frame_duration = 0;
     user->processing_lag = 0;
     user->active = 1;
+    guac_user_sync_diagnostics_init(user);
 
     /* Allocate stream pool. Use GUAC_USER_MAX_STREAMS as min_size to prefer
      * new indices over reused ones up to the maximum, avoiding race conditions
@@ -83,6 +85,8 @@ guac_user* guac_user_alloc() {
 }
 
 void guac_user_free(guac_user* user) {
+
+    guac_user_sync_diagnostics_free(user);
 
     /* Free streams */
     guac_mem_free(user->__input_streams);
