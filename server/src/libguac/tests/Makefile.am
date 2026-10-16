@@ -52,6 +52,7 @@ test_libguac_SOURCES =               \
     display/render-thread.c          \
     display/source-frame.c           \
     display/workers.c                \
+    encode/png.c                    \
     fifo/fifo.c                      \
     file/openat.c                    \
     flag/flag.c                      \
@@ -96,6 +97,7 @@ test_libguac_CFLAGS =       \
 test_libguac_LDADD = \
     @CUNIT_LIBS@     \
     @CAIRO_LIBS@     \
+    @PNG_LIBS@       \
     @PTHREAD_LIBS@   \
     @LIBGUAC_LTLIB@
 

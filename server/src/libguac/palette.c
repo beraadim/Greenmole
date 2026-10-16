@@ -38,6 +38,8 @@ guac_palette* guac_palette_alloc(cairo_surface_t* surface) {
 
     /* Allocate palette */
     guac_palette* palette = (guac_palette*) guac_mem_zalloc(sizeof(guac_palette));
+    if (palette == NULL)
+        return NULL;
 
     for (y=0; y<height; y++) {
         for (x=0; x<width; x++) {
@@ -90,8 +92,10 @@ guac_palette* guac_palette_alloc(cairo_surface_t* surface) {
             }
         }
 
-        /* Advance to next data row */
-        data += stride;
+        /* A nonzero-X subrectangle can end at the backing surface's bottom.
+         * Do not form an unused pointer beyond that allocation. */
+        if (y + 1 < height)
+            data += stride;
 
     }
 

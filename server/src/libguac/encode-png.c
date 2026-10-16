@@ -309,9 +309,28 @@ int guac_png_write(guac_socket* socket, guac_stream* stream,
     else if (palette->size <= 16) bpp = 4;
     else                          bpp = 8;
 
+    /* Store the row table and indexed pixels in one allocation. The table is
+     * naturally aligned at the start; byte-sized pixels follow it. Acquiring
+     * this block before setjmp() keeps its automatic pointer unchanged across
+     * a libpng longjmp, so error cleanup can reliably release all row data. */
+    size_t row_size;
+    if (guac_mem_ckd_add(&row_size, sizeof(png_byte*), (size_t) width)) {
+        guac_palette_free(palette);
+        guac_error = GUAC_STATUS_NO_MEMORY;
+        guac_error_message = "PNG row storage size overflow";
+        return -1;
+    }
+
+    png_rows = (png_byte**) guac_mem_alloc(row_size, (size_t) height);
+    if (png_rows == NULL) {
+        guac_palette_free(palette);
+        return -1;
+    }
+
     /* Set up PNG writer */
     png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png) {
+        guac_mem_free(png_rows);
         guac_palette_free(palette);
         guac_error = GUAC_STATUS_INTERNAL_ERROR;
         guac_error_message = "libpng failed to create write structure";
@@ -321,6 +340,7 @@ int guac_png_write(guac_socket* socket, guac_stream* stream,
     png_info = png_create_info_struct(png);
     if (!png_info) {
         png_destroy_write_struct(&png, NULL);
+        guac_mem_free(png_rows);
         guac_palette_free(palette);
         guac_error = GUAC_STATUS_INTERNAL_ERROR;
         guac_error_message = "libpng failed to create info structure";
@@ -330,6 +350,7 @@ int guac_png_write(guac_socket* socket, guac_stream* stream,
     /* Set error handler */
     if (setjmp(png_jmpbuf(png))) {
         png_destroy_write_struct(&png, &png_info);
+        guac_mem_free(png_rows);
         guac_palette_free(palette);
         guac_error = GUAC_STATUS_IO_ERROR;
         guac_error_message = "libpng output error";
@@ -347,12 +368,10 @@ int guac_png_write(guac_socket* socket, guac_stream* stream,
             guac_png_write_handler,
             guac_png_flush_handler);
 
-    /* Copy data from surface into PNG data */
-    png_rows = (png_byte**) guac_mem_alloc(sizeof(png_byte*), height);
+    /* Copy data from surface into the contiguous indexed pixel region. */
+    png_byte* row = (png_byte*) (png_rows + height);
     for (y=0; y<height; y++) {
 
-        /* Allocate new PNG row */
-        png_byte* row = (png_byte*) guac_mem_alloc(sizeof(png_byte), width);
         png_rows[y] = row;
 
         /* Copy data from surface into current row */
@@ -366,8 +385,12 @@ int guac_png_write(guac_socket* socket, guac_stream* stream,
 
         }
 
-        /* Advance to next data row */
-        data += stride;
+        /* A subrectangle may reach the bottom of a larger surface with a
+         * nonzero X origin. Avoid forming an unused pointer beyond its backing
+         * allocation after the final row. */
+        if (y + 1 < height)
+            data += stride;
+        row += width;
 
     }
 
@@ -397,9 +420,7 @@ int guac_png_write(guac_socket* socket, guac_stream* stream,
     /* Free palette */
     guac_palette_free(palette);
 
-    /* Free PNG data */
-    for (y=0; y<height; y++)
-        guac_mem_free(png_rows[y]);
+    /* Free both the row table and all indexed pixels. */
     guac_mem_free(png_rows);
 
     /* Ensure all data is written */
