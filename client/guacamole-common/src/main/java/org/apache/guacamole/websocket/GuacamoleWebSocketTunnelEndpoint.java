@@ -78,6 +78,10 @@ public abstract class GuacamoleWebSocketTunnelEndpoint extends Endpoint {
      */
     private GuacamoleTunnel tunnel;
 
+    /** Null on the default path; never controlled by a browser instruction. */
+    private final WebSocketTunnelDiagnostics diagnostics =
+            WebSocketTunnelDiagnostics.create(logger);
+
     /**
      * Remote (client) side of this connection. This value will always be
      * non-null if tunnel is non-null.
@@ -148,12 +152,24 @@ public abstract class GuacamoleWebSocketTunnelEndpoint extends Endpoint {
         // itself. If the remote changes, then the outbound websocket
         // connection has changed, and synchronization need only be performed
         // in context of the new remote.
+        long waiting = diagnostics != null ? diagnostics.now() : 0;
         synchronized (remote) {
+            if (diagnostics != null)
+                diagnostics.record(WebSocketTunnelDiagnostics.Stage.SEND_LOCK,
+                        waiting, diagnostics.now(), 0, true);
+            long sending = diagnostics != null ? diagnostics.now() : 0;
+            boolean success = false;
             try {
                 remote.sendText(instruction);
+                success = true;
             }
             catch (IllegalStateException e) {
                 throw new IOException("WebSocket message could not be sent.", e);
+            }
+            finally {
+                if (diagnostics != null)
+                    diagnostics.record(WebSocketTunnelDiagnostics.Stage.SEND,
+                            sending, diagnostics.now(), instruction.length(), success);
             }
         }
 
@@ -246,14 +262,34 @@ public abstract class GuacamoleWebSocketTunnelEndpoint extends Endpoint {
 
                     try {
 
-                        // Attempt to read
-                        while ((readMessage = reader.read()) != null) {
+                        long buffered = 0;
+                        // READ includes expected idle time waiting for guacd.
+                        while (true) {
+                            long reading = diagnostics != null ? diagnostics.now() : 0;
+                            boolean success = false;
+                            readMessage = null;
+                            try {
+                                readMessage = reader.read();
+                                success = true;
+                            }
+                            finally {
+                                if (diagnostics != null)
+                                    diagnostics.record(WebSocketTunnelDiagnostics.Stage.READ,
+                                            reading, diagnostics.now(),
+                                            readMessage != null ? readMessage.length : 0, success);
+                            }
+                            if (readMessage == null) break;
 
                             // Buffer message
+                            if (diagnostics != null && buffer.length() == 0)
+                                buffered = diagnostics.now();
                             buffer.append(readMessage);
 
                             // Flush if we expect to wait or buffer is getting full
                             if (!reader.available() || buffer.length() >= BUFFER_SIZE) {
+                                if (diagnostics != null)
+                                    diagnostics.record(WebSocketTunnelDiagnostics.Stage.BUFFER,
+                                            buffered, diagnostics.now(), buffer.length(), true);
                                 sendInstruction(buffer.toString());
                                 buffer.setLength(0);
                             }
@@ -306,7 +342,12 @@ public abstract class GuacamoleWebSocketTunnelEndpoint extends Endpoint {
 
         // Filter received instructions, handling tunnel-internal instructions
         // without passing through to guacd
-        GuacamoleWriter writer = new FilteredGuacamoleWriter(tunnel.acquireWriter(), new GuacamoleFilter() {
+        long waiting = diagnostics != null ? diagnostics.now() : 0;
+        GuacamoleWriter acquiredWriter = tunnel.acquireWriter();
+        if (diagnostics != null)
+            diagnostics.record(WebSocketTunnelDiagnostics.Stage.WRITE_LOCK,
+                    waiting, diagnostics.now(), 0, true);
+        GuacamoleWriter writer = new FilteredGuacamoleWriter(acquiredWriter, new GuacamoleFilter() {
 
             @Override
             public GuacamoleInstruction filter(GuacamoleInstruction instruction)
@@ -335,6 +376,9 @@ public abstract class GuacamoleWebSocketTunnelEndpoint extends Endpoint {
 
                 }
 
+                if (diagnostics != null && instruction.getOpcode().equals("sync"))
+                    diagnostics.syncAck();
+
                 // Pass through all non-internal instructions untouched
                 return instruction;
 
@@ -342,9 +386,12 @@ public abstract class GuacamoleWebSocketTunnelEndpoint extends Endpoint {
 
         });
 
+        long writing = diagnostics != null ? diagnostics.now() : 0;
+        boolean success = false;
         try {
             // Write received message
             writer.write(message.toCharArray());
+            success = true;
         }
         catch (GuacamoleConnectionClosedException e) {
             logger.debug("Connection to guacd closed.", e);
@@ -353,7 +400,12 @@ public abstract class GuacamoleWebSocketTunnelEndpoint extends Endpoint {
             logger.debug("WebSocket tunnel write failed.", e);
         }
 
-        tunnel.releaseWriter();
+        finally {
+            tunnel.releaseWriter();
+            if (diagnostics != null)
+                diagnostics.record(WebSocketTunnelDiagnostics.Stage.WRITE,
+                        writing, diagnostics.now(), message.length(), success);
+        }
 
     }
     
@@ -361,6 +413,7 @@ public abstract class GuacamoleWebSocketTunnelEndpoint extends Endpoint {
     @OnClose
     public void onClose(Session session, CloseReason closeReason) {
 
+        if (diagnostics != null) diagnostics.stop();
         try {
             if (tunnel != null)
                 tunnel.close();
