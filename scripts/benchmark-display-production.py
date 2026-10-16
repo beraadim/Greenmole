@@ -119,7 +119,8 @@ def controlled_workloads(runs, codec):
                 if actual[key] != expected[key]:
                     raise RuntimeError(f"fixed-codec workload differs for {case['scenario']}: {key}")
             for name in ["png", "jpeg", "webp"]:
-                for key in ["calls", "pixels", "encoded_bytes", "quality_min", "quality_max"]:
+                for key in ["calls", "pixels", "encoded_bytes", "quality_min", "quality_max",
+                            "max_image_pixels", "images_input_gt_1mib", "images_input_gt_2mib"]:
                     if actual["codecs"][name][key] != expected["codecs"][name][key]:
                         raise RuntimeError(f"fixed-codec workload differs for {case['scenario']}: {name}.{key}")
             fingerprints = case["encoded_payload_fingerprints"]

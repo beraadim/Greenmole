@@ -61,6 +61,7 @@ static int (*real_send_blob)(guac_socket*, const guac_stream*, const void*, int)
 typedef struct encoder_observation {
     uint64_t calls[3], pixels[3], encoded_bytes[3], wrapper_ns[3];
     uint64_t payload_sum[3], payload_xor[3];
+    uint64_t max_image_pixels[3], input_gt_1mib[3], input_gt_2mib[3];
     int quality_min[3], quality_max[3];
     uint64_t webp_lossless, webp_lossy, selector_calls;
 } encoder_observation;
@@ -150,7 +151,11 @@ static void end_encoder(int codec, cairo_surface_t* surface, int quality, int lo
     if (!observed.calls[codec] || quality < observed.quality_min[codec]) observed.quality_min[codec] = quality;
     if (!observed.calls[codec] || quality > observed.quality_max[codec]) observed.quality_max[codec] = quality;
     observed.calls[codec]++;
-    observed.pixels[codec] += (uint64_t) cairo_image_surface_get_width(surface) * cairo_image_surface_get_height(surface);
+    uint64_t image_pixels = (uint64_t) cairo_image_surface_get_width(surface) * cairo_image_surface_get_height(surface);
+    observed.pixels[codec] += image_pixels;
+    if (image_pixels > observed.max_image_pixels[codec]) observed.max_image_pixels[codec] = image_pixels;
+    if (image_pixels > UINT64_C(1048576) / 4) observed.input_gt_1mib[codec]++;
+    if (image_pixels > UINT64_C(2097152) / 4) observed.input_gt_2mib[codec]++;
     observed.encoded_bytes[codec] += encoder_bytes;
     observed.wrapper_ns[codec] += duration;
     if (payload_fingerprints) {
@@ -996,8 +1001,10 @@ static int run_case(int index, const char* mode, int samples, int warmup, int ac
     static const char* observed_codec_names[3] = { "png", "jpeg", "webp" };
     for (int codec = 0; codec < 3; codec++) {
         printf("%s\"%s\":{\"calls\":%" PRIu64 ",\"pixels\":%" PRIu64 ",\"encoded_bytes\":%" PRIu64
+                ",\"max_image_pixels\":%" PRIu64 ",\"images_input_gt_1mib\":%" PRIu64 ",\"images_input_gt_2mib\":%" PRIu64
                 ",\"wrapper_ms\":%.6f,\"quality_min\":", codec ? "," : "", observed_codec_names[codec],
                 encoder_final.calls[codec], encoder_final.pixels[codec], encoder_final.encoded_bytes[codec],
+                encoder_final.max_image_pixels[codec], encoder_final.input_gt_1mib[codec], encoder_final.input_gt_2mib[codec],
                 encoder_final.wrapper_ns[codec] / 1000000.0);
         if (!encoder_final.calls[codec] || codec == GUAC_DISPLAY_IMAGE_FORMAT_PNG) printf("null,\"quality_max\":null}");
         else printf("%d,\"quality_max\":%d}", encoder_final.quality_min[codec], encoder_final.quality_max[codec]);

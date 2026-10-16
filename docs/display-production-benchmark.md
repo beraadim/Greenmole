@@ -90,7 +90,13 @@ a fixed increment per encoded blob on both old/new libraries; compare only
 records using the same harness. The separate correctness replay disables all
 fixed overrides and observations and forces lossless output as before.
 
-## Optional render diagnostics
+Encoder observations also record maximum actual image area and counts whose
+packed 32-bit input exceeds 1 MiB or 2 MiB. These measured-frame values are
+checked in fixed-workload comparisons. They describe potential workspace
+capacity eligibility, not observed cache hits, retained memory, or allocation
+savings; those require separate workspace tests or preparation measurements.
+
+## Encoded-output integrity
 
 For a separate encoded-output integrity run, add `--encoded-fingerprints` to a
 fixed-codec comparison. This opt-in computes FNV-1a64 over each image's encoded
@@ -103,6 +109,8 @@ image placement/order. Disabled runs explicitly report unavailable fingerprint
 evidence. Fingerprinting adds per-byte work inside the encoder envelope: keep
 these integrity runs separate from performance claims, and use the same
 harness on both versions.
+
+## Optional render diagnostics
 
 `--render-diagnostics` enables the private numeric render getter in supporting
 libraries through `GUAC_DISPLAY_DIAGNOSTICS=1`. Older libraries such as private.7
