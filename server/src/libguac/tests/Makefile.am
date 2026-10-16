@@ -79,7 +79,9 @@ test_libguac_SOURCES =               \
     rect/init.c                      \
     rect/intersects.c                \
     socket/fd_send_instruction.c     \
+    socket/fd_write_failure.c        \
     socket/nested_send_instruction.c \
+    socket/write.c                   \
     string/strdup.c                  \
     string/strlcat.c                 \
     string/strlcpy.c                 \
@@ -98,11 +100,16 @@ if ENABLE_WEBP
 test_libguac_SOURCES += encode/webp.c
 endif
 
+if ENABLE_SSL
+test_libguac_SOURCES += socket/ssl_write_failure.c
+endif
+
 test_libguac_LDADD = \
     @CUNIT_LIBS@     \
     @CAIRO_LIBS@     \
     @PNG_LIBS@       \
     @WEBP_LIBS@      \
+    @SSL_LIBS@       \
     @PTHREAD_LIBS@   \
     @LIBGUAC_LTLIB@
 

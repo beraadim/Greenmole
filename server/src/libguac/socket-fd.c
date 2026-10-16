@@ -24,6 +24,7 @@
 #include "guacamole/socket.h"
 
 #include <errno.h>
+#include <limits.h>
 #include <pthread.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -97,8 +98,8 @@ typedef struct guac_socket_fd_data {
  *     The number of bytes within the given buffer.
  *
  * @return
- *     The number of bytes written, which will be exactly the size of the given
- *     buffer, or a negative value if an error occurs.
+ *     Zero if the entire buffer was written, or -1 if an error occurs. The
+ *     caller must hold the buffer lock.
  */
 ssize_t guac_socket_fd_write(guac_socket* socket,
         const void* buf, size_t count) {
@@ -106,26 +107,46 @@ ssize_t guac_socket_fd_write(guac_socket* socket,
     guac_socket_fd_data* data = (guac_socket_fd_data*) socket->data;
     const char* buffer = buf;
 
+    /* A previous write may have transmitted only a prefix. Retrying that
+     * buffer would corrupt the instruction stream. */
+    if (data->failed_errno) {
+        errno = data->failed_errno;
+        guac_error = GUAC_STATUS_SEE_ERRNO;
+        guac_error_message = "Error writing data to socket";
+        return -1;
+    }
+
     /* Write until completely written */
     while (count > 0) {
 
-        int retval;
+        ssize_t retval;
+        size_t chunk_size = count > INT_MAX ? INT_MAX : count;
 
 #ifdef ENABLE_WINSOCK
         /* WSA only works with send() */
-        retval = send(data->fd, buffer, count, 0);
+        do {
+            retval = send(data->fd, buffer, (int) chunk_size, 0);
+            if (retval < 0)
+                errno = WSAGetLastError();
+        } while (retval < 0 && errno == WSAEINTR);
 #else
         /* Use write() for all other platforms */
-        GUAC_RETRY_EINTR(retval, write(data->fd, buffer, count));
+        GUAC_RETRY_EINTR(retval, write(data->fd, buffer, chunk_size));
 #endif
+
+        /* A zero-byte write of nonempty data cannot make progress. Treat it
+         * as a terminal I/O failure instead of spinning with the buffer lock
+         * held. EAGAIN is also terminal: these sockets use blocking I/O, with
+         * no readiness/retry policy for nonblocking descriptors. */
+        if (retval == 0 || (retval > 0 && (size_t) retval > chunk_size)) {
+            errno = EIO;
+            retval = -1;
+        }
 
         /* Record errors in guac_error */
         if (retval < 0) {
-#ifdef ENABLE_WINSOCK
-            data->failed_errno = errno = WSAGetLastError();
-#else
-            data->failed_errno = errno;
-#endif
+            data->failed_errno = errno ? errno : EIO;
+            errno = data->failed_errno;
             guac_error = GUAC_STATUS_SEE_ERRNO;
             guac_error_message = "Error writing data to socket";
             return retval;
@@ -290,8 +311,8 @@ static ssize_t guac_socket_fd_write_buffered(guac_socket* socket,
     /* Append to buffer, flush if necessary */
     while (count > 0) {
 
-        int chunk_size;
-        int remaining = sizeof(data->out_buf) - data->written;
+        size_t chunk_size;
+        size_t remaining = sizeof(data->out_buf) - data->written;
 
         /* If no space left in buffer, flush and retry */
         if (remaining == 0) {
@@ -345,14 +366,18 @@ static ssize_t guac_socket_fd_write_buffered(guac_socket* socket,
 static ssize_t guac_socket_fd_write_handler(guac_socket* socket,
         const void* buf, size_t count) {
 
-    int retval;
+    ssize_t retval;
     guac_socket_fd_data* data = (guac_socket_fd_data*) socket->data;
     
     /* Acquire exclusive access to buffer */
     pthread_mutex_lock(&(data->buffer_lock));
 
     /* Write provided data to buffer */
-    retval = guac_socket_fd_write_buffered(socket, buf, count);
+    /* Keep the result representable in ssize_t, including on platforms where
+     * send() accepts only an int byte count. guac_socket_write() handles the
+     * remaining input through subsequent calls. */
+    retval = guac_socket_fd_write_buffered(socket, buf,
+            count > INT_MAX ? INT_MAX : count);
 
     /* Relinquish exclusive access to buffer */
     pthread_mutex_unlock(&(data->buffer_lock));

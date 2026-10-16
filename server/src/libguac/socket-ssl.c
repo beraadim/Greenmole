@@ -23,6 +23,8 @@
 #include "guacamole/socket.h"
 #include "wait-fd.h"
 
+#include <errno.h>
+#include <limits.h>
 #include <pthread.h>
 #include <stdlib.h>
 #ifdef ENABLE_WINSOCK
@@ -32,6 +34,7 @@
 #endif
 
 #include <openssl/ssl.h>
+#include <openssl/err.h>
 
 /**
  * SSL socket-specific data.
@@ -56,6 +59,14 @@ typedef struct guac_socket_ssl_data {
     SSL* ssl;
 
     /**
+     * The first terminal write failure, protected by ssl_lock. A partially
+     * transmitted instruction must never be retried on this connection.
+     */
+    guac_status write_error;
+    int write_errno;
+    const char* write_error_message;
+
+    /**
      * Lock that is acquired when an instruction is being written, and released
      * when the instruction is finished being written.
      */
@@ -69,25 +80,43 @@ typedef struct guac_socket_ssl_data {
 
 } guac_socket_ssl_data;
 
+static void __guac_socket_ssl_shutdown_handler(guac_socket* socket);
+
 /**
- * Returns whether data already decrypted by OpenSSL awaits a read from the
- * given SSL socket.
+ * Restores the first write error, if any. The caller must hold ssl_lock.
+ */
+static int __guac_socket_ssl_failed(guac_socket_ssl_data* data) {
+    if (data->write_error == GUAC_STATUS_SUCCESS)
+        return 0;
+
+    guac_error = data->write_error;
+    errno = data->write_errno;
+    guac_error_message = data->write_error_message;
+    return 1;
+}
+
+/**
+ * Returns whether a read can proceed without waiting for socket input, either
+ * because decrypted data awaits a read or because a terminal write failure
+ * must be reported. No further OpenSSL I/O is permitted after that failure.
  *
  * @param socket
  *     The guac_socket to test.
  *
  * @return
- *     Non-zero if decrypted data awaits a read, zero otherwise.
+ *     Non-zero if decrypted data or a terminal error awaits a read, zero
+ *     otherwise.
  */
 static int __guac_socket_ssl_pending(guac_socket* socket) {
 
     guac_socket_ssl_data* data = (guac_socket_ssl_data*) socket->data;
 
     pthread_mutex_lock(&(data->ssl_lock));
-    int pending = SSL_pending(data->ssl);
+    int pending = data->write_error != GUAC_STATUS_SUCCESS
+        || SSL_pending(data->ssl) > 0;
     pthread_mutex_unlock(&(data->ssl_lock));
 
-    return pending > 0;
+    return pending;
 
 }
 
@@ -104,14 +133,25 @@ static ssize_t __guac_socket_ssl_read_handler(guac_socket* socket,
         int received;
         GUAC_RETRY_EINTR(received, recv(data->fd, &peeked, 1, MSG_PEEK));
         if (received < 0) {
-            guac_error = GUAC_STATUS_SEE_ERRNO;
-            guac_error_message = "Error reading data from secure socket";
+            int saved_errno = errno;
+            pthread_mutex_lock(&(data->ssl_lock));
+            int failed = __guac_socket_ssl_failed(data);
+            pthread_mutex_unlock(&(data->ssl_lock));
+            if (!failed) {
+                errno = saved_errno;
+                guac_error = GUAC_STATUS_SEE_ERRNO;
+                guac_error_message = "Error reading data from secure socket";
+            }
             return -1;
         }
     }
 
     /* Read from socket */
     pthread_mutex_lock(&(data->ssl_lock));
+    if (__guac_socket_ssl_failed(data)) {
+        pthread_mutex_unlock(&(data->ssl_lock));
+        return -1;
+    }
     retval = SSL_read(data->ssl, buf, count);
     pthread_mutex_unlock(&(data->ssl_lock));
 
@@ -128,20 +168,64 @@ static ssize_t __guac_socket_ssl_read_handler(guac_socket* socket,
 static ssize_t __guac_socket_ssl_write_handler(guac_socket* socket,
         const void* buf, size_t count) {
 
-    /* Write data to socket */
     guac_socket_ssl_data* data = (guac_socket_ssl_data*) socket->data;
-    int retval;
 
     pthread_mutex_lock(&(data->ssl_lock));
-    retval = SSL_write(data->ssl, buf, count);
-    pthread_mutex_unlock(&(data->ssl_lock));
 
-    /* Record errors in guac_error */
-    if (retval <= 0) {
-        guac_error = GUAC_STATUS_SEE_ERRNO;
-        guac_error_message = "Error writing data to secure socket";
+    /* A previous failure may have transmitted part of an instruction. */
+    if (__guac_socket_ssl_failed(data)) {
+        pthread_mutex_unlock(&(data->ssl_lock));
+        return -1;
     }
 
+    /* SSL_write() accepts an int length and does not support empty writes.
+     * Its error queue must be empty before the call, and SSL_get_error() must
+     * run in the same thread without another intervening OpenSSL operation. */
+    if (count == 0) {
+        pthread_mutex_unlock(&(data->ssl_lock));
+        return 0;
+    }
+
+    int length = count > INT_MAX ? INT_MAX : (int) count;
+    ERR_clear_error();
+    errno = 0;
+    int retval = SSL_write(data->ssl, buf, length);
+    int saved_errno = errno;
+
+    if (retval <= 0) {
+        int ssl_error = SSL_get_error(data->ssl, retval);
+
+        data->write_error = GUAC_STATUS_IO_ERROR;
+        data->write_errno = 0;
+        data->write_error_message = "Error writing data to secure socket";
+
+        if (ssl_error == SSL_ERROR_ZERO_RETURN) {
+            data->write_error = GUAC_STATUS_CLOSED;
+            data->write_error_message = "Secure socket closed during write";
+        }
+        else if (ssl_error == SSL_ERROR_SYSCALL && saved_errno) {
+            data->write_error = GUAC_STATUS_SEE_ERRNO;
+            data->write_errno = saved_errno;
+        }
+        else if (ssl_error == SSL_ERROR_WANT_READ
+                || ssl_error == SSL_ERROR_WANT_WRITE) {
+            /* Secure sockets require blocking descriptors (as does the
+             * initial SSL_accept()). Retrying WANT requires the identical
+             * buffer/length and an explicit readiness policy. Fail closed
+             * rather than spin, resend a prefix, or introduce unbounded
+             * retries while holding the connection lock. */
+            data->write_error_message = "Secure socket write requires an unsupported retry";
+        }
+
+        /* Wake a reader already waiting in MSG_PEEK, including the race
+         * between its pending check and wait. shutdown() cancels descriptor
+         * I/O without performing any further operation on the failed SSL. */
+        __guac_socket_ssl_shutdown_handler(socket);
+        __guac_socket_ssl_failed(data);
+        retval = -1;
+    }
+
+    pthread_mutex_unlock(&(data->ssl_lock));
     return retval;
 
 }
@@ -188,7 +272,11 @@ static int __guac_socket_ssl_free_handler(guac_socket* socket) {
 
     /* Shutdown SSL */
     guac_socket_ssl_data* data = (guac_socket_ssl_data*) socket->data;
-    SSL_shutdown(data->ssl);
+    /* OpenSSL forbids further I/O (including SSL_shutdown()) after a fatal
+     * SSL_ERROR_SSL/SSL_ERROR_SYSCALL. Failed writes have already invalidated
+     * this stream, so release it without attempting another TLS operation. */
+    if (data->write_error == GUAC_STATUS_SUCCESS)
+        SSL_shutdown(data->ssl);
     SSL_free(data->ssl);
 
     /* Close file descriptor */
@@ -240,11 +328,24 @@ guac_socket* guac_socket_open_secure(SSL_CTX* context, int fd) {
 
     /* Allocate socket and associated data */
     guac_socket* socket = guac_socket_alloc();
+    if (socket == NULL) {
+        SSL_free(ssl);
+        return NULL;
+    }
+
     guac_socket_ssl_data* data = guac_mem_alloc(sizeof(guac_socket_ssl_data));
+    if (data == NULL) {
+        guac_socket_free(socket);
+        SSL_free(ssl);
+        return NULL;
+    }
 
     /* Init SSL */
     data->context = context;
     data->ssl = ssl;
+    data->write_error = GUAC_STATUS_SUCCESS;
+    data->write_errno = 0;
+    data->write_error_message = NULL;
     SSL_set_fd(data->ssl, fd);
 
     /* Accept SSL connection, handle errors */

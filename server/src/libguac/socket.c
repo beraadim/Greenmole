@@ -110,9 +110,20 @@ ssize_t guac_socket_write(guac_socket* socket,
     while (count > 0) {
 
         /* Attempt to write, return on error */
-        int written = __guac_socket_write(socket, buffer, count);
-        if (written == -1)
+        ssize_t written = __guac_socket_write(socket, buffer, count);
+        if (written < 0)
             return 1;
+
+        /* A successful handler must consume part of the provided buffer. Zero
+         * progress would otherwise loop forever, while an excessive count
+         * would advance outside that buffer and underflow the remaining size.
+         * Do not retry errors here: part of the instruction may already have
+         * reached the peer, and only the driver knows which retries are safe. */
+        if (written == 0 || (size_t) written > count) {
+            guac_error = GUAC_STATUS_IO_ERROR;
+            guac_error_message = "Socket write handler returned an invalid byte count";
+            return 1;
+        }
 
         /* Advance buffer as data written */
         buffer += written;
@@ -353,13 +364,10 @@ ssize_t guac_socket_flush_base64(guac_socket* socket) {
     }
 
     /* Write buffer to socket */
-    int retval = guac_socket_write(socket, socket->__encoded_buf, encodedCount);
-    if (retval < 0)
-        return retval;
-
+    /* The attempted bytes may have been partially sent even on failure. Never
+     * retain them for a later flush which could replay an encoded prefix. */
     socket->__ready = 0;
-
-    return 0;
+    return guac_socket_write(socket, socket->__encoded_buf, encodedCount);
 
 }
 
@@ -385,7 +393,7 @@ ssize_t guac_socket_write_base64(guac_socket* socket, const void* buf, size_t co
         /* Flush ready buffer when full */
         if (socket->__ready == GUAC_SOCKET_BASE64_READY_BUFFER_SIZE) {
             retval = guac_socket_flush_base64(socket);
-            if (retval < 0)
+            if (retval)
                 return retval;
         }
     }
