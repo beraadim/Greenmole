@@ -1,0 +1,115 @@
+{
+  "schema": "greenmole-release-validation-v1",
+  "release": "1.6.1-greenmole.1",
+  "status": "built and tested; no live deployment",
+  "source_revision": "1f34dac5917e1369fc0668869d716c7e85c7ad4d",
+  "verified_at_utc": "2026-10-17T10:44:59.153569+00:00",
+  "platform": "linux/amd64",
+  "dependency_pins_unchanged_from": "1.6.1-private.16",
+  "release_inputs_sha256": "7dbb58d9e67f68b9c96706971112b543822f26fb8f8a9d3b9cca61503cb97240",
+  "container_images_published": false,
+  "build": {
+    "source_revision": "1f34dac5917e1369fc0668869d716c7e85c7ad4d",
+    "pinned_image_builds_passed": true,
+    "maven_reactor_success": true,
+    "maven_tests_explicitly_enabled": true,
+    "java_unit_tests_passed": 64,
+    "java_unit_failures": 0,
+    "java_unit_errors": 0,
+    "firefox_jasmine": {
+      "passed": 256,
+      "total": 259,
+      "capability_skipped": 3
+    },
+    "native": {
+      "exit_code": 0,
+      "tests": 286,
+      "nonzero_failures": [],
+      "image": "greenmole/native-benchmark:1.6.1-greenmole.1",
+      "revision": "1f34dac5917e1369fc0668869d716c7e85c7ad4d",
+      "diagnostics": 0
+    },
+    "images": [
+      {
+        "image": "greenmole/guacd:1.6.1-greenmole.1",
+        "image_id": "sha256:f250d8f0c629faa8cb6518b5a4b50300e54e842c99f14697fff04813110dd3b3",
+        "revision": "1f34dac5917e1369fc0668869d716c7e85c7ad4d"
+      },
+      {
+        "image": "greenmole/web:1.6.1-greenmole.1",
+        "image_id": "sha256:af82060a7434f87b1025cf1b4f09885903fee54753b5cea13aa1ffc15b45c075",
+        "revision": "1f34dac5917e1369fc0668869d716c7e85c7ad4d"
+      },
+      {
+        "image": "greenmole/native-benchmark:1.6.1-greenmole.1",
+        "image_id": "sha256:992925a145f66beeb936279bd8dd0c982260d9adbb3412bd797b75848943e8ca",
+        "revision": "1f34dac5917e1369fc0668869d716c7e85c7ad4d"
+      }
+    ]
+  },
+  "browser": {
+    "chrome_jasmine_passed": 259,
+    "chrome_jasmine_skipped": 0,
+    "firefox_jasmine_passed": 256,
+    "firefox_capability_skipped": 3,
+    "frontend_node_passed": 40,
+    "production_webpack_passed": true,
+    "production_webpack_existing_bundle_size_warnings": 3,
+    "built_login_smoke": {
+      "status": "passed",
+      "title": "Greenmole",
+      "version": "1.6.1-greenmole.1",
+      "loginFields": true,
+      "icons": [
+        "images/greenmole-64.png",
+        "images/greenmole-144.png"
+      ],
+      "iconReset": true,
+      "pageErrors": []
+    }
+  },
+  "attribution": {
+    "modified_upstream_files_with_file_local_notices": 83,
+    "unchanged_upstream_license_and_notice_files": 213,
+    "recorded_server_history_reachable": true,
+    "recorded_client_history_reachable": true,
+    "root_apache_notice_preserved": true,
+    "check_command": "python3 scripts/check-attribution.py"
+  },
+  "packaged_runtime_smoke": {
+    "source_revision": "1f34dac5917e1369fc0668869d716c7e85c7ad4d",
+    "synthetic_configuration_only": true,
+    "production_configuration_mounted": false,
+    "isolated_internal_network": true,
+    "languages": 16,
+    "greenmole_name_and_version_served": true,
+    "translation_metadata_valid": true,
+    "branding_assets_byte_identical": [
+      {
+        "path": "images/greenmole.svg",
+        "sha256": "d6dc06b4187542c5487e7ba177a9d8aa84f464f5d32ee17bfec3124f14400e9e",
+        "bytes": 1019
+      },
+      {
+        "path": "images/greenmole-64.png",
+        "sha256": "1e3869390fb3d16a3e421fcd0d11e4bb1ee66ce442df2126c7325e088e2f8a0b",
+        "bytes": 1510
+      },
+      {
+        "path": "images/greenmole-144.png",
+        "sha256": "110677982bd54b803ff1bf59f39d48b97e1e04c4ca5f5e8eef0514cffe199b1b",
+        "bytes": 3724
+      }
+    ],
+    "browser_video_and_fallback_apis_served": true,
+    "rdp_plugin_handshake": true,
+    "web_to_guacd_tcp": true,
+    "common_js_sha256": "f6be587aca8e4c8b65438c302e4ab302df48e54860c6eba961a9fb21d3fd86d6",
+    "production_unchanged": true,
+    "temporary_containers_and_network_removed": true,
+    "deployment_changed": false
+  },
+  "video_transport_behavior_baseline": "1.6.1-private.16-validation.json",
+  "new_video_transport_matrix_run": false,
+  "production_deployed": false
+}

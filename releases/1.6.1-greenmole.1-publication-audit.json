@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "project": "Greenmole",
+  "audit_date": "2026-10-17",
+  "result": "No actual credentials or private key material detected in the audited publication scope.",
+  "audited_reference": {
+    "ref": "refs/heads/main",
+    "commit": "1f34dac5917e1369fc0668869d716c7e85c7ad4d",
+    "tree": "fe6269d41365147524f0cb89081ff1b42c39c0c1"
+  },
+  "scanner": {
+    "name": "Gitleaks",
+    "version": "8.30.1",
+    "installation_verification": "Checksum-verified Homebrew/core bottle",
+    "bottle_sha256": "ea543daa28d39acc7af3aab4491ef53d62c0402b540d087008ff4dce7e2484b3",
+    "installed_binary_sha256": "f414bc2fb952be6c9072b75cb411e3368614ef4b16d48dbd9ad238034afd2302",
+    "default_rules": true,
+    "discovery_suppressions_applied": false,
+    "reports_redacted": true,
+    "archive_depth": 2,
+    "decode_depth": 5
+  },
+  "historical_audit": {
+    "previously_scanned_commit": "e934cbb7d1d43b407c20f9d47e35a8d26571d8bb",
+    "reachable_commits": 11450,
+    "reachable_blob_versions": 31761,
+    "reachable_blob_bytes": 352281585,
+    "annotated_tag_messages": 16,
+    "commit_messages_scanned": 11450,
+    "current_tracked_files_at_historical_baseline": 2830,
+    "all_blob_detections_reviewed": 233,
+    "reviewed_false_positive_categories": {
+      "terminal_key_symbol_identifiers": 196,
+      "SSH_parser_header_constants_without_key_material": 13,
+      "documented_upstream_example_password_hashes": 11,
+      "keymap_source_identifiers": 6,
+      "unchanged_password_UUID_sentinels": 6,
+      "public_RFC_6455_WebSocket_example_nonce": 1
+    },
+    "unclassified_detections": 0,
+    "actual_credential_detections": 0,
+    "complete_PEM_or_valid_DER_private_keys": 0,
+    "expanded_archive_objects": 9,
+    "expanded_archive_members": 136,
+    "expanded_archive_bytes": 19741191,
+    "expanded_archive_secret_detections": 0
+  },
+  "candidate_incremental_audit": {
+    "additional_commits": 1,
+    "additional_blob_versions": 97,
+    "tracked_files": 2839,
+    "whole_tracked_tree_detections_reviewed": 31,
+    "whole_tracked_tree_false_positive_categories": {
+      "terminal_key_symbol_identifiers": 28,
+      "documented_upstream_example_password_hashes": 2,
+      "public_RFC_6455_WebSocket_example_nonce": 1
+    },
+    "new_blob_secret_detections": 0,
+    "changed_patch_secret_detections": 0,
+    "new_commit_message_secret_detections": 0,
+    "known_credential_detections": 0,
+    "new_archive_objects": 0,
+    "new_PNG_images_reviewed": 2,
+    "PNG_chunk_types": [
+      "IHDR",
+      "IDAT",
+      "IEND"
+    ],
+    "PNG_text_EXIF_or_other_metadata_chunks": 0,
+    "PNG_trailing_bytes": 0
+  },
+  "combined_scope": {
+    "reachable_commits": 11451,
+    "unique_reachable_blob_versions": 31858,
+    "unique_reachable_blob_bytes": 354590790,
+    "annotated_tags": 16,
+    "candidate_tree_files": 2839
+  },
+  "preserved_upstream_histories": {
+    "server": {
+      "source_commit": "56a7a88cba86365e80fe418703b8422db72e35a4",
+      "reachable_commits": 4212,
+      "ancestor_of_audited_reference": true
+    },
+    "client": {
+      "source_commit": "84a1acea9f99f849d7e6ad95a3218d385b36c55a",
+      "reachable_commits": 7162,
+      "ancestor_of_audited_reference": true
+    }
+  },
+  "additional_checks": [
+    "Known previously supplied credentials were compared privately against all reachable blobs, commit messages, annotated tag messages, and expanded archive members, including common text encodings. Neither values nor account identifiers are included here.",
+    "Historical and current sensitive filenames and deployment-report structures were reviewed for runtime configuration, credential files, keystores, and backups. No actual runtime credentials or authentication mappings were found.",
+    "All reachable blob versions were read in full in addition to Git patch scanning. Recognized ZIP/JAR and gzip content was separately expanded and scanned.",
+    "The new PNG assets were parsed with CRC verification; they contain only image header, pixel-data, and end chunks."
+  ],
+  "limitations": [
+    "Pattern scanning and manual classification reduce publication risk but cannot prove absence of every possible secret.",
+    "No detected or known credential was tested against any external service.",
+    "Coverage includes reachable Git content and the audited tracked tree. Ignored or untracked files, unreachable objects, reflogs, external runtime state, and local account configuration are outside publication scope.",
+    "This record identifies the source candidate before the audit and validation documentation commit. That final documentation-only delta must be separately scanned before the initial push."
+  ]
+}
