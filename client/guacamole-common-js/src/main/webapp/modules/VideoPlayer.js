@@ -56,9 +56,8 @@ Guacamole.VideoPlayer = function VideoPlayer() {
  */
 Guacamole.VideoPlayer.isSupportedType = function isSupportedType(mimetype) {
 
-    // There are currently no built-in video players (and therefore no
-    // supported types)
-    return false;
+    return mimetype === Guacamole.AVC420VideoPlayer.MIMETYPE
+        && Guacamole.AVC420VideoPlayer.supported;
 
 };
 
@@ -74,8 +73,8 @@ Guacamole.VideoPlayer.isSupportedType = function isSupportedType(mimetype) {
  */
 Guacamole.VideoPlayer.getSupportedTypes = function getSupportedTypes() {
 
-    // There are currently no built-in video players (and therefore no
-    // supported types)
+    // The private player requires explicit opt-in and an asynchronous probe.
+    // Generic clients must not advertise it speculatively.
     return [];
 
 };
@@ -95,14 +94,18 @@ Guacamole.VideoPlayer.getSupportedTypes = function getSupportedTypes() {
  * @param {!string} mimetype
  *     The mimetype of the video data in the provided stream.
  *
+ * @param {Guacamole.Display} [display]
+ *     Ordered display scheduler, required by the private AVC420 player.
+ *
  * @return {Guacamole.VideoPlayer}
  *     A Guacamole.VideoPlayer instance supporting the given mimetype and
  *     reading from the given stream, or null if support for the given mimetype
  *     is absent.
  */
-Guacamole.VideoPlayer.getInstance = function getInstance(stream, layer, mimetype) {
+Guacamole.VideoPlayer.getInstance = function getInstance(stream, layer, mimetype, display) {
 
-    // There are currently no built-in video players
+    if (display && Guacamole.VideoPlayer.isSupportedType(mimetype))
+        return new Guacamole.AVC420VideoPlayer(stream, layer, display);
     return null;
 
 };

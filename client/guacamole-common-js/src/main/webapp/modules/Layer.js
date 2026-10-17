@@ -359,6 +359,17 @@ Guacamole.Layer = function(width, height) {
     };
 
     /**
+     * Draws the visible upper-left region of a decoded video frame without
+     * scaling its padded coded dimensions into the desktop. H.264 encoders may
+     * pad height/width to macroblock boundaries.
+     */
+    this.drawVideoFrame = function drawVideoFrame(frame, width, height) {
+        if (layer.autosize) fitRect(0, 0, width, height);
+        context.drawImage(frame, 0, 0, width, height, 0, 0, width, height);
+        empty = false;
+    };
+
+    /**
      * Transfer a rectangle of image data from one Layer to this Layer using the
      * specified transfer function.
      * 

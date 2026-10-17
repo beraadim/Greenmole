@@ -64,6 +64,14 @@
     "CLIENT" : {
 
         "ACTION_SHOW_PERFORMANCE" : "Show performance statistics",
+        "ACTION_EXPERIMENTAL_AVC420" : "Experimental AVC420 browser decoding",
+        "STATUS_AVC420_IMAGES" : "Using image updates; AVC420 has not been negotiated.",
+        "STATUS_AVC420_WAITING" : "AVC420 is negotiated; waiting for the first decoded frame.",
+        "STATUS_AVC420_PLAYING" : "AVC420 browser decoding is active.",
+        "STATUS_AVC420_FALLBACK" : "Using image updates after video fallback.",
+        "HELP_EXPERIMENTAL_AVC420" : "Applies after reconnecting. Uses image updates automatically if video cannot be decoded. This preference is saved in this browser.",
+        "HELP_AVC420_SECURE_CONTEXT" : "Video decoding requires HTTPS (or localhost). Image updates remain available.",
+        "HELP_AVC420_UNAVAILABLE" : "This browser does not provide compatible H.264 decoding. Image updates will be used.",
         "ACTION_REFRESH_DISPLAY" : "Refresh display",
         "PERFORMANCE_RENDER_FPS" : "Guacamole frames/s",
         "PERFORMANCE_DESKTOP_FPS" : "Source frames/s",

@@ -756,6 +756,65 @@ Guacamole.Display = function() {
     }
 
     /**
+     * Reserves an ordered display operation for an asynchronously decoded video
+     * frame. The caller transfers ownership through complete(); cancelled or
+     * late VideoFrames are always closed. Individual cancellation is essential
+     * when a video stream falls back to images without cancelling those images.
+     *
+     * @param {!Guacamole.Layer} layer The destination layer.
+     * @param {!number} width Visible desktop width, excluding codec padding.
+     * @param {!number} height Visible desktop height, excluding codec padding.
+     * @param {!function(boolean)} oncomplete Called after drawing, or on failure.
+     * @returns {!Object} The complete(frame) and cancel() operations.
+     */
+    this.scheduleVideoFrame = function scheduleVideoFrame(layer, width, height, oncomplete) {
+        var frame = null;
+        var finished = false;
+        var resolved = false;
+        var release = function release() {
+            if (frame) {
+                frame.close();
+                frame = null;
+            }
+        };
+        var finish = function finish(success) {
+            if (!finished) {
+                finished = true;
+                release();
+                oncomplete(success);
+            }
+        };
+        var task = scheduleTask(function drawVideoFrame() {
+            var success = false;
+            try {
+                if (frame) {
+                    layer.drawVideoFrame(frame, width, height);
+                    success = true;
+                }
+            }
+            catch (ignore) { /* A failed canvas draw triggers image fallback. */ }
+            finally {
+                finish(success);
+            }
+        }, true, function cancelVideoFrame() { finish(false); });
+        return {
+            complete: function complete(decoded) {
+                if (finished || resolved) {
+                    if (decoded) decoded.close();
+                    return;
+                }
+                resolved = true;
+                frame = decoded;
+                task.unblock();
+            },
+            cancel: function cancel(deferFlush) {
+                task.cancel();
+                if (!deferFlush && frames.length) __flush_frames();
+            }
+        };
+    };
+
+    /**
      * Returns the element which contains the Guacamole display.
      * 
      * @return {!Element}

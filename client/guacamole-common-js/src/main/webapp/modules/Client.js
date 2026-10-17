@@ -181,6 +181,46 @@ Guacamole.Client = function(tunnel) {
      * @type {!Object.<number, Guacamole.VideoPlayer>}
      */
     var videoPlayers = {};
+    var experimentalAvc420Enabled = false;
+
+    /**
+     * Explicitly permits the private browser decoder for this client only.
+     * Applications must enable this after user opt-in and capability probing,
+     * before connecting. A support probe alone never authorizes playback.
+     * @param {!boolean} enabled Whether this client may receive private AVC420.
+     */
+    this.setExperimentalAvc420Enabled = function setExperimentalAvc420Enabled(enabled) {
+        experimentalAvc420Enabled = enabled === true;
+        if (!experimentalAvc420Enabled) {
+            Object.keys(videoPlayers).forEach(function stopPrivateVideo(index) {
+                if (videoPlayers[index] instanceof Guacamole.AVC420VideoPlayer) {
+                    videoPlayers[index].dispose(true);
+                    delete videoPlayers[index];
+                    delete videoLayers[index];
+                }
+            });
+        }
+    };
+    var videoStatistics = { status: 'images', presentedFrames: 0 };
+
+    /** Returns content-free state for the optional browser video experiment. */
+    this.getVideoStatistics = function getVideoStatistics() {
+        return { status: videoStatistics.status,
+            presentedFrames: videoStatistics.presentedFrames };
+    };
+    var videoLayers = {};
+
+    /** Release stream decoders before changing their target or display epoch. */
+    function cancelVideoPlayers(layer) {
+        Object.keys(videoPlayers).forEach(function cancel(index) {
+            if (layer && videoLayers[index] !== layer) return;
+            var player = videoPlayers[index];
+            if (player.dispose) player.dispose(!!layer);
+            delete videoPlayers[index];
+            delete videoLayers[index];
+        });
+    }
+
 
     // No initial parsers
     var parsers = [];
@@ -327,6 +367,7 @@ Guacamole.Client = function(tunnel) {
         currentTimestamp = state.currentTimestamp;
 
         // Cancel any pending display operations/frames and their measurements.
+        cancelVideoPlayers();
         if (pipelineDiagnostics) pipelineDiagnostics.cancel();
         display.cancel();
 
@@ -1365,6 +1406,7 @@ Guacamole.Client = function(tunnel) {
         "dispose": function(parameters) {
             
             var layer_index = parseInt(parameters[0]);
+            if (layers[layer_index]) cancelVideoPlayers(layers[layer_index]);
 
             // If visible layer, remove from parent
             if (layer_index > 0) {
@@ -1429,7 +1471,9 @@ Guacamole.Client = function(tunnel) {
                 if (stream.onend)
                     stream.onend();
 
-                // Invalidate stream
+                // Invalidate stream and release any decoder tied to it.
+                delete videoPlayers[stream_index];
+                delete videoLayers[stream_index];
                 delete streams[stream_index];
 
             }
@@ -1682,6 +1726,7 @@ Guacamole.Client = function(tunnel) {
 
             var layer = getLayer(parseInt(parameters[0]));
 
+            cancelVideoPlayers(layer);
             display.reset(layer);
 
         },
@@ -1719,6 +1764,7 @@ Guacamole.Client = function(tunnel) {
             var width = parseInt(parameters[1]);
             var height = parseInt(parameters[2]);
 
+            cancelVideoPlayers(layer);
             display.resize(layer, width, height);
 
         },
@@ -1831,6 +1877,19 @@ Guacamole.Client = function(tunnel) {
             var layer = getLayer(parseInt(parameters[1]));
             var mimetype = parameters[2];
 
+            // The private path is one full-desktop stream. Replacing it must
+            // release old tasks/frames, even if a peer reuses a stream index.
+            Object.keys(videoPlayers).forEach(function replaceVideo(index) {
+                var previous = videoPlayers[index];
+                if (index === String(stream_index)
+                        || (mimetype === Guacamole.AVC420VideoPlayer.MIMETYPE
+                            && previous instanceof Guacamole.AVC420VideoPlayer)) {
+                    if (previous.dispose) previous.dispose(false);
+                    delete videoPlayers[index];
+                    delete videoLayers[index];
+                }
+            });
+
             // Create stream
             var stream = streams[stream_index] =
                     new Guacamole.InputStream(guac_client, stream_index);
@@ -1841,13 +1900,23 @@ Guacamole.Client = function(tunnel) {
                 videoPlayer = guac_client.onvideo(stream, layer, mimetype);
 
             // If unsuccessful, try to use a default implementation
-            if (!videoPlayer)
-                videoPlayer = Guacamole.VideoPlayer.getInstance(stream, layer, mimetype);
+            if (!videoPlayer && (mimetype !== Guacamole.AVC420VideoPlayer.MIMETYPE
+                    || experimentalAvc420Enabled))
+                videoPlayer = Guacamole.VideoPlayer.getInstance(stream, layer, mimetype, display);
 
             // If we have successfully retrieved an video player, send success response
             if (videoPlayer) {
                 videoPlayers[stream_index] = videoPlayer;
-                guac_client.sendAck(stream_index, "OK", 0x0000);
+                videoLayers[stream_index] = layer;
+                if (mimetype === Guacamole.AVC420VideoPlayer.MIMETYPE) {
+                    videoStatistics.status = 'waiting';
+                    videoPlayer.onstatechange = function videoStateChanged(status) {
+                        videoStatistics.status = status;
+                        if (status === 'playing') videoStatistics.presentedFrames++;
+                    };
+                }
+                guac_client.sendAck(stream_index,
+                    mimetype === Guacamole.AVC420VideoPlayer.MIMETYPE ? "AVC420:ready" : "OK", 0x0000);
             }
 
             // Otherwise, mimetype must be unsupported
@@ -1948,6 +2017,7 @@ Guacamole.Client = function(tunnel) {
 
             displayRecovery.reset();
             if (pipelineDiagnostics) pipelineDiagnostics.cancel();
+            cancelVideoPlayers();
             display.cancel();
 
             // Send disconnect message and disconnect

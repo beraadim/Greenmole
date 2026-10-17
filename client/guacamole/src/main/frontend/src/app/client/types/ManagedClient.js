@@ -275,7 +275,7 @@ angular.module('client').factory('ManagedClient', ['$rootScope', '$injector',
      *     A promise which resolves with the string of connection parameters to
      *     be passed to the Guacamole client, once the string is ready.
      */
-    const getConnectString = function getConnectString(identifier, width, height) {
+    const getConnectString = function getConnectString(identifier, width, height, client) {
 
         const deferred = $q.defer();
 
@@ -301,16 +301,16 @@ angular.module('client').factory('ManagedClient', ['$rootScope', '$injector',
             connectString += "&GUAC_AUDIO=" + encodeURIComponent(mimetype);
         });
 
-        // Add video mimetypes to connect string
-        guacVideo.supported.forEach(function(mimetype) {
-            connectString += "&GUAC_VIDEO=" + encodeURIComponent(mimetype);
-        });
-
-        // Add image mimetypes to connect string
-        guacImage.getSupportedMimetypes().then(function supportedMimetypesKnown(mimetypes) {
-
-            // Add each image mimetype
-            angular.forEach(mimetypes, function addImageMimetype(mimetype) {
+        // Both capability queries are asynchronous. Wait before advertising
+        // private AVC420; ordinary image support remains available as fallback.
+        $q.all([guacVideo.getSupportedMimetypes(), guacImage.getSupportedMimetypes()])
+        .then(function supportedMimetypesKnown(mimetypes) {
+            client.setExperimentalAvc420Enabled(mimetypes[0].indexOf(
+                Guacamole.AVC420VideoPlayer.MIMETYPE) !== -1);
+            mimetypes[0].forEach(function addVideo(mimetype) {
+                connectString += "&GUAC_VIDEO=" + encodeURIComponent(mimetype);
+            });
+            angular.forEach(mimetypes[1], function addImageMimetype(mimetype) {
                 connectString += "&GUAC_IMAGE=" + encodeURIComponent(mimetype);
             });
 
@@ -732,7 +732,7 @@ angular.module('client').factory('ManagedClient', ['$rootScope', '$injector',
         const clientIdentifier = ClientIdentifier.fromString(managedClient.id);
 
         // Connect the Guacamole client
-        getConnectString(clientIdentifier, width, height)
+        getConnectString(clientIdentifier, width, height, managedClient.client)
         .then(function connectClient(connectString) {
             managedClient.client.connect(connectString);
         });

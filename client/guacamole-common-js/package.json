@@ -1,5 +1,6 @@
 {
   "description": "Dependencies to be installed by Maven for running unit tests and generating documentation",
+  "scripts": { "test:browser": "node test/run-browser-tests.mjs" },
   "devDependencies": {
     "jsdoc": "^4.0.5",
     "karma": "^6.4.4",

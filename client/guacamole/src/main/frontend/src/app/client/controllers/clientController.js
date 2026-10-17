@@ -140,6 +140,8 @@ angular.module('client').controller('clientController', ['$scope', '$routeParams
 
     };
 
+    $scope.video = $injector.get('guacVideo');
+
     // Convenience method for closing the menu
     $scope.closeMenu = function closeMenu() {
         $scope.menu.shown = false;

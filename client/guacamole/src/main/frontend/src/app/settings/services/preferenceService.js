@@ -119,6 +119,9 @@ angular.module('settings').provider('preferenceService', ['$injector',
      */
     this.preferences = {
 
+        /** Private AVC420 browser decoding is experimental and opt-in. */
+        experimentalAvc420 : false,
+
         /**
          * Whether translation of touch to mouse events should emulate an
          * absolute pointer device, or a relative pointer device.

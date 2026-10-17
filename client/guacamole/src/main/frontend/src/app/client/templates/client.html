@@ -192,6 +192,15 @@
                         <button type="button" ng-if="focusedClient.client.isDisplayRefreshSupported()"
                                 ng-click="focusedClient.client.requestDisplayRefresh()">{{'CLIENT.ACTION_REFRESH_DISPLAY' | translate}}</button>
                         <label><input type="checkbox" ng-model="focusedClient.clientProperties.showStatistics"> {{'CLIENT.ACTION_SHOW_PERFORMANCE' | translate}}</label>
+                        <label><input type="checkbox" ng-model="video.preferences.experimentalAvc420"
+                                      ng-change="video.save()"> {{'CLIENT.ACTION_EXPERIMENTAL_AVC420' | translate}}</label>
+                        <p>{{'CLIENT.HELP_EXPERIMENTAL_AVC420' | translate}}</p>
+                        <p ng-if="video.preferences.experimentalAvc420 && focusedClient.client.getVideoStatistics().status === 'images'">{{'CLIENT.STATUS_AVC420_IMAGES' | translate}}</p>
+                        <p ng-if="focusedClient.client.getVideoStatistics().status === 'waiting'">{{'CLIENT.STATUS_AVC420_WAITING' | translate}}</p>
+                        <p ng-if="focusedClient.client.getVideoStatistics().status === 'playing'">{{'CLIENT.STATUS_AVC420_PLAYING' | translate}}</p>
+                        <p ng-if="focusedClient.client.getVideoStatistics().status === 'fallback'">{{'CLIENT.STATUS_AVC420_FALLBACK' | translate}}</p>
+                        <p ng-if="!video.secure">{{'CLIENT.HELP_AVC420_SECURE_CONTEXT' | translate}}</p>
+                        <p ng-if="video.secure && video.checked && !video.available">{{'CLIENT.HELP_AVC420_UNAVAILABLE' | translate}}</p>
                     </div>
                 </div>
 

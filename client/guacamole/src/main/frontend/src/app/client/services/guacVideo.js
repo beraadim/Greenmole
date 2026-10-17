@@ -17,21 +17,39 @@
  * under the License.
  */
 
-/**
- * A service for checking browser video support.
- */
-angular.module('client').factory('guacVideo', [function guacVideo() {
-           
-    /**
-     * Object describing the UI's level of video support.
-     */
-    return new (function() {
+/** Browser-local opt-in and asynchronous capability negotiation for video. */
+angular.module('client').factory('guacVideo', ['$injector', function guacVideo($injector) {
+    const $q = $injector.get('$q');
+    const preferenceService = $injector.get('preferenceService');
+    const service = {
+        preferences: preferenceService.preferences,
+        available: false,
+        checked: false,
+        secure: !!window.isSecureContext
+    };
 
-        /**
-         * Array of all supported video mimetypes.
-         */
-        this.supported = Guacamole.VideoPlayer.getSupportedTypes();
+    service.checkSupport = function checkSupport() {
+        return $q.when(Guacamole.AVC420VideoPlayer.checkSupport()).then(function checked(supported) {
+            service.available = supported;
+            service.checked = true;
+            return supported;
+        }, function unavailable() {
+            service.available = false;
+            service.checked = true;
+            return false;
+        });
+    };
 
-    })();
+    service.save = function save() { preferenceService.save(); };
 
+    // Connection setup waits for this query. No speculative capability is ever
+    // sent before WebCodecs confirms support, even with a saved opt-in.
+    service.getSupportedMimetypes = function getSupportedMimetypes() {
+        if (service.preferences.experimentalAvc420 !== true) return $q.when([]);
+        return service.checkSupport().then(function supported(available) {
+            return available ? [Guacamole.AVC420VideoPlayer.MIMETYPE] : [];
+        });
+    };
+    service.checkSupport();
+    return service;
 }]);
