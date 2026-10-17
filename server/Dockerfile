@@ -272,8 +272,10 @@ RUN git clone https://github.com/cisco/openh264.git /tmp/openh264 && \
 #
 
 FROM builder AS freerdp
-COPY --from=openh264 /opt/guacamole /opt/guacamole
 ARG BUILD_DIR
+COPY --from=openh264 /opt/guacamole /opt/guacamole
+COPY ./src/guacd-docker/bin/patch-freerdp-avc444.sh ${BUILD_DIR}/src/guacd-docker/bin/
+COPY ./src/guacd-docker/patches/ ${BUILD_DIR}/src/guacd-docker/patches/
 ARG FREERDP_ARM_OPTS
 ARG FREERDP_OPTS
 ARG FREERDP_X86_OPTS

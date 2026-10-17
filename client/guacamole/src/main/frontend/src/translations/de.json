@@ -57,6 +57,19 @@
     },
 
     "CLIENT" : {
+        "ACTION_EXPERIMENTAL_VIDEO" : "Experimentelle Videodekodierung im Browser",
+        "OPTION_VIDEO_IMAGES" : "Bildaktualisierungen",
+        "OPTION_VIDEO_AVC420" : "AVC420 (Standardfarben)",
+        "OPTION_VIDEO_AVC444" : "AVC444 (volle Farbdetails)",
+        "STATUS_AVC444_PLAYING" : "AVC444-Videodekodierung im Browser ist aktiv.",
+        "STATUS_AVC420_IMAGES" : "Using image updates; video has not been negotiated.",
+        "STATUS_AVC420_WAITING" : "Video is negotiated; waiting for the first decoded frame.",
+        "STATUS_AVC420_PLAYING" : "AVC420 browser decoding is active.",
+        "STATUS_AVC420_FALLBACK" : "Using image updates after video fallback.",
+        "HELP_EXPERIMENTAL_AVC420" : "Applies after reconnecting. Select AVC444 in the remote server too for full color detail; AVC420 remains available for hosts using standard color. Image updates are used automatically if video cannot be decoded. This preference is saved in this browser.",
+        "HELP_AVC420_SECURE_CONTEXT" : "Video decoding requires HTTPS (or localhost). Image updates remain available.",
+        "HELP_AVC420_UNAVAILABLE" : "The selected video mode is unavailable in this browser. AVC420 or image updates remain available.",
+
 
         "ACTION_ACKNOWLEDGE"               : "@:APP.ACTION_ACKNOWLEDGE",
         "ACTION_CANCEL"                    : "@:APP.ACTION_CANCEL",

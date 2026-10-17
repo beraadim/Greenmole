@@ -21,33 +21,41 @@
 angular.module('client').factory('guacVideo', ['$injector', function guacVideo($injector) {
     const $q = $injector.get('$q');
     const preferenceService = $injector.get('preferenceService');
-    const service = {
-        preferences: preferenceService.preferences,
-        available: false,
-        checked: false,
-        secure: !!window.isSecureContext
-    };
-
+    const preferences = preferenceService.preferences;
+    // Preserve old explicit opt-ins as AVC420. Invalid/unknown saved values
+    // never enable video implicitly.
+    const mode = ['images', 'avc420', 'avc444'].indexOf(preferences.experimentalVideoMode) !== -1
+        ? preferences.experimentalVideoMode : preferences.experimentalVideoMode == null && preferences.experimentalAvc420 === true ? 'avc420' : 'images';
+    const service = { preferences, mode, available: false, avc420Available: false,
+        avc444Available: false, checked: false, secure: !!window.isSecureContext };
     service.checkSupport = function checkSupport() {
-        return $q.when(Guacamole.AVC420VideoPlayer.checkSupport()).then(function checked(supported) {
-            service.available = supported;
-            service.checked = true;
-            return supported;
-        }, function unavailable() {
-            service.available = false;
-            service.checked = true;
-            return false;
+        const checks = [Guacamole.AVC420VideoPlayer, service.mode === 'avc444' ? Guacamole.AVC444VideoPlayer : null].map(function probe(Player) {
+            return $q.when(Player ? Player.checkSupport() : false).then(function supported(value) { return value === true; }, function unavailable() { return false; });
+        });
+        return $q.all(checks).then(function checked(values) {
+            service.avc420Available = values[0]; service.avc444Available = values[1];
+            service.available = service.mode === 'avc444' ? values[1] : values[0]; service.checked = true;
+            return values;
         });
     };
-
-    service.save = function save() { preferenceService.save(); };
-
-    // Connection setup waits for this query. No speculative capability is ever
-    // sent before WebCodecs confirms support, even with a saved opt-in.
+    service.save = function save() {
+        if (['images', 'avc420', 'avc444'].indexOf(service.mode) === -1) service.mode = 'images';
+        preferences.experimentalVideoMode = service.mode;
+        preferences.experimentalAvc420 = service.mode === 'avc420';
+        preferenceService.save();
+        service.available = service.mode === 'avc444' ? service.avc444Available : service.avc420Available;
+        service.checkSupport();
+    };
     service.getSupportedMimetypes = function getSupportedMimetypes() {
-        if (service.preferences.experimentalAvc420 !== true) return $q.when([]);
+        if (service.mode === 'images') return $q.when([]);
+        const selected = service.mode;
         return service.checkSupport().then(function supported(available) {
-            return available ? [Guacamole.AVC420VideoPlayer.MIMETYPE] : [];
+            const types = [];
+            if (selected === 'avc444' && available[1]) types.push(Guacamole.AVC444VideoPlayer.MIMETYPE);
+            // A host still configured for AVC420 can retain its existing fast
+            // path, and a failed native-plane probe never advertises AVC444.
+            if (available[0]) types.push(Guacamole.AVC420VideoPlayer.MIMETYPE);
+            return types;
         });
     };
     service.checkSupport();

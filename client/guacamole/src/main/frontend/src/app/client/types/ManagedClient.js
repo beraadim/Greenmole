@@ -307,6 +307,8 @@ angular.module('client').factory('ManagedClient', ['$rootScope', '$injector',
         .then(function supportedMimetypesKnown(mimetypes) {
             client.setExperimentalAvc420Enabled(mimetypes[0].indexOf(
                 Guacamole.AVC420VideoPlayer.MIMETYPE) !== -1);
+            client.setExperimentalAvc444Enabled(mimetypes[0].indexOf(
+                Guacamole.AVC444VideoPlayer.MIMETYPE) !== -1);
             mimetypes[0].forEach(function addVideo(mimetype) {
                 connectString += "&GUAC_VIDEO=" + encodeURIComponent(mimetype);
             });

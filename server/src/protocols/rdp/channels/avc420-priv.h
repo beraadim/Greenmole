@@ -34,6 +34,7 @@ struct guac_rdp_avc420 {
     guac_stream* stream;
     int enabled, disabled, ready, presented, started, refresh, fallback_logged;
     int supported_frame, commands, image_pending;
+    int avc444, stream_avc444;
     const char* reason;
     guac_timestamp opened;
     uint32_t sequence;
@@ -44,7 +45,8 @@ struct guac_rdp_avc420 {
     unsigned char* frame;
     size_t frame_length;
     unsigned int width, height;
-    int frame_key;
+    int frame_key, frame_aux_key, frame_avc444;
+    uint32_t frame_main_length, frame_aux_length;
     pcRdpgfxMapSurfaceToOutput map_output;
     pcRdpgfxMapSurfaceToScaledOutput map_scaled_output;
     pcRdpgfxMapSurfaceToWindow map_window;

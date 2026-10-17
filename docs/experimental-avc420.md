@@ -5,6 +5,10 @@ The default remains the existing image path. Production connection settings,
 credentials, recording settings, volumes and server preferences are not changed
 by installing these builds.
 
+The private.14 Display menu replaces the original checkbox with an explicit
+Images / AVC420 / AVC444 choice. Existing enabled preferences remain AVC420.
+See [AVC444 browser decoding](experimental-avc444.md) for full-color support.
+
 ## Try it
 
 1. Install macrdp 0.1.16 from the Mac mini Desktop DMG.

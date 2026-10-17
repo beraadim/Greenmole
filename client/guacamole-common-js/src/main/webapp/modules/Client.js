@@ -182,6 +182,13 @@ Guacamole.Client = function(tunnel) {
      */
     var videoPlayers = {};
     var experimentalAvc420Enabled = false;
+    var experimentalAvc444Enabled = false;
+    function isPrivateVideo(mimetype) {
+        return mimetype === Guacamole.AVC420VideoPlayer.MIMETYPE || mimetype === Guacamole.AVC444VideoPlayer.MIMETYPE;
+    }
+    function isPrivatePlayer(player) {
+        return player instanceof Guacamole.AVC420VideoPlayer || player instanceof Guacamole.AVC444VideoPlayer;
+    }
 
     /**
      * Explicitly permits the private browser decoder for this client only.
@@ -201,12 +208,24 @@ Guacamole.Client = function(tunnel) {
             });
         }
     };
-    var videoStatistics = { status: 'images', presentedFrames: 0 };
+    /** Explicitly permits AVC444 after opt-in and the native-plane/GPU probe. */
+    this.setExperimentalAvc444Enabled = function setExperimentalAvc444Enabled(enabled) {
+        experimentalAvc444Enabled = enabled === true;
+        if (!experimentalAvc444Enabled) {
+            Object.keys(videoPlayers).forEach(function stopPrivateVideo(index) {
+                if (videoPlayers[index] instanceof Guacamole.AVC444VideoPlayer) {
+                    videoPlayers[index].dispose(true);
+                    delete videoPlayers[index]; delete videoLayers[index];
+                }
+            });
+        }
+    };
+    var videoStatistics = { status: 'images', presentedFrames: 0, codec: null };
 
     /** Returns content-free state for the optional browser video experiment. */
     this.getVideoStatistics = function getVideoStatistics() {
         return { status: videoStatistics.status,
-            presentedFrames: videoStatistics.presentedFrames };
+            presentedFrames: videoStatistics.presentedFrames, codec: videoStatistics.codec };
     };
     var videoLayers = {};
 
@@ -1882,8 +1901,7 @@ Guacamole.Client = function(tunnel) {
             Object.keys(videoPlayers).forEach(function replaceVideo(index) {
                 var previous = videoPlayers[index];
                 if (index === String(stream_index)
-                        || (mimetype === Guacamole.AVC420VideoPlayer.MIMETYPE
-                            && previous instanceof Guacamole.AVC420VideoPlayer)) {
+                        || (isPrivateVideo(mimetype) && isPrivatePlayer(previous))) {
                     if (previous.dispose) previous.dispose(false);
                     delete videoPlayers[index];
                     delete videoLayers[index];
@@ -1900,15 +1918,17 @@ Guacamole.Client = function(tunnel) {
                 videoPlayer = guac_client.onvideo(stream, layer, mimetype);
 
             // If unsuccessful, try to use a default implementation
-            if (!videoPlayer && (mimetype !== Guacamole.AVC420VideoPlayer.MIMETYPE
-                    || experimentalAvc420Enabled))
+            if (!videoPlayer && (!isPrivateVideo(mimetype)
+                    || (mimetype === Guacamole.AVC420VideoPlayer.MIMETYPE && experimentalAvc420Enabled)
+                    || (mimetype === Guacamole.AVC444VideoPlayer.MIMETYPE && experimentalAvc444Enabled)))
                 videoPlayer = Guacamole.VideoPlayer.getInstance(stream, layer, mimetype, display);
 
             // If we have successfully retrieved an video player, send success response
             if (videoPlayer) {
                 videoPlayers[stream_index] = videoPlayer;
                 videoLayers[stream_index] = layer;
-                if (mimetype === Guacamole.AVC420VideoPlayer.MIMETYPE) {
+                if (isPrivateVideo(mimetype)) {
+                    videoStatistics.codec = mimetype === Guacamole.AVC444VideoPlayer.MIMETYPE ? 'avc444' : 'avc420';
                     videoStatistics.status = 'waiting';
                     videoPlayer.onstatechange = function videoStateChanged(status) {
                         videoStatistics.status = status;
@@ -1916,7 +1936,8 @@ Guacamole.Client = function(tunnel) {
                     };
                 }
                 guac_client.sendAck(stream_index,
-                    mimetype === Guacamole.AVC420VideoPlayer.MIMETYPE ? "AVC420:ready" : "OK", 0x0000);
+                    mimetype === Guacamole.AVC444VideoPlayer.MIMETYPE ? "AVC444:ready"
+                        : mimetype === Guacamole.AVC420VideoPlayer.MIMETYPE ? "AVC420:ready" : "OK", 0x0000);
             }
 
             // Otherwise, mimetype must be unsupported

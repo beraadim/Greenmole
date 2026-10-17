@@ -39,6 +39,7 @@ test_rdp_SOURCES =      \
     channels/avc420.c \
     fs/basename.c       \
     fs/normalize_path.c \
+    gdi/avc444-primitives.c \
     gdi/frame-markers.c
 
 test_rdp_CFLAGS =                \

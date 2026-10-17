@@ -119,8 +119,9 @@ angular.module('settings').provider('preferenceService', ['$injector',
      */
     this.preferences = {
 
-        /** Private AVC420 browser decoding is experimental and opt-in. */
+        /** Private video decoding is experimental and opt-in. Legacy true means AVC420. */
         experimentalAvc420 : false,
+        experimentalVideoMode : null,
 
         /**
          * Whether translation of touch to mouse events should emulate an

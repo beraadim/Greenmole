@@ -22,12 +22,13 @@
 #include <stdint.h>
 
 #define GUAC_RDP_AVC420_MIMETYPE "video/x-guacamole-avc420;v=1"
+#define GUAC_RDP_AVC444_MIMETYPE "video/x-guacamole-avc444;v=1"
 #define GUAC_RDP_AVC420_MAX_FRAME (8U * 1024U * 1024U)
 #define GUAC_RDP_AVC420_MAX_PENDING 16
 #define GUAC_RDP_AVC420_MAX_PENDING_BYTES (16U * 1024U * 1024U)
 #define GUAC_RDP_AVC420_ACK_TIMEOUT 2000
 
-/** Opaque, per-connection experimental browser video state. */
+/** Opaque, per-connection AVC420/AVC444 browser video state. */
 typedef struct guac_rdp_avc420 guac_rdp_avc420;
 
 guac_rdp_avc420* guac_rdp_avc420_alloc(void);
@@ -35,6 +36,8 @@ void guac_rdp_avc420_free(guac_rdp_avc420* video);
 void guac_rdp_avc420_join(guac_client* client, guac_user* user);
 void guac_rdp_avc420_leave(guac_client* client, guac_user* user);
 int guac_rdp_avc420_enabled(guac_client* client);
+/** Whether the owner opted into the paired AVC444 browser capability. */
+int guac_rdp_avc444_enabled(guac_client* client);
 void guac_rdp_avc420_init_graphics(guac_client* client, RdpgfxClientContext* gfx);
 void guac_rdp_avc420_stop(guac_client* client, const char* reason);
 void guac_rdp_avc420_invalidate(guac_client* client, const char* reason);
@@ -46,5 +49,17 @@ int guac_rdp_avc420_key_frame(const unsigned char* data, size_t length);
 /** Serializes the versioned network-order frame header. */
 void guac_rdp_avc420_header(unsigned char header[20], uint32_t sequence,
         unsigned int width, unsigned int height, int key, uint32_t length);
+
+/**
+ * Serializes GAV2. The 32-byte network-order header contains magic, sequence,
+ * visible width/height, flags, main/aux lengths, region counts and reserved zero.
+ * Flags: bit 0 main IDR, bit 1 auxiliary IDR, bits 8..9 LC (zero), bits 16..17
+ * chroma packing version (one). Two full visible region rectangles follow as
+ * left/top/right/bottom uint16 values, then the main and auxiliary Annex B AUs.
+ * AVC444 uses one decoder, in main then auxiliary access-unit order.
+ */
+void guac_rdp_avc444_header(unsigned char header[32], uint32_t sequence,
+        unsigned int width, unsigned int height, int main_key, int aux_key,
+        uint32_t main_length, uint32_t aux_length);
 
 #endif

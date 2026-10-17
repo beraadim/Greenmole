@@ -1,0 +1,33 @@
+--- a/libfreerdp/primitives/prim_YUV_ssse3.c
++++ b/libfreerdp/primitives/prim_YUV_ssse3.c
+@@ -1187,6 +1187,9 @@
+ 		{
+ 			ssse3_filter(&pU[2 * x], &pU1[2 * x]);
+ 			ssse3_filter(&pV[2 * x], &pV1[2 * x]);
++			/* A filter processes 8 pairs; this loop advances by 16 pairs. */
++			ssse3_filter(&pU[2 * x + 16], &pU1[2 * x + 16]);
++			ssse3_filter(&pV[2 * x + 16], &pV1[2 * x + 16]);
+ 		}
+ 
+ 		for (; x < halfWidth + roi->left; x++)
+@@ -1284,15 +1287,16 @@
+ 				const __m128i u = _mm_loadu_si128((__m128i*)&Ua[x]);
+ 				const __m128i u2 = _mm_unpackhi_epi8(u, zero);
+ 				const __m128i u1 = _mm_unpacklo_epi8(u, zero);
+-				_mm_maskmoveu_si128(u1, mask, (char*)&pU[2 * x]);
+-				_mm_maskmoveu_si128(u2, mask, (char*)&pU[2 * x + 16]);
++				/* The mask selects even bytes; B6/B7 target odd columns. */
++				_mm_maskmoveu_si128(u1, mask, (char*)&pU[2 * x + 1]);
++				_mm_maskmoveu_si128(u2, mask, (char*)&pU[2 * x + 17]);
+ 			}
+ 			{
+ 				const __m128i u = _mm_loadu_si128((__m128i*)&Va[x]);
+ 				const __m128i u2 = _mm_unpackhi_epi8(u, zero);
+ 				const __m128i u1 = _mm_unpacklo_epi8(u, zero);
+-				_mm_maskmoveu_si128(u1, mask, (char*)&pV[2 * x]);
+-				_mm_maskmoveu_si128(u2, mask, (char*)&pV[2 * x + 16]);
++				_mm_maskmoveu_si128(u1, mask, (char*)&pV[2 * x + 1]);
++				_mm_maskmoveu_si128(u2, mask, (char*)&pV[2 * x + 17]);
+ 			}
+ 		}
+ 

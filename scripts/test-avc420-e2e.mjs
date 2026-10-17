@@ -36,15 +36,15 @@ import { acceptWebSocket, ClientInstructions, instruction } from './benchmarks/i
 import { trackBrowserProcess } from './benchmarks/browser-process.mjs';
 
 const options = { guacdPort: 14822, rdpPort: 23989, browser: process.env.CHROME_BIN
-    || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', mode: 'both', timeoutMs: 60000, rdpSecurity: 'tls', commonJs: null };
+    || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', mode: 'both', codec: 'avc420', timeoutMs: 60000, rdpSecurity: 'tls', commonJs: null };
 for (let i = 2; i < process.argv.length; i += 2) {
-    const key = { '--guacd-port': 'guacdPort', '--rdp-port': 'rdpPort', '--browser': 'browser', '--mode': 'mode', '--timeout-ms': 'timeoutMs', '--rdp-security': 'rdpSecurity', '--common-js': 'commonJs' }[process.argv[i]];
-    if (!key || !process.argv[i + 1]) throw new Error('Usage: test-avc420-e2e.mjs [--guacd-port 14822] [--rdp-port 23989] [--browser executable] [--mode both|avc|images] [--timeout-ms 60000] [--rdp-security tls|rdp] [--common-js packaged-all.min.js]');
+    const key = { '--guacd-port': 'guacdPort', '--rdp-port': 'rdpPort', '--browser': 'browser', '--mode': 'mode', '--codec': 'codec', '--timeout-ms': 'timeoutMs', '--rdp-security': 'rdpSecurity', '--common-js': 'commonJs' }[process.argv[i]];
+    if (!key || !process.argv[i + 1]) throw new Error('Usage: test-avc420-e2e.mjs [--guacd-port 14822] [--rdp-port 23989] [--browser executable] [--mode both|avc|images] [--codec avc420|avc444] [--timeout-ms 60000] [--rdp-security tls|rdp] [--common-js packaged-all.min.js]');
     options[key] = ['guacdPort', 'rdpPort', 'timeoutMs'].includes(key) ? Number(process.argv[i + 1]) : process.argv[i + 1];
 }
 for (const key of ['guacdPort', 'rdpPort'])
     if (!Number.isInteger(options[key]) || options[key] < 1 || options[key] > 65535) throw new Error('Invalid port');
-if (!['tls', 'rdp'].includes(options.rdpSecurity) || !['both', 'avc', 'images'].includes(options.mode) || !Number.isInteger(options.timeoutMs)
+if (!['avc420', 'avc444'].includes(options.codec) || !['tls', 'rdp'].includes(options.rdpSecurity) || !['both', 'avc', 'images'].includes(options.mode) || !Number.isInteger(options.timeoutMs)
         || options.timeoutMs < 1000 || options.timeoutMs > 120000) throw new Error('Invalid mode or timeout');
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const modules = path.join(root, 'client/guacamole-common-js/src/main/webapp/modules');
@@ -83,7 +83,25 @@ async function browserTest(config) {
         });
         return pixels;
     }
-    const available = await Guacamole.AVC420VideoPlayer.checkSupport();
+    function fineColor(display) {
+        const canvas = display.flatten(), context = canvas.getContext('2d');
+        const points = [];
+        for (let x = 112; x < 128; x++) points.push([x, 108, x % 2 ? [16, 16, 220] : [220, 16, 16]]);
+        for (let y = 124; y < 140; y++) points.push([180, y, y % 2 ? [220, 16, 220] : [16, 220, 16]]);
+        let error = 0;
+        const pixels = points.map(([x, y, expected]) => {
+            const actual = [...context.getImageData(x, y, 1, 1).data];
+            assert(actual[3] === 255, 'Transparent AVC444 color detail');
+            error += expected.reduce((sum, value, i) => sum + Math.abs(value - actual[i]), 0);
+            return { x, y, actual, expected };
+        });
+        const meanAbsoluteError = error / (points.length * 3);
+        window.avc420TestContext.lastFineColor = { meanAbsoluteError, pixels };
+        assert(meanAbsoluteError < 30, 'AVC444 lost one-pixel color detail: MAE=' + meanAbsoluteError);
+        return { meanAbsoluteError, pixels };
+    }
+    const Player = config.codec === 'avc444' ? Guacamole.AVC444VideoPlayer : Guacamole.AVC420VideoPlayer;
+    const available = await Player.checkSupport();
     if (config.mode !== 'images') assert(available, 'Secure H.264 WebCodecs is required for the AVC test');
     const results = [];
     for (const video of config.mode === 'both' ? [true, false] : [config.mode === 'avc']) {
@@ -119,18 +137,20 @@ async function browserTest(config) {
             if (opcode === 'sync') protocol.syncs++;
             handler(opcode, args);
         };
-        const item = { videoRequested: video, protocol, phase: 'connecting' };
+        const item = { videoRequested: video, codec: config.codec, protocol, phase: 'connecting' };
         window.avc420TestContext = item;
         const originalDecode = window.VideoDecoder?.prototype.decode;
         try {
             client.setExperimentalAvc420Enabled(video);
+            client.setExperimentalAvc444Enabled(video && config.codec === 'avc444');
             client.connect('video=' + Number(video));
             if (video) {
                 await waitFor(() => client.getVideoStatistics().presentedFrames >= 12,
                     'No twelve real AVC420 frames presented: ' + JSON.stringify(client.getVideoStatistics()), errors);
                 item.phase = 'active-video-pixels';
                 item.active = client.getVideoStatistics(); item.videoPixels = quarters(display);
-                assert(item.active.status === 'playing' && protocol.videos > 0, 'AVC420 was not active');
+                if (config.codec === 'avc444') item.videoFineColor = fineColor(display);
+                assert(item.active.status === 'playing' && item.active.codec === config.codec && protocol.videos > 0, config.codec + ' was not active');
                 const beforeImages = protocol.images, beforePaintedImages = paint.completedImages;
                 window.VideoDecoder.prototype.decode = function injectedFailure() { throw new Error('Synthetic decoder failure'); };
                 await waitFor(() => client.getVideoStatistics().status === 'fallback', 'Decoder failure did not trigger fallback', errors);
@@ -141,6 +161,7 @@ async function browserTest(config) {
                     'No complete image repaint after decoder failure', errors);
                 item.phase = 'image-fallback-pixels';
                 item.fallback = client.getVideoStatistics(); item.fallbackPixels = quarters(display);
+                if (config.codec === 'avc444') item.fallbackFineColor = fineColor(display);
                 item.newFallbackImages = protocol.images - beforeImages;
                 item.newFallbackDraws = paint.completedImages - beforePaintedImages;
             }
@@ -149,6 +170,7 @@ async function browserTest(config) {
                     && !display.getQueueStatistics().pendingFrames, 'No ordinary image frame', errors);
                 item.phase = 'ordinary-image-pixels';
                 item.imagePixels = quarters(display);
+                if (config.codec === 'avc444') item.imageFineColor = fineColor(display);
                 assert(protocol.videos === 0 && client.getVideoStatistics().presentedFrames === 0,
                     'Video was sent to an image-only client');
             }
@@ -172,7 +194,7 @@ const clientProvenance = { packagedBundle: options.commonJs ? path.basename(opti
     sha256: createHash('sha256').update(clientSource).digest('hex') };
 const moduleSources = script(clientSource);
 const html = '<!doctype html><meta charset="utf-8"><body>' + moduleSources
-    + script('(' + browserTest.toString() + ')(' + JSON.stringify({ websocketPath, mode: options.mode }) + ')'
+    + script('(' + browserTest.toString() + ')(' + JSON.stringify({ websocketPath, mode: options.mode, codec: options.codec }) + ')'
         + '.then(result=>fetch(' + JSON.stringify(reportPath) + ',{method:"POST",body:JSON.stringify({passed:true,...result})}))'
         + '.catch(error=>fetch(' + JSON.stringify(reportPath) + ',{method:"POST",body:JSON.stringify({passed:false,error:error.stack,context:window.avc420TestContext})}));');
 const server = createServer((request, response) => {
@@ -202,8 +224,8 @@ server.on('upgrade', (request, socket, head) => {
     };
     const clientParser = new ClientInstructions(elements => {
         if (elements[0] === '') { enqueue(instruction(elements)); return; }
-        if (elements[0] === 'ack' && elements[2]?.startsWith('AVC420:')) {
-            if (elements[3] === '0' && elements[2] !== 'AVC420:ready') entry.frameAcks++;
+        if (elements[0] === 'ack' && elements[2]?.startsWith(options.codec.toUpperCase() + ':')) {
+            if (elements[3] === '0' && elements[2] !== options.codec.toUpperCase() + ':ready') entry.frameAcks++;
             else if (elements[3] !== '0') entry.failureAcks++;
         }
         tcp.write(instruction(elements));
@@ -217,7 +239,7 @@ server.on('upgrade', (request, socket, head) => {
                 password: 'synthetic-fixture', security: options.rdpSecurity, 'disable-auth': 'false', width: '320', height: '180', dpi: '96',
                 'disable-audio': 'true', 'disable-gfx': 'false', 'color-depth': '32', 'ignore-cert': 'true', 'resize-method': 'display-update', 'force-lossless': 'true' };
             tcp.write(instruction(['size', 320, 180, 96]) + instruction(['audio'])
-                + instruction(video ? ['video', 'video/x-guacamole-avc420;v=1'] : ['video'])
+                + instruction(video ? ['video', 'video/x-guacamole-' + options.codec + ';v=1', ...(options.codec === 'avc444' ? ['video/x-guacamole-avc420;v=1'] : [])] : ['video'])
                 + instruction(['image', 'image/png']) + instruction(['timezone', 'UTC'])
                 + instruction(['connect', args[0], ...args.slice(1).map(name => values[name] || '')]));
         }
@@ -242,9 +264,9 @@ server.on('upgrade', (request, socket, head) => {
 });
 let temporary, stop, deadline;
 try {
-    temporary = await mkdtemp(path.join(tmpdir(), 'guacamole-avc420-e2e-'));
+    temporary = await mkdtemp(path.join(tmpdir(), 'guacamole-h264-e2e-'));
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-    console.error('Synthetic AVC420 relay ready on 127.0.0.1:' + server.address().port + '; guacd forward 127.0.0.1:' + options.guacdPort);
+    console.error('Synthetic H.264 relay ready on 127.0.0.1:' + server.address().port + '; guacd forward 127.0.0.1:' + options.guacdPort);
     const browser = spawn(options.browser, ['--headless', '--disable-background-networking', '--disable-component-update',
         '--disable-extensions', '--no-first-run', '--no-default-browser-check', '--user-data-dir=' + temporary,
         'http://127.0.0.1:' + server.address().port + '/'], { stdio: ['ignore', 'ignore', 'pipe'] });

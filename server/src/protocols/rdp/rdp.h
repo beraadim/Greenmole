@@ -107,7 +107,7 @@ typedef struct guac_rdp_client {
      */
     guac_display* display;
 
-    /** Experimental browser AVC420 state; independent of RDP message locks. */
+    /** Experimental browser AVC420/AVC444 state; independent of RDP message locks. */
     guac_rdp_avc420* avc420;
 
     /**

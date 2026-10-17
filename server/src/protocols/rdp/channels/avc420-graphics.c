@@ -44,19 +44,45 @@ static UINT start_frame(RdpgfxClientContext* gfx, const RDPGFX_START_FRAME_PDU* 
     return video->start_frame(gfx, frame);
 }
 
+/** AVC444v1 full-pair forwarding never relies on retained chroma regions. */
+static int full_stream(const RDPGFX_AVC420_BITMAP_STREAM* stream,
+        const gdiGfxSurface* surface) {
+    return stream && stream->data && stream->length
+        && stream->meta.numRegionRects == 1 && stream->meta.regionRects
+        && !stream->meta.regionRects[0].left && !stream->meta.regionRects[0].top
+        && stream->meta.regionRects[0].right == surface->mappedWidth
+        && stream->meta.regionRects[0].bottom == surface->mappedHeight;
+}
+
+static void write_rectangle(unsigned char rectangle[8], unsigned int width,
+        unsigned int height) {
+    memset(rectangle, 0, 4);
+    rectangle[4] = width >> 8;
+    rectangle[5] = width;
+    rectangle[6] = height >> 8;
+    rectangle[7] = height;
+}
+
 static UINT surface_command(RdpgfxClientContext* gfx, const RDPGFX_SURFACE_COMMAND* cmd) {
     guac_client* client = client_for(gfx);
     guac_rdp_avc420* video = video_for(client);
     rdpGdi* gdi = gfx->custom;
     gdiGfxSurface* surface = gfx->GetSurfaceData(gfx, cmd->surfaceId);
-    RDPGFX_AVC420_BITMAP_STREAM* bs = cmd->extra;
+    int avc444 = cmd->codecId == RDPGFX_CODECID_AVC444;
+    RDPGFX_AVC444_BITMAP_STREAM* pair = avc444 ? cmd->extra : NULL;
+    RDPGFX_AVC420_BITMAP_STREAM* main = avc444
+        ? (pair ? &pair->bitstream[0] : NULL)
+        : (cmd->codecId == RDPGFX_CODECID_AVC420 ? cmd->extra : NULL);
+    RDPGFX_AVC420_BITMAP_STREAM* aux = pair ? &pair->bitstream[1] : NULL;
     pthread_mutex_lock(&video->lock);
     video->commands++;
     int started = video->started;
     int enabled = video->enabled && !video->disabled;
     int single = video->commands == 1;
+    int capability = !avc444 || video->avc444;
+    int same_codec = !video->stream || video->stream_avc444 == avc444;
     pthread_mutex_unlock(&video->lock);
-    int full = cmd->codecId == RDPGFX_CODECID_AVC420 && surface && bs
+    int full = surface && main && capability && same_codec
         && single && gdi->inGfxFrame && surface->outputMapped && !surface->windowId
         && !surface->outputOriginX && !surface->outputOriginY
         && surface->mappedWidth == (unsigned int) gdi->width
@@ -70,27 +96,42 @@ static UINT surface_command(RdpgfxClientContext* gfx, const RDPGFX_SURFACE_COMMA
         && (uint64_t) surface->mappedWidth * surface->mappedHeight <= 33554432U
         && !cmd->left && !cmd->top
         && cmd->right == surface->mappedWidth && cmd->bottom == surface->mappedHeight
-        && bs->data && bs->length > 0 && bs->length <= GUAC_RDP_AVC420_MAX_FRAME
-        && bs->meta.numRegionRects == 1 && bs->meta.regionRects
-        && !bs->meta.regionRects[0].left && !bs->meta.regionRects[0].top
-        && bs->meta.regionRects[0].right == surface->mappedWidth
-        && bs->meta.regionRects[0].bottom == surface->mappedHeight;
+        && full_stream(main, surface)
+        && main->length <= GUAC_RDP_AVC420_MAX_FRAME;
+    if (full && avc444) {
+        /* LC=1/2 and AVC444v2 require retained partial chroma state. Keep them
+         * on the fully capable shadow GDI instead of showing incorrect pixels. */
+        full = pair->LC == 0 && full_stream(aux, surface)
+            && main->length <= GUAC_RDP_AVC420_MAX_FRAME - 16
+            && aux->length <= GUAC_RDP_AVC420_MAX_FRAME - 16 - main->length;
+    }
     if (enabled && !full)
         guac_rdp_avc420_invalidate(client, "unsupported or mixed graphics surface command");
     /* Always retain FreeRDP's decoder, surface cache and frame ACK behavior.
      * Unsupported browsers therefore receive a complete ordinary image view. */
     UINT result = video->surface_command(gfx, cmd);
     if (result || !enabled || !full) return result;
-    int key = guac_rdp_avc420_key_frame(bs->data, bs->length);
+    int key = guac_rdp_avc420_key_frame(main->data, main->length);
     if (!started && !key) return result;
-    video->frame = malloc(bs->length);
+    size_t length = main->length + (avc444 ? 16 + aux->length : 0);
+    video->frame = malloc(length);
     if (!video->frame) {
         guac_rdp_avc420_stop(client, "unable to allocate bounded AVC frame");
         return result;
     }
-    memcpy(video->frame, bs->data, bs->length);
-    video->frame_length = bs->length;
+    if (avc444) {
+        write_rectangle(video->frame, surface->mappedWidth, surface->mappedHeight);
+        write_rectangle(video->frame + 8, surface->mappedWidth, surface->mappedHeight);
+        memcpy(video->frame + 16, main->data, main->length);
+        memcpy(video->frame + 16 + main->length, aux->data, aux->length);
+    }
+    else memcpy(video->frame, main->data, main->length);
+    video->frame_length = length;
     video->frame_key = key;
+    video->frame_aux_key = avc444 && guac_rdp_avc420_key_frame(aux->data, aux->length);
+    video->frame_avc444 = avc444;
+    video->frame_main_length = main->length;
+    video->frame_aux_length = avc444 ? aux->length : 0;
     video->width = surface->mappedWidth;
     video->height = surface->mappedHeight;
     return result;

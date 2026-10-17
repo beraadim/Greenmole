@@ -56,8 +56,8 @@ Guacamole.VideoPlayer = function VideoPlayer() {
  */
 Guacamole.VideoPlayer.isSupportedType = function isSupportedType(mimetype) {
 
-    return mimetype === Guacamole.AVC420VideoPlayer.MIMETYPE
-        && Guacamole.AVC420VideoPlayer.supported;
+    return (mimetype === Guacamole.AVC420VideoPlayer.MIMETYPE && Guacamole.AVC420VideoPlayer.supported)
+        || (mimetype === Guacamole.AVC444VideoPlayer.MIMETYPE && Guacamole.AVC444VideoPlayer.supported);
 
 };
 
@@ -104,8 +104,11 @@ Guacamole.VideoPlayer.getSupportedTypes = function getSupportedTypes() {
  */
 Guacamole.VideoPlayer.getInstance = function getInstance(stream, layer, mimetype, display) {
 
-    if (display && Guacamole.VideoPlayer.isSupportedType(mimetype))
+    if (display && Guacamole.VideoPlayer.isSupportedType(mimetype)) {
+        if (mimetype === Guacamole.AVC444VideoPlayer.MIMETYPE)
+            return new Guacamole.AVC444VideoPlayer(stream, layer, display);
         return new Guacamole.AVC420VideoPlayer(stream, layer, display);
+    }
     return null;
 
 };

@@ -128,6 +128,15 @@ else
     echo "Building $SRC_DIR ..."
 fi
 
+# The released FreeRDP dependency has AVC444 SSSE3 placement/filter defects.
+# Keep the exact source pin and validate its narrowly scoped correction before
+# compiling. New dependency revisions require an explicit patch review.
+if [ "$VAR_BASE" = "FREERDP" ] \
+        && [ "$(git rev-parse HEAD)" = "9b678b6d5a40ce01607d8c3b1b1416437c8416c4" ]; then
+    script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd)
+    "$script_dir/patch-freerdp-avc444.sh"
+fi
+
 # Configure build using CMake or GNU Autotools, whichever happens to be
 # used by the library being built
 if [ -e CMakeLists.txt ]; then

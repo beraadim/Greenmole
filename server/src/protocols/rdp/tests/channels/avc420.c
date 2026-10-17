@@ -36,6 +36,9 @@
 static const unsigned char key[] = {0,0,0,1,0x67,0x42,0,0x1f,
     0,0,1,0x68,0x80,0,0,1,0x65,0x88};
 static const char* mimes[] = { GUAC_RDP_AVC420_MIMETYPE, NULL };
+static const char* mimes444[] = { GUAC_RDP_AVC420_MIMETYPE,
+    GUAC_RDP_AVC444_MIMETYPE, NULL };
+static const unsigned char delta[] = {0,0,1,0x41,0x88};
 
 typedef struct fixture {
     guac_client* client;
@@ -70,7 +73,7 @@ static void init_fixture(fixture* f, int capable) {
     f->owner->client = f->client;
     f->owner->owner = 1;
     f->owner->data = &f->settings;
-    f->owner->info.video_mimetypes = capable ? mimes : NULL;
+    f->owner->info.video_mimetypes = capable == 2 ? mimes444 : (capable ? mimes : NULL);
     f->owner->socket = guac_socket_alloc();
     f->owner->socket->data = f;
     f->owner->socket->write_handler = write_video;
@@ -97,7 +100,9 @@ static void ready(fixture* f) {
     guac_rdp_avc420_open(f->client);
     guac_stream* stream = f->rdp.avc420->stream;
     CU_ASSERT_PTR_NOT_NULL_FATAL(stream);
-    stream->ack_handler(f->owner, stream, "AVC420:ready", GUAC_PROTOCOL_STATUS_SUCCESS);
+    stream->ack_handler(f->owner, stream,
+            f->rdp.avc420->stream_avc444 ? "AVC444:ready" : "AVC420:ready",
+            GUAC_PROTOCOL_STATUS_SUCCESS);
 }
 static void frame(fixture* f) {
     guac_rdp_avc420* v = f->rdp.avc420;
@@ -398,4 +403,184 @@ void test_avc420__mixed_first_frame_discards_cached_video_without_losing_image_s
     frame(&f);
     CU_ASSERT_TRUE(video->started);
     free_fixture(&f);
+}
+
+/** Exact GAV2 fields preserve packing version, rectangles and both AU lengths. */
+void test_avc420__avc444_capability_and_network_pair_header() {
+    fixture f;
+    init_fixture(&f, 1);
+    CU_ASSERT_FALSE(guac_rdp_avc444_enabled(f.client));
+    free_fixture(&f);
+    init_fixture(&f, 2);
+    CU_ASSERT_TRUE(guac_rdp_avc420_enabled(f.client));
+    CU_ASSERT_TRUE(guac_rdp_avc444_enabled(f.client));
+    ready(&f);
+    CU_ASSERT_TRUE(contains(&f, GUAC_RDP_AVC444_MIMETYPE));
+    CU_ASSERT_TRUE(f.rdp.avc420->ready);
+    free_fixture(&f);
+    unsigned char header[32];
+    guac_rdp_avc444_header(header, 0x1020304, 318, 178, 1, 0, 0x506, 0x708);
+    const unsigned char expected[] = {'G','A','V','2',1,2,3,4,1,62,0,178,
+        0,1,0,1,0,0,5,6,0,0,7,8,0,1,0,1,0,0,0,0};
+    CU_ASSERT_EQUAL(memcmp(header, expected, sizeof(header)), 0);
+}
+
+/** Real installed hooks pass the main IDR and referencing auxiliary P in order. */
+void test_avc420__avc444_complete_pair_preserves_metadata_ack_and_shadow() {
+    fixture f;
+    init_fixture(&f, 2);
+    ready(&f);
+    rdp_freerdp_context context = { .client = f.client };
+    rdpGdi gdi = { .width = 14, .height = 10, .context = &context._p };
+    RdpgfxClientContext gfx = { .custom = &gdi, .StartFrame = hook_start,
+        .SurfaceCommand = hook_command, .EndFrame = hook_end,
+        .GetSurfaceData = hook_get_surface };
+    hook_surface = (gdiGfxSurface) { .surfaceId = 1, .width = 16, .height = 16,
+        .mappedWidth = 14, .mappedHeight = 10, .outputMapped = TRUE,
+        .outputTargetWidth = 14, .outputTargetHeight = 10 };
+    RECTANGLE_16 rect = { .right = 14, .bottom = 10 };
+    RDPGFX_AVC444_BITMAP_STREAM pair = { .LC = 0, .bitstream = {
+        { .length = sizeof(key), .data = (BYTE*) key,
+            .meta = { .numRegionRects = 1, .regionRects = &rect } },
+        { .length = sizeof(delta), .data = (BYTE*) delta,
+            .meta = { .numRegionRects = 1, .regionRects = &rect } } } };
+    RDPGFX_SURFACE_COMMAND command = { .surfaceId = 1, .codecId = RDPGFX_CODECID_AVC444,
+        .right = 14, .bottom = 10, .extra = &pair };
+    RDPGFX_START_FRAME_PDU start = { .frameId = 1 };
+    RDPGFX_END_FRAME_PDU end = { .frameId = 1 };
+    hook_starts = hook_surfaces = hook_ends = 0;
+    guac_rdp_avc420_init_graphics(f.client, &gfx);
+    CU_ASSERT_EQUAL(gfx.StartFrame(&gfx, &start), 0);
+    CU_ASSERT_EQUAL(gfx.SurfaceCommand(&gfx, &command), 0);
+    guac_rdp_avc420* video = f.rdp.avc420;
+    CU_ASSERT_EQUAL(video->frame_length, 16 + sizeof(key) + sizeof(delta));
+    CU_ASSERT_TRUE(video->frame_key);
+    CU_ASSERT_FALSE(video->frame_aux_key);
+    CU_ASSERT_TRUE(video->frame_avc444);
+    const unsigned char rectangles[] = {0,0,0,0,0,14,0,10,0,0,0,0,0,14,0,10};
+    CU_ASSERT_PTR_NOT_NULL_FATAL(video->frame);
+    CU_ASSERT_EQUAL(memcmp(video->frame, rectangles, 16), 0);
+    CU_ASSERT_EQUAL(memcmp(video->frame + 16, key, sizeof(key)), 0);
+    CU_ASSERT_EQUAL(memcmp(video->frame + 16 + sizeof(key), delta, sizeof(delta)), 0);
+    CU_ASSERT_EQUAL(gfx.EndFrame(&gfx, &end), 0);
+    CU_ASSERT_EQUAL(hook_surfaces, 1);
+    CU_ASSERT_TRUE(video->started);
+    CU_ASSERT_EQUAL(video->pending_bytes, 16 + sizeof(key) + sizeof(delta));
+    guac_stream* stream = video->stream;
+    stream->ack_handler(f.owner, stream, "AVC444:1", GUAC_PROTOCOL_STATUS_SUCCESS);
+    CU_ASSERT_TRUE(video->presented);
+    CU_ASSERT_EQUAL(video->pending_bytes, 0);
+    CU_ASSERT_FALSE(video->disabled);
+    /* Changing codec after presentation must restore complete images. */
+    command.codecId = RDPGFX_CODECID_AVC420;
+    command.extra = &pair.bitstream[0];
+    CU_ASSERT_EQUAL(gfx.StartFrame(&gfx, &start), 0);
+    CU_ASSERT_EQUAL(gfx.SurfaceCommand(&gfx, &command), 0);
+    CU_ASSERT_EQUAL(gfx.EndFrame(&gfx, &end), 0);
+    CU_ASSERT_EQUAL(hook_surfaces, 2);
+    CU_ASSERT_TRUE(video->disabled);
+    CU_ASSERT_TRUE(video->refresh);
+    free_fixture(&f);
+}
+
+/** Unsupported partial/v2/chroma operations always retain ordinary GDI paint. */
+void test_avc420__avc444_partial_version_bounds_and_capability_fail_closed() {
+    for (int invalid = 0; invalid < 9; invalid++) {
+        fixture f;
+        init_fixture(&f, invalid == 8 ? 1 : 2);
+        ready(&f);
+        rdp_freerdp_context context = { .client = f.client };
+        rdpGdi gdi = { .width = 14, .height = 10, .context = &context._p };
+        RdpgfxClientContext gfx = { .custom = &gdi, .StartFrame = hook_start,
+            .SurfaceCommand = hook_command, .EndFrame = hook_end,
+            .GetSurfaceData = hook_get_surface };
+        hook_surface = (gdiGfxSurface) { .surfaceId = 1, .width = 16, .height = 16,
+            .mappedWidth = 14, .mappedHeight = 10, .outputMapped = TRUE,
+            .outputTargetWidth = 14, .outputTargetHeight = 10 };
+        RECTANGLE_16 main_rect = { .right = 14, .bottom = 10 };
+        RECTANGLE_16 aux_rect = main_rect;
+        RDPGFX_AVC444_BITMAP_STREAM pair = { .LC = 0, .bitstream = {
+            { .length = sizeof(key), .data = (BYTE*) key,
+                .meta = { .numRegionRects = 1, .regionRects = &main_rect } },
+            { .length = sizeof(delta), .data = (BYTE*) delta,
+                .meta = { .numRegionRects = 1, .regionRects = &aux_rect } } } };
+        RDPGFX_SURFACE_COMMAND command = { .surfaceId = 1,
+            .codecId = RDPGFX_CODECID_AVC444, .right = 14, .bottom = 10, .extra = &pair };
+        switch (invalid) {
+            case 0: pair.LC = 1; break;
+            case 1: pair.LC = 2; break;
+            case 2: command.codecId = RDPGFX_CODECID_AVC444v2; break;
+            case 3: main_rect.right = 8; break;
+            case 4: aux_rect.right = 8; break;
+            case 5: pair.bitstream[0].length = GUAC_RDP_AVC420_MAX_FRAME + 1; break;
+            case 6: command.extra = NULL; break;
+            case 7: pair.bitstream[1].length = GUAC_RDP_AVC420_MAX_FRAME; break;
+        }
+        RDPGFX_START_FRAME_PDU start = { .frameId = 1 };
+        RDPGFX_END_FRAME_PDU end = { .frameId = 1 };
+        hook_surfaces = 0;
+        guac_rdp_avc420_init_graphics(f.client, &gfx);
+        CU_ASSERT_EQUAL(gfx.StartFrame(&gfx, &start), 0);
+        CU_ASSERT_EQUAL(gfx.SurfaceCommand(&gfx, &command), 0);
+        CU_ASSERT_PTR_NULL(f.rdp.avc420->frame);
+        CU_ASSERT_FALSE(f.rdp.avc420->supported_frame);
+        CU_ASSERT_EQUAL(gfx.EndFrame(&gfx, &end), 0);
+        CU_ASSERT_EQUAL(hook_surfaces, 1);
+        CU_ASSERT_FALSE(f.rdp.avc420->started);
+        CU_ASSERT_FALSE(guac_rdp_avc420_suppress_paint(f.client));
+        free_fixture(&f);
+    }
+}
+
+/** Host-selected AVC420 must remain playable for an AVC444-capable browser. */
+void test_avc420__avc444_capability_opens_actual_avc420_first_frame_mime() {
+    fixture f;
+    init_fixture(&f, 2);
+    guac_rdp_avc420* video = f.rdp.avc420;
+    /* Production SurfaceCommand sets these before opening the first stream. */
+    video->frame = malloc(sizeof(key));
+    CU_ASSERT_PTR_NOT_NULL_FATAL(video->frame);
+    memcpy(video->frame, key, sizeof(key));
+    video->frame_length = sizeof(key);
+    video->frame_avc444 = 0;
+    video->frame_key = 1;
+    video->width = video->height = 16;
+    video->supported_frame = video->commands = 1;
+    ready(&f);
+    CU_ASSERT_TRUE(video->avc444);
+    CU_ASSERT_FALSE(video->stream_avc444);
+    CU_ASSERT_TRUE(contains(&f, GUAC_RDP_AVC420_MIMETYPE));
+    CU_ASSERT_FALSE(contains(&f, GUAC_RDP_AVC444_MIMETYPE));
+    guac_rdp_avc420_send_frame(f.client);
+    CU_ASSERT_TRUE(video->started);
+    guac_stream* stream = video->stream;
+    stream->ack_handler(f.owner, stream, "AVC420:1", GUAC_PROTOCOL_STATUS_SUCCESS);
+    CU_ASSERT_TRUE(video->presented);
+    CU_ASSERT_FALSE(video->disabled);
+    free_fixture(&f);
+}
+
+/** A legacy or fabricated ACK cannot confirm an AVC444 stream presentation. */
+void test_avc420__avc444_ack_rejects_legacy_prefix_and_unpresented_sequence() {
+    for (int pending = 0; pending < 3; pending++) {
+        fixture f;
+        init_fixture(&f, 2);
+        guac_rdp_avc420_open(f.client);
+        guac_rdp_avc420* video = f.rdp.avc420;
+        guac_stream* stream = video->stream;
+        CU_ASSERT_PTR_NOT_NULL_FATAL(stream);
+        if (pending) {
+            stream->ack_handler(f.owner, stream, "AVC444:ready", GUAC_PROTOCOL_STATUS_SUCCESS);
+            video->pending[0] = (guac_rdp_avc420_pending) { .sequence = 1, .bytes = 16 };
+            video->pending_count = 1;
+            video->pending_bytes = 16;
+        }
+        stream->ack_handler(f.owner, stream,
+                !pending ? "AVC420:ready" : (pending == 1 ? "AVC420:1" : "AVC444:2"),
+                GUAC_PROTOCOL_STATUS_SUCCESS);
+        CU_ASSERT_TRUE(video->disabled);
+        CU_ASSERT_FALSE(video->presented);
+        CU_ASSERT_TRUE(video->refresh);
+        free_fixture(&f);
+    }
 }

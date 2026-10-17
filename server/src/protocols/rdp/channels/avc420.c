@@ -68,13 +68,14 @@ void guac_rdp_avc420_join(guac_client* client, guac_user* user) {
     else {
         const guac_rdp_settings* settings = user->data;
         const char** mime = user->info.video_mimetypes;
+        int avc420 = 0, avc444 = 0;
         for (; mime && *mime; mime++) {
-            if (!strcmp(*mime, GUAC_RDP_AVC420_MIMETYPE)) {
-                video->enabled = settings->enable_gfx
-                    && (!settings->recording_path || !*settings->recording_path);
-                break;
-            }
+            avc420 |= !strcmp(*mime, GUAC_RDP_AVC420_MIMETYPE);
+            avc444 |= !strcmp(*mime, GUAC_RDP_AVC444_MIMETYPE);
         }
+        video->enabled = (avc420 || avc444) && settings->enable_gfx
+            && (!settings->recording_path || !*settings->recording_path);
+        video->avc444 = avc444;
         video->owner = user;
     }
     pthread_mutex_unlock(&video->lock);
@@ -100,6 +101,15 @@ int guac_rdp_avc420_enabled(guac_client* client) {
     if (!video) return 0;
     pthread_mutex_lock(&video->lock);
     int enabled = video->enabled && !video->disabled;
+    pthread_mutex_unlock(&video->lock);
+    return enabled;
+}
+
+int guac_rdp_avc444_enabled(guac_client* client) {
+    guac_rdp_avc420* video = video_for(client);
+    if (!video) return 0;
+    pthread_mutex_lock(&video->lock);
+    int enabled = video->enabled && !video->disabled && video->avc444;
     pthread_mutex_unlock(&video->lock);
     return enabled;
 }
@@ -141,16 +151,19 @@ static int video_ack(guac_user* user, guac_stream* stream,
         pthread_mutex_unlock(&video->lock);
         return 0;
     }
+    const char* codec = video->stream_avc444 ? "AVC444" : "AVC420";
+    char ready[32];
+    snprintf(ready, sizeof(ready), "%s:ready", codec);
     if (status != GUAC_PROTOCOL_STATUS_SUCCESS)
         invalid = 1;
-    else if (!video->ready && !strcmp(message, "AVC420:ready")) {
+    else if (!video->ready && !strcmp(message, ready)) {
         video->ready = 1;
         pthread_cond_broadcast(&video->ready_changed);
     }
     else if (video->ready && video->pending_count) {
         guac_rdp_avc420_pending* pending = &video->pending[video->pending_head];
         char expected[32];
-        snprintf(expected, sizeof(expected), "AVC420:%" PRIu32, pending->sequence);
+        snprintf(expected, sizeof(expected), "%s:%" PRIu32, codec, pending->sequence);
         if (strcmp(expected, message))
             invalid = 1;
         else {
@@ -176,12 +189,18 @@ static void* open_for_owner(guac_user* user, void* data) {
         video->stream = guac_user_alloc_stream(user);
         if (video->stream) {
             video->stream->ack_handler = video_ack;
+            /* Select the actual first frame's transport. An AVC444-capable
+             * connection may still negotiate AVC420 when the host requests it. */
+            video->stream_avc444 = video->frame_length
+                ? video->frame_avc444 : video->avc444;
             video->opened = guac_timestamp_current();
             guac_protocol_send_video(user->socket, video->stream,
-                    GUAC_DEFAULT_LAYER, GUAC_RDP_AVC420_MIMETYPE);
+                    GUAC_DEFAULT_LAYER, video->stream_avc444
+                        ? GUAC_RDP_AVC444_MIMETYPE : GUAC_RDP_AVC420_MIMETYPE);
             guac_socket_flush(user->socket);
             guac_client_log(client, GUAC_LOG_INFO,
-                    "Experimental browser AVC420 decoder requested; retaining shadow GDI fallback.");
+                    "Experimental browser AVC%s decoder requested; retaining shadow GDI fallback.",
+                    video->stream_avc444 ? "444" : "420");
         }
         else {
             video->disabled = video->refresh = 1;
@@ -239,6 +258,18 @@ void guac_rdp_avc420_header(unsigned char header[20], uint32_t sequence,
             header[i * 4 + j] = words[i] >> (24 - j * 8);
 }
 
+void guac_rdp_avc444_header(unsigned char header[32], uint32_t sequence,
+        unsigned int width, unsigned int height, int main_key, int aux_key,
+        uint32_t main_length, uint32_t aux_length) {
+    uint32_t words[8] = {0x47415632U, sequence,
+        (width << 16) | height,
+        0x00010000U | (main_key ? 1U : 0U) | (aux_key ? 2U : 0U),
+        main_length, aux_length, 0x00010001U, 0};
+    for (unsigned int i = 0; i < 8; i++)
+        for (unsigned int j = 0; j < 4; j++)
+            header[i * 4 + j] = words[i] >> (24 - j * 8);
+}
+
 int guac_rdp_avc420_key_frame(const unsigned char* data, size_t length) {
     int types = 0;
     for (size_t i = 0; i + 3 < length; i++) {
@@ -270,10 +301,20 @@ static void* send_for_owner(guac_user* user, void* data) {
         goto done;
     }
     uint32_t seq = ++video->sequence;
-    unsigned char header[20];
-    guac_rdp_avc420_header(header, seq, video->width, video->height,
-            video->frame_key, video->frame_length);
-    guac_protocol_send_blob(user->socket, video->stream, header, sizeof(header));
+    unsigned char header[32];
+    size_t header_length;
+    if (video->stream_avc444) {
+        guac_rdp_avc444_header(header, seq, video->width, video->height,
+                video->frame_key, video->frame_aux_key,
+                video->frame_main_length, video->frame_aux_length);
+        header_length = 32;
+    }
+    else {
+        guac_rdp_avc420_header(header, seq, video->width, video->height,
+                video->frame_key, video->frame_length);
+        header_length = 20;
+    }
+    guac_protocol_send_blob(user->socket, video->stream, header, header_length);
     for (size_t offset = 0; offset < video->frame_length; offset += 4096) {
         size_t chunk = video->frame_length - offset;
         if (chunk > 4096) chunk = 4096;
@@ -378,7 +419,8 @@ void guac_rdp_avc420_poll(guac_client* client) {
     if (!refresh) return;
     guac_client_for_owner(client, close_for_owner, client);
     if (log) guac_client_log(client, GUAC_LOG_INFO,
-            "Experimental browser AVC420 image fallback: %s.", reason);
+            "Experimental browser AVC%s image fallback: %s.",
+            video->stream_avc444 ? "444" : "420", reason);
     /* A full dirty rectangle reconciles Guacamole's image/cache baseline with
      * the continuously decoded shadow GDI, including changes hidden by video. */
     if (rdp_client->display && rdp_client->rdp_inst) {
