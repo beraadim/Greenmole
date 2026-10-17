@@ -1,5 +1,7 @@
 # Greenmole
 
+<img src="client/guacamole/src/main/frontend/src/images/greenmole-256.png" width="128" height="128" alt="A cute green mole with a pink nose and little digging paws">
+
 Greenmole is an independently maintained fork of [Apache Guacamole](https://guacamole.apache.org/),
 a browser-based remote desktop gateway for RDP, VNC, and SSH. It focuses on
 responsive desktop updates, connection recovery, and experimental browser video

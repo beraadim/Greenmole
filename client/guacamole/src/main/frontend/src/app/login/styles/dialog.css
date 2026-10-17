@@ -98,13 +98,13 @@
 .login-ui .login-dialog .logo {
     display: block;
     margin: 0.5em auto;
-    width: 3em;
-    height: 3em;
-    background-size:         3em 3em;
-    -moz-background-size:    3em 3em;
-    -webkit-background-size: 3em 3em;
-    -khtml-background-size:  3em 3em;
-    background-image: url("images/greenmole.svg");
+    width: 4.8em;
+    height: 4.8em;
+    background-size:         4.8em 4.8em;
+    -moz-background-size:    4.8em 4.8em;
+    -webkit-background-size: 4.8em 4.8em;
+    -khtml-background-size:  4.8em 4.8em;
+    background-image: url("images/greenmole-256.png");
 }
 
 .login-ui.continuation .login-dialog {
