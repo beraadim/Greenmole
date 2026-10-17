@@ -28,6 +28,8 @@
 #include <CUnit/CUnit.h>
 #include <freerdp/gdi/gfx.h>
 #include <freerdp/gdi/gdi.h>
+#include <guacamole/parser.h>
+#include <guacamole/protocol.h>
 #include <guacamole/socket.h>
 #include <guacamole/timestamp.h>
 #include <stdlib.h>
@@ -170,6 +172,111 @@ void test_avc420__presentation_ack_gates_image_suppression_and_closes_display_fr
     CU_ASSERT_PTR_NULL(f.rdp.avc420->stream);
     CU_ASSERT_TRUE(contains(&f, "3.end,"));
     free_fixture(&f);
+}
+
+/** Protocol-size blobs retain both envelopes, all bytes and ordered frame ACKs. */
+void test_avc420__protocol_blob_boundaries_preserve_access_unit_and_presentation() {
+    const size_t lengths[] = { GUAC_PROTOCOL_BLOB_MAX_LENGTH - 1,
+        GUAC_PROTOCOL_BLOB_MAX_LENGTH, GUAC_PROTOCOL_BLOB_MAX_LENGTH + 1,
+        2 * GUAC_PROTOCOL_BLOB_MAX_LENGTH,
+        2 * GUAC_PROTOCOL_BLOB_MAX_LENGTH + 1 };
+    for (int avc444 = 0; avc444 <= 1; avc444++) {
+        for (size_t i = 0; i < sizeof(lengths) / sizeof(lengths[0]); i++) {
+            fixture f;
+            init_fixture(&f, avc444 ? 2 : 1);
+            CU_ASSERT_TRUE_FATAL(guac_display_flush_to_idle(f.rdp.display, 250));
+            ready(&f);
+            f.length = 0;
+            guac_rdp_avc420* video = f.rdp.avc420;
+            size_t length = lengths[i];
+            unsigned char expected[2 * GUAC_PROTOCOL_BLOB_MAX_LENGTH + 1];
+            for (size_t j = 0; j < length; j++)
+                expected[j] = (unsigned char) (j * 31 + j / 256);
+            if (avc444) {
+                const unsigned char rectangles[] = {
+                    0,0,0,0,1,62,0,178, 0,0,0,0,1,62,0,178
+                };
+                memcpy(expected, rectangles, sizeof(rectangles));
+            }
+            video->frame = malloc(length);
+            CU_ASSERT_PTR_NOT_NULL_FATAL(video->frame);
+            memcpy(video->frame, expected, length);
+            video->frame_length = length;
+            video->width = 318;
+            video->height = 178;
+            video->frame_key = 1;
+            video->frame_aux_key = 0;
+            video->frame_avc444 = avc444;
+            video->frame_main_length = (length - 16) / 2;
+            video->frame_aux_length = length - 16 - video->frame_main_length;
+            video->supported_frame = video->commands = 1;
+            unsigned char expected_header[32];
+            size_t header_length = avc444 ? 32 : 20;
+            if (avc444)
+                guac_rdp_avc444_header(expected_header, 1, 318, 178, 1, 0,
+                        video->frame_main_length, video->frame_aux_length);
+            else
+                guac_rdp_avc420_header(expected_header, 1, 318, 178, 1, length);
+
+            guac_rdp_avc420_send_frame(f.client);
+            CU_ASSERT_TRUE(video->started);
+            CU_ASSERT_EQUAL(video->pending_count, 1);
+            CU_ASSERT_EQUAL(video->pending_bytes, length);
+            size_t offset = 0, reassembled = 0;
+            unsigned int blobs = 0, syncs = 0;
+            while (offset < f.length) {
+                guac_parser* parser = guac_parser_alloc();
+                CU_ASSERT_PTR_NOT_NULL_FATAL(parser);
+                while (parser->state != GUAC_PARSE_COMPLETE) {
+                    CU_ASSERT_TRUE_FATAL(offset < f.length);
+                    int consumed = guac_parser_append(parser, f.output + offset,
+                            f.length - offset);
+                    CU_ASSERT_TRUE_FATAL(consumed > 0);
+                    CU_ASSERT_NOT_EQUAL_FATAL(parser->state, GUAC_PARSE_ERROR);
+                    offset += consumed;
+                }
+                if (!strcmp(parser->opcode, "blob")) {
+                    CU_ASSERT_EQUAL_FATAL(parser->argc, 2);
+                    CU_ASSERT_EQUAL(atoi(parser->argv[0]), video->stream->index);
+                    int decoded = guac_protocol_decode_base64(parser->argv[1]);
+                    if (!blobs) {
+                        CU_ASSERT_EQUAL_FATAL(decoded, header_length);
+                        CU_ASSERT_EQUAL(memcmp(parser->argv[1], expected_header,
+                                    header_length), 0);
+                    }
+                    else {
+                        size_t chunk = length - reassembled;
+                        if (chunk > GUAC_PROTOCOL_BLOB_MAX_LENGTH)
+                            chunk = GUAC_PROTOCOL_BLOB_MAX_LENGTH;
+                        CU_ASSERT_EQUAL_FATAL(decoded, chunk);
+                        CU_ASSERT_EQUAL(memcmp(parser->argv[1], expected + reassembled,
+                                    chunk), 0);
+                        reassembled += chunk;
+                    }
+                    blobs++;
+                }
+                else {
+                    CU_ASSERT_STRING_EQUAL(parser->opcode, "sync");
+                    CU_ASSERT_EQUAL(reassembled, length);
+                    CU_ASSERT_EQUAL(offset, f.length);
+                    syncs++;
+                }
+                guac_parser_free(parser);
+            }
+            CU_ASSERT_EQUAL(blobs, 1 + (length + GUAC_PROTOCOL_BLOB_MAX_LENGTH - 1)
+                    / GUAC_PROTOCOL_BLOB_MAX_LENGTH);
+            CU_ASSERT_EQUAL(syncs, 1);
+            CU_ASSERT_FALSE(video->presented);
+            guac_stream* stream = video->stream;
+            stream->ack_handler(f.owner, stream, avc444 ? "AVC444:1" : "AVC420:1",
+                    GUAC_PROTOCOL_STATUS_SUCCESS);
+            CU_ASSERT_TRUE(video->presented);
+            CU_ASSERT_EQUAL(video->pending_count, 0);
+            CU_ASSERT_EQUAL(video->pending_bytes, 0);
+            CU_ASSERT_FALSE(video->disabled);
+            free_fixture(&f);
+        }
+    }
 }
 
 void test_avc420__out_of_order_and_decoder_error_ack_force_image_fallback() {

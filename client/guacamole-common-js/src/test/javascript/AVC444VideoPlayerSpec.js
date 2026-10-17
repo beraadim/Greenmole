@@ -19,7 +19,7 @@
 
 /* global Guacamole, jasmine, expect */
 describe('Guacamole experimental AVC444 video', function() {
-    var display, layer, stream, player, oldDecoder, oldChunk, oldRenderer, decoders, chunks, rendered, rendererFailures;
+    var display, layer, stream, player, oldDecoder, oldChunk, oldRenderer, oldFromBase64, decoders, chunks, rendered, rendererFailures;
     var key = [0, 0, 0, 1, 0x67, 0x42, 0xE0, 0x1F, 0, 0, 1, 0x68, 1, 0, 0, 1, 0x65, 1];
     var delta = [0, 0, 1, 0x41, 1];
     async function settle() { for (var i = 0; i < 20; i++) await Promise.resolve(); }
@@ -39,7 +39,7 @@ describe('Guacamole experimental AVC444 video', function() {
     }
     function frame(sequence, side) { return { timestamp: sequence * 2000 + side * 1000, close: jasmine.createSpy('close') }; }
     beforeEach(function() {
-        oldDecoder = window.VideoDecoder; oldChunk = window.EncodedVideoChunk; oldRenderer = Guacamole.AVC444Renderer;
+        oldDecoder = window.VideoDecoder; oldChunk = window.EncodedVideoChunk; oldRenderer = Guacamole.AVC444Renderer; oldFromBase64 = Uint8Array.fromBase64;
         decoders = []; chunks = []; rendered = []; rendererFailures = [];
         window.VideoDecoder = function Decoder(callbacks) {
             this.callbacks = callbacks; this.configure = jasmine.createSpy('configure'); this.close = jasmine.createSpy('decoder close');
@@ -61,7 +61,7 @@ describe('Guacamole experimental AVC444 video', function() {
     });
     afterEach(function() {
         player.dispose(false); display.cancel(); window.VideoDecoder = oldDecoder; window.EncodedVideoChunk = oldChunk;
-        Guacamole.AVC444Renderer = oldRenderer;
+        Guacamole.AVC444Renderer = oldRenderer; Uint8Array.fromBase64 = oldFromBase64;
     });
     it('assembles split GAV2 and decodes ordered main IDR + auxiliary delta in ONE decoder, ACK after drawing', async function() {
         send(envelope(1), 3); display.flush(); await settle();
@@ -73,6 +73,46 @@ describe('Guacamole experimental AVC444 video', function() {
         expect(layer.drawVideoFrame).toHaveBeenCalledOnceWith(rendered[0], 32, 18);
         expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:1', 0);
         expect(main.close).toHaveBeenCalledTimes(1); expect(aux.close).toHaveBeenCalledTimes(1); expect(rendered[0].close).toHaveBeenCalledTimes(1);
+    });
+    // Exercise both branches even on browsers without the optional native API.
+    // When present, the fast-path spy calls the actual browser implementation.
+    ['native', 'legacy'].forEach(function(mode) {
+        function configureBase64() {
+            var convert = jasmine.createSpy('native Base64').and.callFake(function(base64) {
+                if (oldFromBase64) return oldFromBase64(base64);
+                return Uint8Array.from(window.atob(base64), function(byte) { return byte.charCodeAt(0); });
+            });
+            Uint8Array.fromBase64 = mode === 'native' ? convert : undefined;
+            return convert;
+        }
+        it('preserves exact bytes across split and coalesced envelopes using ' + mode + ' Base64', async function() {
+            var convert = configureBase64();
+            var first = envelope(1), second = envelope(2, { main: delta, flags: 0x10000 });
+            var combined = new Uint8Array(first.length + second.length);
+            combined.set(first); combined.set(second, first.length);
+            send(combined, 23); await settle();
+            expect(chunks.map(function(chunk) { return Array.from(chunk.data); })).toEqual([key, delta, delta, delta]);
+            expect(chunks.map(function(chunk) { return chunk.timestamp; })).toEqual([2000, 3000, 4000, 5000]);
+            expect(stream.sendAck).not.toHaveBeenCalled();
+            expect(stream.onblob).not.toBeNull();
+            if (mode === 'native') expect(convert).toHaveBeenCalled();
+            else expect(convert).not.toHaveBeenCalled();
+        });
+        it('rejects malformed ' + mode + ' Base64 with one terminal fallback', function() {
+            configureBase64();
+            stream.onblob('%%%not-base64%%%');
+            expect(stream.onblob).toBeNull();
+            expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback:invalid-stream', 0x0300);
+            expect(chunks.length).toBe(0);
+        });
+        it('bounds ' + mode + ' Base64 before invoking either decoder', function() {
+            var convert = configureBase64();
+            var atob = spyOn(window, 'atob').and.callThrough();
+            stream.onblob('A'.repeat(131073));
+            expect(convert).not.toHaveBeenCalled(); expect(atob).not.toHaveBeenCalled();
+            expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback:invalid-stream', 0x0300);
+            expect(chunks.length).toBe(0);
+        });
     });
     it('preserves ordered image/video tasks and presentation ACK behind an earlier frame', async function() {
         var older = display.scheduleVideoFrame(layer, 32, 18, function() {});

@@ -1,0 +1,607 @@
+{
+  "schema": "guacamole-avc-browser-parser-benchmark-v1",
+  "created_at": "2026-10-17T10:13:45.865Z",
+  "baseline_revision": "226fac06d5a23eeb38c27b5f27b8fca4ecda2958",
+  "baseline_module_sha256": "1c51dbb4aa23ff6e0f5e01ac587eecbb5d9280c4142365fa9e47a4c41797cd0f",
+  "candidate_module_sha256": "acd7185a6e46f180e358e924e26339974263d294fee340efedc3c13c9180e4dd",
+  "driver_sha256": "69f8fd354d2ad6b2c191f2063f78a0de1c98539604560d1c21597ce6f4cbc506",
+  "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "nativeBase64": true,
+  "observations": [
+    {
+      "sample": 0,
+      "name": "baseline",
+      "size": 6144,
+      "frames": 256,
+      "elapsed_ms": 4.600000008940697,
+      "encoded_mib": 1.5,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 0,
+      "name": "native",
+      "size": 6144,
+      "frames": 256,
+      "elapsed_ms": 2.4000000059604645,
+      "encoded_mib": 1.5,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 1,
+      "name": "native",
+      "size": 6144,
+      "frames": 256,
+      "elapsed_ms": 2.5,
+      "encoded_mib": 1.5,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 1,
+      "name": "baseline",
+      "size": 6144,
+      "frames": 256,
+      "elapsed_ms": 4.0999999940395355,
+      "encoded_mib": 1.5,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 2,
+      "name": "baseline",
+      "size": 6144,
+      "frames": 256,
+      "elapsed_ms": 4.200000002980232,
+      "encoded_mib": 1.5,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 2,
+      "name": "native",
+      "size": 6144,
+      "frames": 256,
+      "elapsed_ms": 2.5,
+      "encoded_mib": 1.5,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 3,
+      "name": "native",
+      "size": 6144,
+      "frames": 256,
+      "elapsed_ms": 2.2000000029802322,
+      "encoded_mib": 1.5,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 3,
+      "name": "baseline",
+      "size": 6144,
+      "frames": 256,
+      "elapsed_ms": 4,
+      "encoded_mib": 1.5,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 4,
+      "name": "baseline",
+      "size": 6144,
+      "frames": 256,
+      "elapsed_ms": 4.0999999940395355,
+      "encoded_mib": 1.5,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 4,
+      "name": "native",
+      "size": 6144,
+      "frames": 256,
+      "elapsed_ms": 2.2000000029802322,
+      "encoded_mib": 1.5,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 5,
+      "name": "native",
+      "size": 6144,
+      "frames": 256,
+      "elapsed_ms": 2.5,
+      "encoded_mib": 1.5,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 5,
+      "name": "baseline",
+      "size": 6144,
+      "frames": 256,
+      "elapsed_ms": 3.9000000059604645,
+      "encoded_mib": 1.5,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 6,
+      "name": "baseline",
+      "size": 6144,
+      "frames": 256,
+      "elapsed_ms": 4,
+      "encoded_mib": 1.5,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 6,
+      "name": "native",
+      "size": 6144,
+      "frames": 256,
+      "elapsed_ms": 2.0999999940395355,
+      "encoded_mib": 1.5,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 7,
+      "name": "native",
+      "size": 6144,
+      "frames": 256,
+      "elapsed_ms": 2.0999999940395355,
+      "encoded_mib": 1.5,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 7,
+      "name": "baseline",
+      "size": 6144,
+      "frames": 256,
+      "elapsed_ms": 3.9000000059604645,
+      "encoded_mib": 1.5,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 0,
+      "name": "baseline",
+      "size": 65536,
+      "frames": 256,
+      "elapsed_ms": 41.29999999701977,
+      "encoded_mib": 16,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 0,
+      "name": "native",
+      "size": 65536,
+      "frames": 256,
+      "elapsed_ms": 18.900000005960464,
+      "encoded_mib": 16,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 1,
+      "name": "native",
+      "size": 65536,
+      "frames": 256,
+      "elapsed_ms": 18.700000002980232,
+      "encoded_mib": 16,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 1,
+      "name": "baseline",
+      "size": 65536,
+      "frames": 256,
+      "elapsed_ms": 38.70000000298023,
+      "encoded_mib": 16,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 2,
+      "name": "baseline",
+      "size": 65536,
+      "frames": 256,
+      "elapsed_ms": 41.29999999701977,
+      "encoded_mib": 16,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 2,
+      "name": "native",
+      "size": 65536,
+      "frames": 256,
+      "elapsed_ms": 19.600000008940697,
+      "encoded_mib": 16,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 3,
+      "name": "native",
+      "size": 65536,
+      "frames": 256,
+      "elapsed_ms": 19.5,
+      "encoded_mib": 16,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 3,
+      "name": "baseline",
+      "size": 65536,
+      "frames": 256,
+      "elapsed_ms": 39.099999994039536,
+      "encoded_mib": 16,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 4,
+      "name": "baseline",
+      "size": 65536,
+      "frames": 256,
+      "elapsed_ms": 39.70000000298023,
+      "encoded_mib": 16,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 4,
+      "name": "native",
+      "size": 65536,
+      "frames": 256,
+      "elapsed_ms": 19.899999991059303,
+      "encoded_mib": 16,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 5,
+      "name": "native",
+      "size": 65536,
+      "frames": 256,
+      "elapsed_ms": 20.200000002980232,
+      "encoded_mib": 16,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 5,
+      "name": "baseline",
+      "size": 65536,
+      "frames": 256,
+      "elapsed_ms": 38.8999999910593,
+      "encoded_mib": 16,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 6,
+      "name": "baseline",
+      "size": 65536,
+      "frames": 256,
+      "elapsed_ms": 39.79999999701977,
+      "encoded_mib": 16,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 6,
+      "name": "native",
+      "size": 65536,
+      "frames": 256,
+      "elapsed_ms": 19.30000001192093,
+      "encoded_mib": 16,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 7,
+      "name": "native",
+      "size": 65536,
+      "frames": 256,
+      "elapsed_ms": 19.899999991059303,
+      "encoded_mib": 16,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 7,
+      "name": "baseline",
+      "size": 65536,
+      "frames": 256,
+      "elapsed_ms": 42.70000000298023,
+      "encoded_mib": 16,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 0,
+      "name": "baseline",
+      "size": 1048576,
+      "frames": 32,
+      "elapsed_ms": 86,
+      "encoded_mib": 32,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 0,
+      "name": "native",
+      "size": 1048576,
+      "frames": 32,
+      "elapsed_ms": 38.29999999701977,
+      "encoded_mib": 32,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 1,
+      "name": "native",
+      "size": 1048576,
+      "frames": 32,
+      "elapsed_ms": 38,
+      "encoded_mib": 32,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 1,
+      "name": "baseline",
+      "size": 1048576,
+      "frames": 32,
+      "elapsed_ms": 84.80000001192093,
+      "encoded_mib": 32,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 2,
+      "name": "baseline",
+      "size": 1048576,
+      "frames": 32,
+      "elapsed_ms": 80.40000000596046,
+      "encoded_mib": 32,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 2,
+      "name": "native",
+      "size": 1048576,
+      "frames": 32,
+      "elapsed_ms": 39,
+      "encoded_mib": 32,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 3,
+      "name": "native",
+      "size": 1048576,
+      "frames": 32,
+      "elapsed_ms": 38.599999994039536,
+      "encoded_mib": 32,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 3,
+      "name": "baseline",
+      "size": 1048576,
+      "frames": 32,
+      "elapsed_ms": 99.79999999701977,
+      "encoded_mib": 32,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 4,
+      "name": "baseline",
+      "size": 1048576,
+      "frames": 32,
+      "elapsed_ms": 93.90000000596046,
+      "encoded_mib": 32,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 4,
+      "name": "native",
+      "size": 1048576,
+      "frames": 32,
+      "elapsed_ms": 40.6000000089407,
+      "encoded_mib": 32,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 5,
+      "name": "native",
+      "size": 1048576,
+      "frames": 32,
+      "elapsed_ms": 39.599999994039536,
+      "encoded_mib": 32,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 5,
+      "name": "baseline",
+      "size": 1048576,
+      "frames": 32,
+      "elapsed_ms": 85.20000000298023,
+      "encoded_mib": 32,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 6,
+      "name": "baseline",
+      "size": 1048576,
+      "frames": 32,
+      "elapsed_ms": 86.90000000596046,
+      "encoded_mib": 32,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 6,
+      "name": "native",
+      "size": 1048576,
+      "frames": 32,
+      "elapsed_ms": 39.599999994039536,
+      "encoded_mib": 32,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 7,
+      "name": "native",
+      "size": 1048576,
+      "frames": 32,
+      "elapsed_ms": 40.900000005960464,
+      "encoded_mib": 32,
+      "exact_final_bytes": false
+    },
+    {
+      "sample": 7,
+      "name": "baseline",
+      "size": 1048576,
+      "frames": 32,
+      "elapsed_ms": 86.59999999403954,
+      "encoded_mib": 32,
+      "exact_final_bytes": false
+    }
+  ],
+  "checks": [
+    {
+      "name": "baseline",
+      "size": 6144,
+      "frames": 256,
+      "elapsed_ms": 9,
+      "encoded_mib": 1.5,
+      "exact_final_bytes": true
+    },
+    {
+      "name": "native",
+      "size": 6144,
+      "frames": 256,
+      "elapsed_ms": 3.0999999940395355,
+      "encoded_mib": 1.5,
+      "exact_final_bytes": true
+    },
+    {
+      "name": "legacy",
+      "size": 6144,
+      "frames": 256,
+      "elapsed_ms": 4.4000000059604645,
+      "encoded_mib": 1.5,
+      "exact_final_bytes": true
+    },
+    {
+      "name": "baseline",
+      "size": 65536,
+      "frames": 256,
+      "elapsed_ms": 40.70000000298023,
+      "encoded_mib": 16,
+      "exact_final_bytes": true
+    },
+    {
+      "name": "native",
+      "size": 65536,
+      "frames": 256,
+      "elapsed_ms": 20.700000002980232,
+      "encoded_mib": 16,
+      "exact_final_bytes": true
+    },
+    {
+      "name": "legacy",
+      "size": 65536,
+      "frames": 256,
+      "elapsed_ms": 38.79999999701977,
+      "encoded_mib": 16,
+      "exact_final_bytes": true
+    },
+    {
+      "name": "baseline",
+      "size": 1048576,
+      "frames": 32,
+      "elapsed_ms": 88.29999999701977,
+      "encoded_mib": 32,
+      "exact_final_bytes": true
+    },
+    {
+      "name": "native",
+      "size": 1048576,
+      "frames": 32,
+      "elapsed_ms": 41.099999994039536,
+      "encoded_mib": 32,
+      "exact_final_bytes": true
+    },
+    {
+      "name": "legacy",
+      "size": 1048576,
+      "frames": 32,
+      "elapsed_ms": 82.59999999403954,
+      "encoded_mib": 32,
+      "exact_final_bytes": true
+    }
+  ],
+  "summary": [
+    {
+      "size": 6144,
+      "baseline_mean_ms": 4.100000001490116,
+      "native_mean_ms": 2.3125,
+      "ratio": 0.5640243900389117
+    },
+    {
+      "size": 65536,
+      "baseline_mean_ms": 40.187499998137355,
+      "native_mean_ms": 19.500000001862645,
+      "ratio": 0.4852255055120734
+    },
+    {
+      "size": 1048576,
+      "baseline_mean_ms": 87.95000000298023,
+      "native_mean_ms": 39.32499999925494,
+      "ratio": 0.4471290505733075
+    }
+  ],
+  "platform": "darwin-arm64",
+  "samples_per_version_per_size": 8,
+  "method": {
+    "scope": "Actual AVC420 envelope assembly, Base64 decoding, bounds checks, NAL inspection and synchronous simulated decode/presentation callbacks; not native H.264 decoding or GPU rendering.",
+    "input": "Public generated byte patterns only. 20-byte GAV1 header as its own blob, then independently Base64-encoded 4096-byte payload blobs. Strictly increasing sequences, IDR/SPS/PPS prefix, remainder byte value 1.",
+    "declared_picture_size": [
+      2560,
+      1264
+    ],
+    "trial_sizes_bytes": [
+      6144,
+      65536,
+      1048576
+    ],
+    "frames_per_trial": [
+      256,
+      256,
+      32
+    ],
+    "timing": "One untimed warmup and one byte-verification trial per version/size, followed by eight alternating A/B and B/A trials. Packet creation outside timing. Whole final payload, frame count and ACK count checked in verification trials.",
+    "baseline": "HEAD AVC420VideoPlayer before this release, identified by revision and module SHA-256.",
+    "candidate": "Working-tree AVC420VideoPlayer, identified by module SHA-256. Equivalent change applied to AVC444VideoPlayer.",
+    "legacy": "Candidate with Uint8Array.fromBase64 unavailable, byte/frame/ACK verification only; not included in timing summaries."
+  },
+  "limitations": [
+    "CPU timings cover parser/assembly/inspection only. They do not measure native H.264 decode, GPU work, network, Wi-Fi jitter, live session latency, frame rate or the old client laptop.",
+    "A modern Chrome with Uint8Array.fromBase64 was measured. Older browsers continue using the existing binary-string/manual-copy path and do not gain this native-decoding speedup.",
+    "Synthetic payloads exercise byte parsing and scanning; the encoded bytes are not decoded by a real codec during this benchmark. Separate real WebCodecs integration tests validate actual H.264 streams.",
+    "Native Base64 produces a bounded temporary byte array before copying into the existing bounded envelope; this does not claim zero-copy assembly or lower peak payload memory.",
+    "Means summarize fixed-count trials; no frame percentiles, GC pause, GPU counter or heap-pressure measurement is inferred."
+  ],
+  "validation": {
+    "chrome_jasmine_specs": 259,
+    "chrome_jasmine_passed": 259,
+    "chrome_jasmine_failed": 0,
+    "chrome_jasmine_pending": 0,
+    "new_base64_regressions": 12,
+    "coverage": [
+      "Native and legacy split/coalesced AVC420 and AVC444 envelopes preserve exact main/auxiliary bytes and timestamps.",
+      "Malformed native and legacy Base64 each yields one terminal image fallback.",
+      "Input-length limit is checked before either Base64 decoder.",
+      "Real AVC420 WebCodecs and AVC444 desktop-size WebCodecs/native-plane/GPU reconstruction integration pass."
+    ],
+    "frontend_node_tests_passed": 40,
+    "frontend_node_tests_failed": 0,
+    "production_webpack": "passed with existing 3 asset-size/performance warnings",
+    "production_safety_limits_unchanged": true,
+    "reference_picture_chain_and_ordered_acks_unchanged": true
+  },
+  "deferred_texture_reuse": {
+    "implemented": false,
+    "method": "In-memory renderer-only candidate with six reusable texture allocations, texSubImage2D for unchanged geometry, cached MAX_TEXTURE_SIZE and a shared unused NV12 V plane; four alternating trials of 30 renders, real headless Chrome/WebGL2.",
+    "result_320x180": {
+      "baseline_mean_ms": 11.700000002980232,
+      "candidate_mean_ms": 11.00000000745058
+    },
+    "result_2560x1264": {
+      "baseline_mean_ms": 66.07500000298023,
+      "candidate_mean_ms": 63.375
+    },
+    "pixel_checks": "Neutral-color samples passed for both sizes across I420 -> NV12 -> I420.",
+    "decision": "Approximately 4% at desktop size (0.09 ms per render) is too small/noisy to justify more rendering changes in this stability-focused pass; no renderer source changes made."
+  },
+  "changed_module_sha256": {
+    "client/guacamole-common-js/src/main/webapp/modules/AVC420VideoPlayer.js": "acd7185a6e46f180e358e924e26339974263d294fee340efedc3c13c9180e4dd",
+    "client/guacamole-common-js/src/main/webapp/modules/AVC444VideoPlayer.js": "d6f24625c65d3c63ce3bd4a35045bf35f4df31d32d10eedc703fbfec62f35a07",
+    "client/guacamole-common-js/src/test/javascript/AVC420VideoPlayerSpec.js": "ccf2b5995994a222d8be225cbe141ee66e9354054949d83df82f5e34e76a2344",
+    "client/guacamole-common-js/src/test/javascript/AVC444VideoPlayerSpec.js": "dbfd382fb278a359b036b10726dedd312e74ab2f51dc958a389df6d595943a3a"
+  }
+}

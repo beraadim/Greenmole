@@ -185,13 +185,21 @@ Guacamole.AVC444VideoPlayer = function AVC444VideoPlayer(stream, layer, display)
         if (closed) return;
         if (typeof base64 !== 'string' || base64.length > 131072) return fail('invalid-stream');
         var data;
-        try { data = window.atob(base64); } catch (ignore) { return fail('invalid-stream'); }
+        try {
+            // Native byte decoding avoids a binary string and JavaScript work
+            // for every compressed byte. Older browsers retain the same path.
+            data = typeof Uint8Array.fromBase64 === 'function'
+                ? Uint8Array.fromBase64(base64) : window.atob(base64);
+        } catch (ignore) { return fail('invalid-stream'); }
         var offset = 0;
         while (!closed && offset < data.length) {
             if (assemblyTimer === null) assemblyTimer = window.setTimeout(failed('assembly-timeout'), TIMEOUT);
             var target = payload || header, used = payload ? payloadUsed : headerUsed;
             var count = Math.min(target.length - used, data.length - offset);
-            for (var i = 0; i < count; i++) target[used + i] = data.charCodeAt(offset + i);
+            if (typeof data === 'string') {
+                for (var i = 0; i < count; i++) target[used + i] = data.charCodeAt(offset + i);
+            }
+            else target.set(data.subarray(offset, offset + count), used);
             offset += count;
             if (!payload) { headerUsed += count; if (headerUsed === header.length) beginPayload(); }
             else {

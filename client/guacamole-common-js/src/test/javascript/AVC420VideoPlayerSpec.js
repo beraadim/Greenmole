@@ -20,7 +20,7 @@
 /* global Guacamole, jasmine, expect */
 
 describe('Guacamole experimental AVC420 video', function() {
-    var display, layer, stream, player, originalDecoder, originalChunk, decoders, chunks;
+    var display, layer, stream, player, originalDecoder, originalChunk, originalFromBase64, decoders, chunks;
     var key = [0, 0, 0, 1, 0x67, 0x42, 0xE0, 0x1F, 0, 0, 1, 0x68, 1, 0, 0, 1, 0x65, 1];
     var delta = [0, 0, 1, 0x41, 1];
 
@@ -48,6 +48,7 @@ describe('Guacamole experimental AVC420 video', function() {
     }
     beforeEach(function() {
         originalDecoder = window.VideoDecoder; originalChunk = window.EncodedVideoChunk;
+        originalFromBase64 = Uint8Array.fromBase64;
         decoders = []; chunks = [];
         window.VideoDecoder = function Decoder(callbacks) {
             this.callbacks = callbacks; this.decodeQueueSize = 0;
@@ -68,6 +69,7 @@ describe('Guacamole experimental AVC420 video', function() {
     afterEach(function() {
         player.dispose(false); display.cancel();
         window.VideoDecoder = originalDecoder; window.EncodedVideoChunk = originalChunk;
+        Uint8Array.fromBase64 = originalFromBase64;
     });
 
     it('assembles arbitrarily split frames and acknowledges only after ordered canvas drawing', async function() {
@@ -82,6 +84,46 @@ describe('Guacamole experimental AVC420 video', function() {
         expect(layer.drawVideoFrame).toHaveBeenCalledOnceWith(decoded, 32, 18);
         expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:1', 0);
         expect(decoded.close).toHaveBeenCalledTimes(1);
+    });
+    // Exercise both branches even on browsers without the optional native API.
+    // When present, the fast-path spy calls the actual browser implementation.
+    ['native', 'legacy'].forEach(function(mode) {
+        function configureBase64() {
+            var convert = jasmine.createSpy('native Base64').and.callFake(function(base64) {
+                if (originalFromBase64) return originalFromBase64(base64);
+                return Uint8Array.from(window.atob(base64), function(byte) { return byte.charCodeAt(0); });
+            });
+            Uint8Array.fromBase64 = mode === 'native' ? convert : undefined;
+            return convert;
+        }
+        it('preserves exact bytes across split and coalesced envelopes using ' + mode + ' Base64', async function() {
+            var convert = configureBase64();
+            var first = envelope(1, key), second = envelope(2, delta);
+            var combined = new Uint8Array(first.length + second.length);
+            combined.set(first); combined.set(second, first.length);
+            send(combined, 23); await settle();
+            expect(chunks.map(function(chunk) { return Array.from(chunk.data); })).toEqual([key, delta]);
+            expect(chunks.map(function(chunk) { return chunk.timestamp; })).toEqual([1000, 2000]);
+            expect(stream.sendAck).not.toHaveBeenCalled();
+            expect(stream.onblob).not.toBeNull();
+            if (mode === 'native') expect(convert).toHaveBeenCalled();
+            else expect(convert).not.toHaveBeenCalled();
+        });
+        it('rejects malformed ' + mode + ' Base64 with one terminal fallback', function() {
+            configureBase64();
+            stream.onblob('%%%not-base64%%%');
+            expect(stream.onblob).toBeNull();
+            expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback', 0x0300);
+            expect(chunks.length).toBe(0);
+        });
+        it('bounds ' + mode + ' Base64 before invoking either decoder', function() {
+            var convert = configureBase64();
+            var atob = spyOn(window, 'atob').and.callThrough();
+            stream.onblob('A'.repeat(131073));
+            expect(convert).not.toHaveBeenCalled(); expect(atob).not.toHaveBeenCalled();
+            expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback', 0x0300);
+            expect(chunks.length).toBe(0);
+        });
     });
     it('preserves image/video order even when decoding completes ahead of an older task', async function() {
         var older = display.scheduleVideoFrame(layer, 32, 18, function() {});

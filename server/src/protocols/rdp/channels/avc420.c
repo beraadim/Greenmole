@@ -343,11 +343,10 @@ static void* send_for_owner(guac_user* user, void* data) {
         header_length = 20;
     }
     guac_protocol_send_blob(user->socket, video->stream, header, header_length);
-    for (size_t offset = 0; offset < video->frame_length; offset += 4096) {
-        size_t chunk = video->frame_length - offset;
-        if (chunk > 4096) chunk = 4096;
-        guac_protocol_send_blob(user->socket, video->stream, video->frame + offset, chunk);
-    }
+    /* Use the protocol's bounded blob size. Smaller chunks add browser
+     * dispatch/base64 calls without reducing the access unit's latency. */
+    guac_protocol_send_blobs(user->socket, video->stream,
+            video->frame, video->frame_length);
     /* Every access unit closes a browser Display frame. This permits bounded
      * asynchronous decoding without waiting on a later desktop update. */
     guac_client_end_frame(client);
