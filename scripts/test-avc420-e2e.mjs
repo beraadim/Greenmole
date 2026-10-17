@@ -34,15 +34,15 @@ import { acceptWebSocket, ClientInstructions, instruction } from './benchmarks/i
 import { trackBrowserProcess } from './benchmarks/browser-process.mjs';
 
 const options = { guacdPort: 14822, rdpPort: 23989, browser: process.env.CHROME_BIN
-    || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', mode: 'both', timeoutMs: 60000 };
+    || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', mode: 'both', timeoutMs: 60000, rdpSecurity: 'tls' };
 for (let i = 2; i < process.argv.length; i += 2) {
-    const key = { '--guacd-port': 'guacdPort', '--rdp-port': 'rdpPort', '--browser': 'browser', '--mode': 'mode', '--timeout-ms': 'timeoutMs' }[process.argv[i]];
-    if (!key || !process.argv[i + 1]) throw new Error('Usage: test-avc420-e2e.mjs [--guacd-port 14822] [--rdp-port 23989] [--browser executable] [--mode both|avc|images] [--timeout-ms 60000]');
+    const key = { '--guacd-port': 'guacdPort', '--rdp-port': 'rdpPort', '--browser': 'browser', '--mode': 'mode', '--timeout-ms': 'timeoutMs', '--rdp-security': 'rdpSecurity' }[process.argv[i]];
+    if (!key || !process.argv[i + 1]) throw new Error('Usage: test-avc420-e2e.mjs [--guacd-port 14822] [--rdp-port 23989] [--browser executable] [--mode both|avc|images] [--timeout-ms 60000] [--rdp-security tls|rdp]');
     options[key] = ['guacdPort', 'rdpPort', 'timeoutMs'].includes(key) ? Number(process.argv[i + 1]) : process.argv[i + 1];
 }
 for (const key of ['guacdPort', 'rdpPort'])
     if (!Number.isInteger(options[key]) || options[key] < 1 || options[key] > 65535) throw new Error('Invalid port');
-if (!['both', 'avc', 'images'].includes(options.mode) || !Number.isInteger(options.timeoutMs)
+if (!['tls', 'rdp'].includes(options.rdpSecurity) || !['both', 'avc', 'images'].includes(options.mode) || !Number.isInteger(options.timeoutMs)
         || options.timeoutMs < 1000 || options.timeoutMs > 120000) throw new Error('Invalid mode or timeout');
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const modules = path.join(root, 'client/guacamole-common-js/src/main/webapp/modules');
@@ -201,7 +201,7 @@ server.on('upgrade', (request, socket, head) => {
     parser.oninstruction = (opcode, args) => {
         if (opcode === 'args') {
             const values = { hostname: '127.0.0.1', port: String(options.rdpPort), username: 'synthetic-fixture',
-                password: 'synthetic-fixture', security: 'rdp', 'disable-auth': 'true', width: '320', height: '180', dpi: '96',
+                password: 'synthetic-fixture', security: options.rdpSecurity, 'disable-auth': 'true', width: '320', height: '180', dpi: '96',
                 'disable-audio': 'true', 'disable-gfx': 'false', 'color-depth': '32', 'ignore-cert': 'true', 'resize-method': 'display-update' };
             tcp.write(instruction(['size', 320, 180, 96]) + instruction(['audio'])
                 + instruction(video ? ['video', 'video/x-guacamole-avc420;v=1'] : ['video'])
