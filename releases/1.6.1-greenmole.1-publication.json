@@ -1,0 +1,36 @@
+{
+  "schema": "greenmole-publication-verification-v1",
+  "verified_at_utc": "2026-10-17T10:47:34.257307+00:00",
+  "repository": "https://github.com/beraadim/Greenmole",
+  "visibility": "public",
+  "default_branch": "main",
+  "initial_published_commit": "168e972deab5990363acafee07bc1e9c3e326570",
+  "release_tag": "1.6.1-greenmole.1",
+  "published_tags": 17,
+  "sole_repository_write_account": "beraadim",
+  "collaborator_accounts": [
+    "beraadim"
+  ],
+  "pending_collaborator_invitations": 0,
+  "deploy_keys": 0,
+  "webhooks": 0,
+  "actions_default_permissions": {
+    "default_workflow_permissions": "read",
+    "can_approve_pull_request_reviews": false
+  },
+  "main_force_pushes_allowed": false,
+  "main_deletion_allowed": false,
+  "main_protection_applies_to_admins": true,
+  "secret_scanning_enabled": true,
+  "secret_push_protection_enabled": true,
+  "private_vulnerability_reporting_enabled": true,
+  "anonymous_repository_and_source_access_verified": true,
+  "source_sha256": {
+    "README.md": "cdcadd2cb7ff9d526f467a473ff664c088936644447aef67a2380881a7b2682f",
+    "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "NOTICE": "b7d386acff1ac945b27859fefa6275f1d3e11f1ee1f3d5c8ebee75abf9bc7daa",
+    "DOWNSTREAM-CHANGES.json": "0b8521b8c01976854d4c9fa5db568bd29bf6f1988fdf8028bfb514c588dc2d9f"
+  },
+  "private_backup_preserved": true,
+  "ignored_runtime_material_published": false
+}
