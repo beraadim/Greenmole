@@ -1,0 +1,472 @@
+{
+  "schema": "guacamole-private15-validation-v1",
+  "source_revision": "78e80a4996d075b53b9a0791bfba1ce97ca29b8c",
+  "images": [
+    {
+      "image": "guacamole-private/guacd:1.6.1-private.15",
+      "image_id": "sha256:908b25edd6a850cbfd596948d802a3bcd9b174eb16c0ec8c9dff9b7234afbd7c",
+      "revision": "78e80a4996d075b53b9a0791bfba1ce97ca29b8c"
+    },
+    {
+      "image": "guacamole-private/web:1.6.1-private.15",
+      "image_id": "sha256:695ef430465ed0f74dc97be640aefeb84313f55914749f002c1f05d5fa98133d",
+      "revision": "78e80a4996d075b53b9a0791bfba1ce97ca29b8c"
+    },
+    {
+      "image": "guacamole-private/native-benchmark:1.6.1-private.15",
+      "image_id": "sha256:eeed550ffcc087b805334fafc87e6b82a6e4f6f396489afbf460f471573faff6",
+      "revision": "78e80a4996d075b53b9a0791bfba1ce97ca29b8c"
+    },
+    {
+      "image": "guacamole-private/native-benchmark:private15-pthread-fallback",
+      "image_id": "sha256:fbba430ec0d5aed511d463721702c6036827fecfc49740240ba9450bbeea63bf",
+      "revision": "78e80a4996d075b53b9a0791bfba1ce97ca29b8c"
+    }
+  ],
+  "native": [
+    {
+      "exit_code": 0,
+      "tests": 285,
+      "nonzero_failures": [],
+      "image": "guacamole-private/native-benchmark:1.6.1-private.15",
+      "revision": "78e80a4996d075b53b9a0791bfba1ce97ca29b8c",
+      "diagnostics": 0
+    },
+    {
+      "exit_code": 0,
+      "tests": 285,
+      "nonzero_failures": [],
+      "image": "guacamole-private/native-benchmark:1.6.1-private.15",
+      "revision": "78e80a4996d075b53b9a0791bfba1ce97ca29b8c",
+      "diagnostics": 1
+    },
+    {
+      "exit_code": 0,
+      "tests": 285,
+      "nonzero_failures": [],
+      "image": "guacamole-private/native-benchmark:private15-pthread-fallback",
+      "revision": "78e80a4996d075b53b9a0791bfba1ce97ca29b8c",
+      "diagnostics": 0
+    }
+  ],
+  "browser": {
+    "chrome_jasmine_passed": 247,
+    "chrome_skipped": 0,
+    "frontend_node_passed": 40,
+    "production_frontend_build": "passed",
+    "docker_maven_with_tests": "passed",
+    "headless_firefox_passed": 244,
+    "headless_firefox_capability_skipped": 3,
+    "synthetic_native_layouts": [
+      {
+        "name": "openh264_320x180",
+        "format": "I420",
+        "codedWidth": 320,
+        "codedHeight": 194,
+        "visibleRect": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 192
+        }
+      },
+      {
+        "name": "openh264_352x208",
+        "format": "I420",
+        "codedWidth": 352,
+        "codedHeight": 226,
+        "visibleRect": {
+          "x": 0,
+          "y": 0,
+          "width": 352,
+          "height": 208
+        }
+      },
+      {
+        "name": "openh264_318x178",
+        "format": "I420",
+        "codedWidth": 320,
+        "codedHeight": 194,
+        "visibleRect": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 192
+        }
+      },
+      {
+        "name": "videotoolbox_320x180",
+        "format": "I420",
+        "codedWidth": 320,
+        "codedHeight": 194,
+        "visibleRect": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 192
+        }
+      },
+      {
+        "name": "videotoolbox_352x208",
+        "format": "I420",
+        "codedWidth": 352,
+        "codedHeight": 226,
+        "visibleRect": {
+          "x": 0,
+          "y": 0,
+          "width": 352,
+          "height": 208
+        }
+      },
+      {
+        "name": "videotoolbox_318x178",
+        "format": "I420",
+        "codedWidth": 320,
+        "codedHeight": 194,
+        "visibleRect": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 192
+        }
+      },
+      {
+        "name": "openh264_2560x1264",
+        "format": "I420",
+        "codedWidth": 2560,
+        "codedHeight": 1282,
+        "visibleRect": {
+          "x": 0,
+          "y": 0,
+          "width": 2560,
+          "height": 1264
+        }
+      },
+      {
+        "name": "videotoolbox_2560x1264",
+        "format": "I420",
+        "codedWidth": 2560,
+        "codedHeight": 1282,
+        "visibleRect": {
+          "x": 0,
+          "y": 0,
+          "width": 2560,
+          "height": 1264
+        }
+      }
+    ]
+  },
+  "desktop_size_reproduction": {
+    "width": 2560,
+    "height": 1264,
+    "encoders": [
+      "openh264",
+      "videotoolbox"
+    ],
+    "frames_per_encoder": 6,
+    "fps": 60,
+    "bitrate_bps": 50000000,
+    "default_hardware_policy": "OpenH264 native NV12 chroma reference mismatch; VideoToolbox stream did not present before the bounded test deadline",
+    "prefer_software_policy": "Both streams present every ordered pair, preserve full color against independent references, accept predictive auxiliary frames and forced main IDR resets",
+    "queue_and_deadline_limits_changed": false,
+    "browser_cpu_tradeoff": "Software H.264 decoding can use more client CPU; reconstruction remains on GPU. This is a compatibility result, not a live-session performance measurement."
+  },
+  "common_js_sha256": "71be5236208ccf6a3a8a91a696d66b0fe99789a99c05e81eee44158cbfd6323f",
+  "packaged_integration": [
+    {
+      "codec": "avc444",
+      "backend": "videotoolbox",
+      "passed": true,
+      "secure": true,
+      "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+      "cases": [
+        {
+          "videoRequested": true,
+          "protocol": {
+            "videos": 1,
+            "images": 17,
+            "ends": 17,
+            "syncs": 18
+          },
+          "phase": "passed",
+          "active": {
+            "status": "playing",
+            "presentedFrames": 12,
+            "codec": "avc444",
+            "fallbackReason": null
+          },
+          "fallback": {
+            "status": "fallback",
+            "presentedFrames": 12,
+            "codec": "avc444",
+            "fallbackReason": "decoder-error"
+          },
+          "newFallbackImages": 4,
+          "newFallbackDraws": 3,
+          "videoFineColor_mean_absolute_error": 1.375,
+          "fallbackFineColor_mean_absolute_error": 1.2708333333333333
+        },
+        {
+          "videoRequested": false,
+          "protocol": {
+            "videos": 0,
+            "images": 4,
+            "ends": 4,
+            "syncs": 1
+          },
+          "phase": "passed",
+          "imageFineColor_mean_absolute_error": 3.0520833333333335
+        }
+      ],
+      "relay": [
+        {
+          "videoRequested": true,
+          "ready": true,
+          "images": 18,
+          "videos": 1,
+          "frameAcks": 12,
+          "failureAcks": 1,
+          "errors": []
+        },
+        {
+          "videoRequested": false,
+          "ready": true,
+          "images": 4,
+          "videos": 0,
+          "frameAcks": 0,
+          "failureAcks": 0,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "codec": "avc444",
+      "backend": "openh264",
+      "passed": true,
+      "secure": true,
+      "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+      "cases": [
+        {
+          "videoRequested": true,
+          "protocol": {
+            "videos": 1,
+            "images": 18,
+            "ends": 19,
+            "syncs": 18
+          },
+          "phase": "passed",
+          "active": {
+            "status": "playing",
+            "presentedFrames": 12,
+            "codec": "avc444",
+            "fallbackReason": null
+          },
+          "fallback": {
+            "status": "fallback",
+            "presentedFrames": 12,
+            "codec": "avc444",
+            "fallbackReason": "decoder-error"
+          },
+          "newFallbackImages": 6,
+          "newFallbackDraws": 6,
+          "videoFineColor_mean_absolute_error": 0.9583333333333334,
+          "fallbackFineColor_mean_absolute_error": 1.28125
+        },
+        {
+          "videoRequested": false,
+          "protocol": {
+            "videos": 0,
+            "images": 4,
+            "ends": 4,
+            "syncs": 1
+          },
+          "phase": "passed",
+          "imageFineColor_mean_absolute_error": 3.0520833333333335
+        }
+      ],
+      "relay": [
+        {
+          "videoRequested": true,
+          "ready": true,
+          "images": 18,
+          "videos": 1,
+          "frameAcks": 12,
+          "failureAcks": 1,
+          "errors": []
+        },
+        {
+          "videoRequested": false,
+          "ready": true,
+          "images": 4,
+          "videos": 0,
+          "frameAcks": 0,
+          "failureAcks": 0,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "codec": "avc420",
+      "backend": "videotoolbox",
+      "passed": true,
+      "secure": true,
+      "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+      "cases": [
+        {
+          "videoRequested": true,
+          "protocol": {
+            "videos": 1,
+            "images": 11,
+            "ends": 12,
+            "syncs": 17
+          },
+          "phase": "passed",
+          "active": {
+            "status": "playing",
+            "presentedFrames": 12,
+            "codec": "avc420",
+            "fallbackReason": null
+          },
+          "fallback": {
+            "status": "fallback",
+            "presentedFrames": 12,
+            "codec": "avc420",
+            "fallbackReason": null
+          },
+          "newFallbackImages": 4,
+          "newFallbackDraws": 4
+        },
+        {
+          "videoRequested": false,
+          "protocol": {
+            "videos": 0,
+            "images": 4,
+            "ends": 4,
+            "syncs": 2
+          },
+          "phase": "passed"
+        }
+      ],
+      "relay": [
+        {
+          "videoRequested": true,
+          "ready": true,
+          "images": 11,
+          "videos": 1,
+          "frameAcks": 12,
+          "failureAcks": 1,
+          "errors": []
+        },
+        {
+          "videoRequested": false,
+          "ready": true,
+          "images": 4,
+          "videos": 0,
+          "frameAcks": 0,
+          "failureAcks": 0,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "codec": "avc420",
+      "backend": "openh264",
+      "passed": true,
+      "secure": true,
+      "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+      "cases": [
+        {
+          "videoRequested": true,
+          "protocol": {
+            "videos": 1,
+            "images": 11,
+            "ends": 12,
+            "syncs": 16
+          },
+          "phase": "passed",
+          "active": {
+            "status": "playing",
+            "presentedFrames": 12,
+            "codec": "avc420",
+            "fallbackReason": null
+          },
+          "fallback": {
+            "status": "fallback",
+            "presentedFrames": 12,
+            "codec": "avc420",
+            "fallbackReason": null
+          },
+          "newFallbackImages": 2,
+          "newFallbackDraws": 2
+        },
+        {
+          "videoRequested": false,
+          "protocol": {
+            "videos": 0,
+            "images": 4,
+            "ends": 4,
+            "syncs": 1
+          },
+          "phase": "passed"
+        }
+      ],
+      "relay": [
+        {
+          "videoRequested": true,
+          "ready": true,
+          "images": 11,
+          "videos": 1,
+          "frameAcks": 12,
+          "failureAcks": 1,
+          "errors": []
+        },
+        {
+          "videoRequested": false,
+          "ready": true,
+          "images": 4,
+          "videos": 0,
+          "frameAcks": 0,
+          "failureAcks": 0,
+          "errors": []
+        }
+      ]
+    }
+  ],
+  "preflight": {
+    "revision": "78e80a4996d075b53b9a0791bfba1ce97ca29b8c",
+    "images": [
+      "sha256:908b25edd6a850cbfd596948d802a3bcd9b174eb16c0ec8c9dff9b7234afbd7c",
+      "sha256:695ef430465ed0f74dc97be640aefeb84313f55914749f002c1f05d5fa98133d"
+    ],
+    "host_mounts_read_only": true,
+    "http_languages": 16,
+    "configuration_readable": true,
+    "web_to_guacd_tcp": true,
+    "rdp_plugin_handshake": true,
+    "deadline_timers_and_receive_pump_served": true,
+    "pipeline_diagnostics_api_served": true,
+    "experimental_avc420_player_and_gate_served": true,
+    "experimental_avc444_selection_status_and_help_served": true,
+    "deployment_changed": false
+  },
+  "macrdp": {
+    "version": "0.1.20",
+    "source_revision": "3d7f2a46978f7ce9839740351a92852ecd6bda4a",
+    "rust_passed": 720,
+    "existing_opt_in_ignored": 6,
+    "python_passed": 8,
+    "javascript_passed": 8,
+    "full_check": "passed",
+    "native_actual_resolution_probe": {
+      "valid_pairs": 12,
+      "drops_or_errors": 0,
+      "baseline_empty_pairs": 40,
+      "baseline_attempts": 50
+    }
+  },
+  "scope": "Public synthetic-only loopback RDP with disposable TLS, no desktop capture or input. No claim of measured live-session performance.",
+  "gateway_failure_reason_integration": {
+    "owned_container_removed": true,
+    "avc444_decoder_error_reasons_observed": 2
+  }
+}
