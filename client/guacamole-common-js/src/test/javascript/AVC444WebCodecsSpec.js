@@ -17,7 +17,7 @@
  * under the License.
  */
 
-/* global Guacamole, AVC444_SYNTHETIC_FIXTURE, expect, pending */
+/* global Guacamole, AVC444_SYNTHETIC_FIXTURE, AVC444_DESKTOP_SYNTHETIC_FIXTURE, expect, pending */
 
 describe('Guacamole AVC444 real WebCodecs integration', function() {
     function bytes(base64) { return Uint8Array.from(window.atob(base64), function(value) { return value.charCodeAt(0); }); }
@@ -30,10 +30,10 @@ describe('Guacamole AVC444 real WebCodecs integration', function() {
         for (var side = 0; side < 2; side++) { view.setUint16(32 + side * 8 + 4, width); view.setUint16(32 + side * 8 + 6, height); }
         packet.set(main, 48); packet.set(aux, 48 + main.length); return packet;
     }
-    async function waitFor(condition) {
+    async function waitFor(condition, statistics) {
         var start = performance.now();
         while (!condition()) {
-            if (performance.now() - start > 1800) throw new Error('AVC444 presentation timeout');
+            if (performance.now() - start > 1800) throw new Error('AVC444 presentation timeout: ' + JSON.stringify(statistics ? statistics() : {}));
             await new Promise(function pause(resolve) { window.setTimeout(resolve, 1); });
         }
     }
@@ -45,12 +45,23 @@ describe('Guacamole AVC444 real WebCodecs integration', function() {
         tunnel.connect = function() {}; tunnel.disconnect = function() {};
         tunnel.sendMessage = function() { sent.push(Array.from(arguments)); };
         var client = new Guacamole.Client(tunnel), timestamp = 1;
+        var originalCopy = Guacamole.AVC444Renderer.copyFrame, layouts = [], currentName = null;
+        window.guacamoleAvc444Validation = { nativeLayouts: layouts };
+        Guacamole.AVC444Renderer.copyFrame = function captureSyntheticLayout(frame, width, height) {
+            var rect = frame.visibleRect;
+            var layout = { name: currentName, format: frame.format,
+                codedWidth: frame.codedWidth, codedHeight: frame.codedHeight,
+                visibleRect: rect ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height } : null };
+            if (!layouts.some(function known(item) { return JSON.stringify(item) === JSON.stringify(layout); })) layouts.push(layout);
+            return originalCopy(frame, width, height);
+        };
         var instruction = function(opcode, args) { tunnel.oninstruction(opcode, args.map(String)); };
         client.setExperimentalAvc444Enabled(true); client.connect('synthetic');
         try {
             var total = 0;
-            for (var s = 0; s < AVC444_SYNTHETIC_FIXTURE.sequences.length; s++) {
-                var sequence = AVC444_SYNTHETIC_FIXTURE.sequences[s];
+            var sequences = AVC444_SYNTHETIC_FIXTURE.sequences.concat(AVC444_DESKTOP_SYNTHETIC_FIXTURE.sequences);
+            for (var s = 0; s < sequences.length; s++) {
+                var sequence = sequences[s]; currentName = sequence.name;
                 instruction('size', [0, sequence.width, sequence.height]);
                 instruction('video', [s, 0, Guacamole.AVC444VideoPlayer.MIMETYPE]);
                 expect(sent.some(function(a) { return a[0] === 'ack' && a[1] === s && a[2] === 'AVC444:ready'; })).toBe(true);
@@ -60,7 +71,7 @@ describe('Guacamole AVC444 real WebCodecs integration', function() {
                         instruction('blob', [s, window.btoa(String.fromCharCode.apply(null, packet.slice(offset, offset + 29)))]);
                     instruction('sync', [timestamp++]);
                 }
-                await waitFor(function() { return sent.some(function(a) { return a[0] === 'ack' && a[1] === s && a[2] === 'AVC444:6'; }); });
+                await waitFor(function() { return sent.some(function(a) { return a[0] === 'ack' && a[1] === s && a[2] === 'AVC444:6'; }); }, function() { return { sequence: sequence.name, video: client.getVideoStatistics(), nativeLayouts: layouts };  });
                 total += sequence.frames.length;
                 expect(client.getVideoStatistics().codec).toBe('avc444');
                 expect(client.getVideoStatistics().presentedFrames).toBe(total);
@@ -92,6 +103,6 @@ describe('Guacamole AVC444 real WebCodecs integration', function() {
             expect(client.getVideoStatistics().status).toBe('fallback');
             expect(sent.some(function(a) { return a[0] === 'ack' && a[2] === 'AVC444:fallback'; })).toBe(false);
         }
-        finally { client.disconnect(); }
+        finally { Guacamole.AVC444Renderer.copyFrame = originalCopy; client.disconnect(); }
     });
 });

@@ -19,7 +19,7 @@
 
 """Package the public macrdp paired-codec fixtures for browser regressions.
 
-Run macrdp's export_avc420_fixture example with --avc444 first, then pass its
+Run macrdp's export_avc444_fixture example first, then pass its
 fixture.json here. Source YUV/BGRA and the independently decoded I420 views
 provide sparse, independent color references without retaining full raw frames
 in the repository. No desktop capture or production account is used.
@@ -28,11 +28,16 @@ import argparse
 import base64
 import hashlib
 import json
+import re
 from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("manifest", type=Path)
+parser.add_argument("--output", type=Path, help="Optional generated browser fixture path")
+parser.add_argument("--variable", default="AVC444_SYNTHETIC_FIXTURE", help="Generated JavaScript constant name")
 args = parser.parse_args()
+if not re.fullmatch(r"[A-Za-z_$][A-Za-z0-9_$]*", args.variable):
+    parser.error("--variable must be a JavaScript identifier")
 base = args.manifest.resolve().parent
 manifest = json.loads(args.manifest.read_text())
 assert manifest["synthetic"] is True and manifest["codec"] == "avc444"
@@ -92,7 +97,7 @@ for seq in manifest["sequences"]:
                                 "lastAuxDecodedSha256": hashlib.sha256(auxiliary).hexdigest()})
 root = Path(__file__).resolve().parent.parent
 license_header = (root / "src/main/webapp/modules/AVC420VideoPlayer.js").read_text().split("var Guacamole")[0]
-output = root / "src/test/javascript/AVC444SyntheticFixture.js"
+output = args.output or root / "src/test/javascript/AVC444SyntheticFixture.js"
 output.write_text(license_header + "/* Public synthetic macrdp software/hardware streams, no user desktop data. */\n"
-                  + "var AVC444_SYNTHETIC_FIXTURE = " + json.dumps(result, separators=(",", ":")) + ";\n")
+                  + "var " + args.variable + " = " + json.dumps(result, separators=(",", ":")) + ";\n")
 print(output)

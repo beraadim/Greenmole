@@ -41,10 +41,11 @@ Guacamole.AVC444VideoPlayer = function AVC444VideoPlayer(stream, layer, display)
     var assemblyTimer = null;
     var MAX_BYTES = 8 * 1024 * 1024, MAX_PENDING_BYTES = 16 * 1024 * 1024, TIMEOUT = 2000;
 
-    this.dispose = function dispose(notify) {
+    this.dispose = function dispose(notify, reason) {
         if (closed) return;
         closed = true;
-        if (player.onstatechange) player.onstatechange('fallback');
+        reason = Guacamole.AVC444VideoPlayer.isFailureReason(reason) ? reason : null;
+        if (player.onstatechange) player.onstatechange('fallback', reason);
         stream.onblob = stream.onend = null;
         if (assemblyTimer !== null) window.clearTimeout(assemblyTimer);
         assemblyTimer = null; payload = metadata = null;
@@ -60,24 +61,29 @@ Guacamole.AVC444VideoPlayer = function AVC444VideoPlayer(stream, layer, display)
         pending = {}; decodeQueue = []; pendingCount = pendingBytes = activePairs = 0;
         if (decoder) { try { decoder.close(); } catch (ignore) {} decoder = null; }
         if (renderer) { renderer.dispose(); renderer = null; }
-        if (notify) stream.sendAck('AVC444:fallback', 0x0300);
+        if (notify) stream.sendAck('AVC444:fallback' + (reason ? ':' + reason : ''), 0x0300);
     };
-    function fail() { player.dispose(true); }
+    function fail(reason) { player.dispose(true, reason || 'invalid-stream'); }
+    function failed(reason) { return function failure() { fail(reason); }; }
     function output(frame) {
         var sequence = Math.floor(frame.timestamp / 2000), remainder = frame.timestamp % 2000;
         var side = remainder === 0 ? 0 : remainder === 1000 ? 1 : -1;
         var item = pending[sequence];
         if (closed || !item) { frame.close(); return; }
-        if (side < 0 || item.received[side]) { frame.close(); return fail(); }
+        if (side < 0 || item.received[side]) { frame.close(); return fail('invalid-stream'); }
         item.received[side] = true; item.frames[side] = frame;
         Guacamole.AVC444Renderer.copyFrame(frame, item.width, item.height).then(function copied(planes) {
             if (closed || !pending[sequence]) return;
             item.planes[side] = planes;
             if (!item.planes[0] || !item.planes[1]) return;
-            var picture = renderer.render(item.planes[0], item.planes[1], item.width, item.height, sequence * 2000);
+            var picture;
+            try { picture = renderer.render(item.planes[0], item.planes[1], item.width, item.height, sequence * 2000); }
+            catch (error) { return fail('renderer-error'); }
             item.planes = null;
             item.task.complete(picture);
-        }).catch(fail).then(function release() {
+        }).catch(function copyFailed(error) {
+            fail(error && error.avc444Reason === 'native-layout' ? 'native-layout' : 'native-copy');
+        }).then(function release() {
             // dispose() may already have closed an in-flight native copy.
             if (item.frames[side]) { item.frames[side].close(); item.frames[side] = null; }
         });
@@ -111,44 +117,52 @@ Guacamole.AVC444VideoPlayer = function AVC444VideoPlayer(stream, layer, display)
                         timestamp: item.sequence * 2000 + side * 1000, data: item.data[side] }));
                 item.data = null;
             }
-            catch (ignore) { fail(); }
+            catch (ignore) { fail('decoder-error'); }
         }
     }
     function decode(data, info) {
         var view = new DataView(data.buffer, data.byteOffset, 16);
         for (var r = 0; r < 2; r++)
             if (view.getUint16(r * 8) || view.getUint16(r * 8 + 2)
-                    || view.getUint16(r * 8 + 4) !== info.width || view.getUint16(r * 8 + 6) !== info.height) return fail();
+                    || view.getUint16(r * 8 + 4) !== info.width || view.getUint16(r * 8 + 6) !== info.height) return fail('invalid-stream');
         var frames = [data.subarray(16, 16 + info.mainLength), data.subarray(16 + info.mainLength)];
         var nals = frames.map(inspect), keys = [!!(info.flags & 1), !!(info.flags & 2)];
         for (var side = 0; side < 2; side++)
-            if (nals[side].idr !== keys[side] || (keys[side] && (!nals[side].codec || !nals[side].pps))) return fail();
+            if (nals[side].idr !== keys[side] || (keys[side] && (!nals[side].codec || !nals[side].pps))) return fail('invalid-stream');
         if (!decoderReady) {
-            if (!keys[0]) return fail();
+            if (!keys[0]) return fail('invalid-stream');
             codec = nals[0].codec; streamWidth = info.width; streamHeight = info.height;
-            var config = { codec: codec, optimizeForLatency: true,
+            // Some hardware decoders buffer this interleaved pair stream beyond
+            // the bounded output slots or remap native chroma samples. The
+            // tiny capability probe can silently select software while the
+            // desktop-sized stream selects that incompatible hardware path.
+            // Use the same sample-preserving software policy at both sizes;
+            // reconstruction remains on the GPU and AVC420 is unchanged.
+            var config = { codec: codec, optimizeForLatency: true, hardwareAcceleration: 'prefer-software',
                 codedWidth: Math.ceil(info.width / 16) * 16, codedHeight: Math.ceil(info.height / 16) * 16 };
             decoderReady = Promise.resolve().then(function supportedConfig() {
                 return window.VideoDecoder.isConfigSupported(config);
             }).then(function configure(result) {
                 if (closed) return;
-                if (!result.supported) throw new Error('Unsupported AVC444 configuration');
-                renderer = new Guacamole.AVC444Renderer(fail);
-                decoder = new window.VideoDecoder({ output: output, error: fail }); decoder.configure(config); pump();
-            }).catch(fail);
+                if (!result.supported) return fail('unsupported-config');
+                try { renderer = new Guacamole.AVC444Renderer(failed('context-lost')); }
+                catch (error) { return fail('renderer-error'); }
+                decoder = new window.VideoDecoder({ output: output, error: failed('decoder-error') }); decoder.configure(config); pump();
+            }).catch(failed('decoder-error'));
         }
         if (info.width !== streamWidth || info.height !== streamHeight || nals.some(function changed(nal) {
             return nal.codec && nal.codec !== codec;
-        }) || pendingCount >= 16 || pendingBytes + data.length > MAX_PENDING_BYTES) return fail();
+        })) return fail('invalid-stream');
+        if (pendingCount >= 16 || pendingBytes + data.length > MAX_PENDING_BYTES) return fail('backlog-limit');
         var item = { width: info.width, height: info.height, sequence: info.sequence,
             bytes: data.length, data: frames, keys: keys, frames: [null, null], received: [false, false], planes: [null, null] };
         pending[info.sequence] = item; pendingCount++; pendingBytes += item.bytes;
-        item.timer = window.setTimeout(fail, TIMEOUT);
+        item.timer = window.setTimeout(failed('frame-timeout'), TIMEOUT);
         item.task = display.scheduleVideoFrame(layer, info.width, info.height, function presented(success) {
             if (closed || !pending[info.sequence]) return;
             window.clearTimeout(item.timer); delete pending[info.sequence];
             pendingCount--; pendingBytes -= item.bytes; activePairs--;
-            if (!success) return fail();
+            if (!success) return fail('presentation-error');
             if (player.onstatechange) player.onstatechange('playing');
             stream.sendAck('AVC444:' + info.sequence, 0); pump();
         });
@@ -161,20 +175,20 @@ Guacamole.AVC444VideoPlayer = function AVC444VideoPlayer(stream, layer, display)
         if (view.getUint32(0) !== 0x47415632 || sequence <= lastSequence || !width || !height
                 || width > 8192 || height > 8192 || Math.ceil(width / 16) * 16 * Math.ceil(height / 16) * 16 > 16777216
                 || (flags & ~3) !== 0x10000 || view.getUint16(24) !== 1 || view.getUint16(26) !== 1
-                || view.getUint32(28) !== 0 || !mainLength || !auxLength || length > MAX_BYTES
-                || pendingBytes + length > MAX_PENDING_BYTES) return fail();
+                || view.getUint32(28) !== 0 || !mainLength || !auxLength || length > MAX_BYTES) return fail('invalid-stream');
+        if (pendingBytes + length > MAX_PENDING_BYTES) return fail('backlog-limit');
         lastSequence = sequence;
         metadata = { sequence: sequence, width: width, height: height, flags: flags, mainLength: mainLength };
         payload = new Uint8Array(length); payloadUsed = 0;
     }
     stream.onblob = function receiveBlob(base64) {
         if (closed) return;
-        if (typeof base64 !== 'string' || base64.length > 131072) return fail();
+        if (typeof base64 !== 'string' || base64.length > 131072) return fail('invalid-stream');
         var data;
-        try { data = window.atob(base64); } catch (ignore) { return fail(); }
+        try { data = window.atob(base64); } catch (ignore) { return fail('invalid-stream'); }
         var offset = 0;
         while (!closed && offset < data.length) {
-            if (assemblyTimer === null) assemblyTimer = window.setTimeout(fail, TIMEOUT);
+            if (assemblyTimer === null) assemblyTimer = window.setTimeout(failed('assembly-timeout'), TIMEOUT);
             var target = payload || header, used = payload ? payloadUsed : headerUsed;
             var count = Math.min(target.length - used, data.length - offset);
             for (var i = 0; i < count; i++) target[used + i] = data.charCodeAt(offset + i);
@@ -194,6 +208,13 @@ Guacamole.AVC444VideoPlayer = function AVC444VideoPlayer(stream, layer, display)
 };
 Guacamole.AVC444VideoPlayer.MIMETYPE = 'video/x-guacamole-avc444;v=1';
 Guacamole.AVC444VideoPlayer.supported = false;
+
+/** Bounded, content-free causes shared with the gateway ACK allowlist. */
+Guacamole.AVC444VideoPlayer.isFailureReason = function isFailureReason(reason) {
+    return ['invalid-stream', 'unsupported-config', 'decoder-error', 'native-layout',
+        'native-copy', 'renderer-error', 'context-lost', 'frame-timeout',
+        'assembly-timeout', 'backlog-limit', 'presentation-error'].indexOf(reason) !== -1;
+};
 
 /**
  * Prove the actual decode -> native-plane copy -> GPU -> canvas path before
@@ -245,7 +266,8 @@ Guacamole.AVC444VideoPlayer.checkSupport = function checkSupport() {
                     }
                 }).catch(function failed() { finish(false); }).then(function copiedOrFailed() { release(side); });
             }});
-            decoder.configure({ codec: 'avc1.42d00b', optimizeForLatency: true, codedWidth: 16, codedHeight: 16 });
+            decoder.configure({ codec: 'avc1.42d00b', optimizeForLatency: true,
+                hardwareAcceleration: 'prefer-software', codedWidth: 16, codedHeight: 16 });
             var data = Uint8Array.from(window.atob('AAAAAWdC0AuMacm4CAgIPCIRqAAAAAFozjyAAAAAAWW4AAQJ5PA='), function byte(value) { return value.charCodeAt(0); });
             decoder.decode(new window.EncodedVideoChunk({ type: 'key', timestamp: 0, data: data }));
             decoder.decode(new window.EncodedVideoChunk({ type: 'key', timestamp: 1000, data: data }));

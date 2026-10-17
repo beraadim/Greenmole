@@ -104,7 +104,7 @@ describe('Guacamole experimental AVC444 video', function() {
             send(envelope(1)); display.flush(); await settle();
             var main = frame(1, 0); decoders[0].callbacks.output(main); await settle();
             jasmine.clock().tick(2001); await settle();
-            expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback', 0x0300);
+            expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback:frame-timeout', 0x0300);
             expect(decoders[0].close).toHaveBeenCalledTimes(1); expect(main.close).toHaveBeenCalledTimes(1);
             expect(layer.drawVideoFrame).not.toHaveBeenCalled();
         }
@@ -113,34 +113,34 @@ describe('Guacamole experimental AVC444 video', function() {
     it('rejects duplicate decoded subframes and a failed native sample copy', async function() {
         send(envelope(1)); display.flush(); await settle();
         decoders[0].callbacks.output(frame(1, 0)); decoders[0].callbacks.output(frame(1, 0)); await settle();
-        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback', 0x0300);
+        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback:invalid-stream', 0x0300);
     });
     it('falls back once if a native copy rejects, closing both pending subframes', async function() {
         Guacamole.AVC444Renderer.copyFrame = function() { return Promise.reject(new Error('native unavailable')); };
         send(envelope(1)); display.flush(); await settle();
         var main=frame(1,0),aux=frame(1,1);
         decoders[0].callbacks.output(main); decoders[0].callbacks.output(aux); await settle();
-        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback',0x0300);
+        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback:native-copy',0x0300);
         expect(main.close).toHaveBeenCalledTimes(1);expect(aux.close).toHaveBeenCalledTimes(1);
     });
     it('cancels pending presentation on context loss and never acknowledges it successfully', async function() {
         send(envelope(1)); display.flush(); await settle();
         rendererFailures[0](); await settle();
-        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback',0x0300);
+        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback:context-lost',0x0300);
         expect(layer.drawVideoFrame).not.toHaveBeenCalled();
     });
     it('bounds an incomplete envelope assembly deadline', async function() {
         jasmine.clock().install();
         try {
             send(envelope(1).slice(0,7));jasmine.clock().tick(2001);await settle();
-            expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback',0x0300);
+            expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback:assembly-timeout',0x0300);
             expect(chunks.length).toBe(0);
         }
         finally {jasmine.clock().uninstall();}
     });
     it('bounds queued envelopes without discarding reference pictures and continuing', async function() {
         for(var i=1;i<=17;i++)send(envelope(i));await settle();
-        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback',0x0300);
+        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback:backlog-limit',0x0300);
         expect(chunks.length).toBe(0);
     });
     [
@@ -156,12 +156,69 @@ describe('Guacamole experimental AVC444 video', function() {
     ].forEach(function(test) {
         it('rejects ' + test[0] + ' into image fallback before native decode', async function() {
             var packet = envelope(1); test[1](new DataView(packet.buffer)); send(packet); await settle();
-            expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback', 0x0300); expect(chunks.length).toBe(0);
+            expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback:invalid-stream', 0x0300); expect(chunks.length).toBe(0);
         });
     });
     it('requires an initial main keyframe and rejects replayed sequence numbers', async function() {
         send(envelope(1)); await settle(); send(envelope(1)); await settle();
+        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback:invalid-stream', 0x0300);
+    });
+    it('reports an allowlisted layout reason without forwarding native error text', async function() {
+        var error = new Error('private native failure details'); error.avc444Reason = 'native-layout';
+        Guacamole.AVC444Renderer.copyFrame = function() { return Promise.reject(error); };
+        var states = []; player.onstatechange = function(status, reason) { states.push([status, reason]); };
+        send(envelope(1)); display.flush(); await settle();
+        decoders[0].callbacks.output(frame(1, 0)); await settle();
+        expect(states).toEqual([['fallback', 'native-layout']]);
+        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback:native-layout', 0x0300);
+    });
+    it('distinguishes unsupported configuration from native decoder failure', async function() {
+        window.VideoDecoder.isConfigSupported = function() { return Promise.resolve({ supported: false }); };
+        send(envelope(1)); display.flush(); await settle();
+        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback:unsupported-config', 0x0300);
+        expect(decoders.length).toBe(0);
+    });
+    it('reports native decoder failures separately from graphics reconstruction failures', async function() {
+        var states = []; player.onstatechange = function(status, reason) { states.push([status, reason]); };
+        send(envelope(1)); display.flush(); await settle();
+        decoders[0].callbacks.error(new Error('sensitive decoder message'));
+        expect(states).toEqual([['fallback', 'decoder-error']]);
+        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback:decoder-error', 0x0300);
+    });
+    it('reports a rendering failure without retaining a decoded frame or leaking shader text', async function() {
+        var RealRenderer = Guacamole.AVC444Renderer;
+        Guacamole.AVC444Renderer = function Renderer() {
+            this.dispose = function() {};
+            this.render = function() { throw new Error('sensitive shader information'); };
+        };
+        Guacamole.AVC444Renderer.copyFrame = RealRenderer.copyFrame;
+        send(envelope(1)); display.flush(); await settle();
+        var main = frame(1, 0), aux = frame(1, 1);
+        decoders[0].callbacks.output(main); decoders[0].callbacks.output(aux); await settle();
+        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback:renderer-error', 0x0300);
+        expect(main.close).toHaveBeenCalledTimes(1); expect(aux.close).toHaveBeenCalledTimes(1);
+    });
+    it('does not expose arbitrary exception text or fabricated reason codes', function() {
+        var states = []; player.onstatechange = function(status, reason) { states.push([status, reason]); };
+        player.dispose(true, 'native-copy\nprivate-account-name');
+        expect(states).toEqual([['fallback', null]]);
         expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback', 0x0300);
+    });
+    it('exposes the content-free reason through client statistics and clears it for a new stream', async function() {
+        var original = Guacamole.AVC444VideoPlayer.supported; Guacamole.AVC444VideoPlayer.supported = true;
+        var tunnel = new Guacamole.Tunnel(); tunnel.connect = function() {}; tunnel.disconnect = function() {}; tunnel.sendMessage = function() {};
+        var client = new Guacamole.Client(tunnel);
+        try {
+            client.setExperimentalAvc444Enabled(true); client.connect('synthetic');
+            tunnel.oninstruction('video', ['7', '0', Guacamole.AVC444VideoPlayer.MIMETYPE]);
+            var packet = envelope(1); new DataView(packet.buffer).setUint32(28, 1);
+            tunnel.oninstruction('blob', ['7', window.btoa(String.fromCharCode.apply(null, packet))]);
+            expect(client.getVideoStatistics().fallbackReason).toBe('invalid-stream');
+            tunnel.oninstruction('video', ['8', '0', Guacamole.AVC444VideoPlayer.MIMETYPE]);
+            expect(client.getVideoStatistics().fallbackReason).toBeNull();
+            expect(client.getVideoStatistics().status).toBe('waiting');
+        }
+        finally { client.disconnect(); Guacamole.AVC444VideoPlayer.supported = original; }
     });
     it('does not permit a peer to enable AVC444 without the explicit application opt-in', function() {
         var original = Guacamole.AVC444VideoPlayer.supported; Guacamole.AVC444VideoPlayer.supported = true;

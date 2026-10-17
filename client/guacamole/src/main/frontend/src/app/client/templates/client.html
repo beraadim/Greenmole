@@ -204,6 +204,7 @@
                         <p ng-if="focusedClient.client.getVideoStatistics().status === 'waiting'">{{'CLIENT.STATUS_AVC420_WAITING' | translate}}</p>
                         <p ng-if="focusedClient.client.getVideoStatistics().status === 'playing'">{{(focusedClient.client.getVideoStatistics().codec === 'avc444' ? 'CLIENT.STATUS_AVC444_PLAYING' : 'CLIENT.STATUS_AVC420_PLAYING') | translate}}</p>
                         <p ng-if="focusedClient.client.getVideoStatistics().status === 'fallback'">{{'CLIENT.STATUS_AVC420_FALLBACK' | translate}}</p>
+                        <p ng-if="focusedClient.client.getVideoStatistics().status === 'fallback' && focusedClient.client.getVideoStatistics().fallbackReason">{{('CLIENT.STATUS_VIDEO_FALLBACK_' + focusedClient.client.getVideoStatistics().fallbackReason) | translate}}</p>
                         <p ng-if="!video.secure">{{'CLIENT.HELP_AVC420_SECURE_CONTEXT' | translate}}</p>
                         <p ng-if="video.secure && video.checked && !video.available">{{'CLIENT.HELP_AVC420_UNAVAILABLE' | translate}}</p>
                     </div>

@@ -220,12 +220,13 @@ Guacamole.Client = function(tunnel) {
             });
         }
     };
-    var videoStatistics = { status: 'images', presentedFrames: 0, codec: null };
+    var videoStatistics = { status: 'images', presentedFrames: 0, codec: null, fallbackReason: null };
 
     /** Returns content-free state for the optional browser video experiment. */
     this.getVideoStatistics = function getVideoStatistics() {
         return { status: videoStatistics.status,
-            presentedFrames: videoStatistics.presentedFrames, codec: videoStatistics.codec };
+            presentedFrames: videoStatistics.presentedFrames, codec: videoStatistics.codec,
+            fallbackReason: videoStatistics.fallbackReason };
     };
     var videoLayers = {};
 
@@ -1930,8 +1931,11 @@ Guacamole.Client = function(tunnel) {
                 if (isPrivateVideo(mimetype)) {
                     videoStatistics.codec = mimetype === Guacamole.AVC444VideoPlayer.MIMETYPE ? 'avc444' : 'avc420';
                     videoStatistics.status = 'waiting';
-                    videoPlayer.onstatechange = function videoStateChanged(status) {
+                    videoStatistics.fallbackReason = null;
+                    videoPlayer.onstatechange = function videoStateChanged(status, reason) {
                         videoStatistics.status = status;
+                        videoStatistics.fallbackReason = status === 'fallback'
+                            && Guacamole.AVC444VideoPlayer.isFailureReason(reason) ? reason : null;
                         if (status === 'playing') videoStatistics.presentedFrames++;
                     };
                 }

@@ -584,3 +584,38 @@ void test_avc420__avc444_ack_rejects_legacy_prefix_and_unpresented_sequence() {
         free_fixture(&f);
     }
 }
+
+/** Browser diagnostics accept only exact known codes and never echo peer data. */
+void test_avc420__avc444_failure_reasons_are_static_and_allowlisted() {
+    static const struct { const char* ack; const char* reason; } cases[] = {
+        {"AVC444:fallback:invalid-stream", "browser AVC444 stream validation failed"},
+        {"AVC444:fallback:unsupported-config", "browser AVC444 configuration unsupported"},
+        {"AVC444:fallback:decoder-error", "browser AVC444 decoder error"},
+        {"AVC444:fallback:native-layout", "browser AVC444 native YUV layout unsupported"},
+        {"AVC444:fallback:native-copy", "browser AVC444 native YUV copy failed"},
+        {"AVC444:fallback:renderer-error", "browser AVC444 reconstruction failed"},
+        {"AVC444:fallback:context-lost", "browser AVC444 graphics context lost"},
+        {"AVC444:fallback:frame-timeout", "browser AVC444 frame presentation deadline exceeded"},
+        {"AVC444:fallback:assembly-timeout", "browser AVC444 frame assembly deadline exceeded"},
+        {"AVC444:fallback:backlog-limit", "browser AVC444 queue safety limit exceeded"},
+        {"AVC444:fallback:presentation-error", "browser AVC444 ordered presentation failed"},
+        {"AVC444:fallback", "browser decoder rejected frame or invalid ACK"},
+        {"AVC444:fallback:native-copy\nsecret-user-data", "browser decoder rejected frame or invalid ACK"},
+        {"AVC420:fallback:native-copy", "browser decoder rejected frame or invalid ACK"},
+        {"AVC444:fallback:unknown", "browser decoder rejected frame or invalid ACK"}
+    };
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        fixture f;
+        init_fixture(&f, 2);
+        ready(&f);
+        guac_rdp_avc420* video = f.rdp.avc420;
+        guac_stream* stream = video->stream;
+        stream->ack_handler(f.owner, stream, (char*) cases[i].ack,
+                GUAC_PROTOCOL_STATUS_SERVER_ERROR);
+        CU_ASSERT_TRUE(video->disabled);
+        CU_ASSERT_TRUE(video->refresh);
+        CU_ASSERT_STRING_EQUAL(video->reason, cases[i].reason);
+        CU_ASSERT_FALSE(video->presented);
+        free_fixture(&f);
+    }
+}

@@ -130,6 +130,9 @@ Guacamole.AVC444Renderer = function AVC444Renderer(onerror) {
 
 /** Copy native decoder samples without requesting an RGB/color conversion. */
 Guacamole.AVC444Renderer.copyFrame = function copyFrame(frame, width, height) {
+    function invalidLayout(message) {
+        var error = new Error(message); error.avc444Reason = 'native-layout'; return error;
+    }
     var format = frame.format, rect = frame.visibleRect;
     var w = Math.ceil(width / 16) * 16, h = Math.ceil(height / 16) * 16;
     // codedWidth/Height describe platform allocations, which may include decoder
@@ -138,19 +141,19 @@ Guacamole.AVC444Renderer.copyFrame = function copyFrame(frame, width, height) {
     if ((format !== 'I420' && format !== 'NV12') || !rect || rect.x !== 0 || rect.y !== 0
             || rect.width !== w || rect.height !== h || frame.codedWidth < w || frame.codedHeight < h
             || frame.codedWidth > 8256 || frame.codedHeight > 8256 || w * h > 16777216)
-        return Promise.reject(new Error('Unsupported AVC444 native frame layout'));
+        return Promise.reject(invalidLayout('Unsupported AVC444 native frame layout'));
     var y = w * h, size = y * 3 / 2;
     var layout = [{ offset: 0, stride: w }, { offset: y, stride: format === 'NV12' ? w : w / 2 }];
     if (format === 'I420') layout.push({ offset: y * 5 / 4, stride: w / 2 });
     var data = new Uint8Array(size);
     var options = { rect: { x: 0, y: 0, width: w, height: h }, layout: layout };
     return Promise.resolve().then(function copy() { return frame.copyTo(data, options); }).then(function copied(actual) {
-        if (!actual || actual.length !== layout.length) throw new Error('Invalid AVC444 plane count');
+        if (!actual || actual.length !== layout.length) throw invalidLayout('Invalid AVC444 plane count');
         var planes = actual.map(function plane(p, index) {
             var rowBytes = index ? (format === 'NV12' ? w : w / 2) : w, rows = index ? h / 2 : h;
             if (!Number.isSafeInteger(p.offset) || !Number.isSafeInteger(p.stride) || p.offset < 0
                     || p.stride < rowBytes || p.offset + (rows - 1) * p.stride + rowBytes > data.length)
-                throw new Error('Invalid AVC444 plane bounds');
+                throw invalidLayout('Invalid AVC444 plane bounds');
             if (p.stride === rowBytes) return data.subarray(p.offset, p.offset + rowBytes * rows);
             var packed = new Uint8Array(rowBytes * rows);
             for (var r = 0; r < rows; r++) packed.set(data.subarray(p.offset + r * p.stride, p.offset + r * p.stride + rowBytes), r * rowBytes);

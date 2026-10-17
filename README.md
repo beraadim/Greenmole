@@ -53,14 +53,14 @@ Each upstream Dockerfile expects its own component directory as the build
 context. Use private/local tags, for example:
 
 ```sh
-docker build -t guacamole-private/guacd:1.6.1-private.14 server/
-docker build -t guacamole-private/web:1.6.1-private.14 client/
+docker build -t guacamole-private/guacd:1.6.1-private.15 server/
+docker build -t guacamole-private/web:1.6.1-private.15 client/
 ```
 
 For the reviewed internal release, use the pinned build inputs instead:
 
 ```sh
-python3 scripts/build-images.py releases/1.6.1-private.14.json --jobs 4
+python3 scripts/build-images.py releases/1.6.1-private.15.json --jobs 4
 ```
 
 The script uses local image tags and does not publish or deploy them. It pins
@@ -78,9 +78,8 @@ Firefox browser, and frontend Node tests with `-DskipTests=false`. These checks
 do not replace testing a real remote desktop session.
 
 The current release is
-[`1.6.1-private.14`](releases/1.6.1-private.14.md). It adds AVC444 browser
-reconstruction alongside the existing AVC420 experiment, paired with macrdp
-0.1.19. The experiment defaults off and requires a compatible secure-context
+[`1.6.1-private.15`](releases/1.6.1-private.15.md). It stabilizes desktop-size AVC444 decoding and explains browser fallback,
+while retaining the existing AVC420 experiment. Pair it with macrdp 0.1.20. The experiment defaults off and requires a compatible secure-context
 WebCodecs decoder and a full reconnect after opt-in. See the
 [AVC444 activation guide](docs/experimental-avc444.md) and the
 [original AVC420 transport guide](docs/experimental-avc420.md).

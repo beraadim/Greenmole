@@ -45,7 +45,7 @@ const html = '<!doctype html><meta charset="utf-8"><body>'
         env.addReporter({specDone:function(r){results.count++;if(r.status==='failed')results.failed.push({name:r.fullName,errors:r.failedExpectations});
         if(r.status==='pending')results.pending.push({name:r.fullName,reason:r.pendingReason});
         if(r.fullName.indexOf('real WebCodecs')>=0)results.realWebCodecs=r.status;},
-        jasmineDone:function(r){results.status=r.overallStatus;results.global=r.failedExpectations;
+        jasmineDone:function(r){results.status=r.overallStatus;results.global=r.failedExpectations;results.avc444=window.guacamoleAvc444Validation||null;
         fetch(${JSON.stringify(reportPath)},{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(results)});}});`)
     + await sources(moduleDirectory) + await sources(specDirectory) + script('jasmine.getEnv().execute();');
 let receive;

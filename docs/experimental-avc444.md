@@ -1,13 +1,13 @@
 # Experimental AVC444 browser decoding
 
-The private.14 browser/gateway pair adds an explicit AVC444 option alongside
-AVC420 and ordinary images. Use the matching macrdp 0.1.19 build for the browser
+The private.15 browser/gateway pair supports an explicit AVC444 option alongside
+AVC420 and ordinary images. Use the matching macrdp 0.1.20 build for the browser
 transport hint and corrected AVC444 encoder layout. Existing AVC420 preferences
 retain their meaning; this update does not enable experimental video globally.
 
 ## Try it
 
-1. Install macrdp 0.1.19 from the Mac mini Desktop test DMG.
+1. Install macrdp 0.1.20 from the Mac mini Desktop test DMG.
 2. Select **Full color (AVC444)** under Video color detail in macrdp. Use a video
    encoder and Performance, Balanced or High quality. Bitmap fallback and
    Lossless desktop deliberately use images.
@@ -18,6 +18,13 @@ retain their meaning; this update does not enable experimental video globally.
 
 The browser needs H.264 WebCodecs, access to native decoded YUV planes and a
 working WebGL reconstruction path. Unsupported browsers retain image updates.
+The paired stream requests software H.264 decoding so the capability probe and
+actual desktop use the same sample-preserving decoder policy. At 2560×1264,
+Chrome's default hardware path buffered a VideoToolbox pair stream without
+presenting a frame and altered OpenH264 chroma values; the software policy
+passed both streams against independently decoded color references. GPU color
+reconstruction remains enabled. This can use more browser CPU than hardware
+AVC420; the compatibility result is not a general performance measurement.
 AVC444 adds processing and bandwidth compared with AVC420; it preserves finer
 color detail, particularly colored text, rather than guaranteeing a higher
 frame rate. No production connection, authentication or recording setting is
@@ -41,6 +48,13 @@ cleans up outstanding display tasks and native frames and stays on images for
 the current RDP connection. Reconnect the client to attempt browser video again;
 the macrdp server can remain running.
 
+The Display menu explains browser failures using a bounded, content-free cause
+such as unsupported native YUV layout, decoder failure, lost graphics context,
+or a frame deadline. `getVideoStatistics().fallbackReason` exposes the same
+allowlisted code. The gateway accepts only those exact codes for its diagnostic
+log and never logs browser exception text or arbitrary ACK content. A stream
+ended by the gateway may show image fallback without a browser failure cause.
+
 Recording, sharing, unsupported graphics operations and explicit refresh retain
 the same image fallback rules as the AVC420 experiment. Gateway decoding remains
 active to keep a complete fallback image; this release does not remove that CPU
@@ -62,3 +76,23 @@ and enforced limits.
 - [Microsoft RFX_AVC444_BITMAP_STREAM](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpegfx/844018a5-d717-4bc9-bddb-8b4d6be5dd3f)
 - [Microsoft YUV420p combination for YUV444](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpegfx/8131c1bc-1af8-4907-a05a-f72f4581160f)
 - [W3C WebCodecs](https://www.w3.org/TR/webcodecs/)
+
+## Reproduce desktop-size decoding
+
+The browser suite retains both the original small/cropped sequences and public
+synthetic 2560×1264 software/VideoToolbox sequences with six pairs, predictive
+auxiliary pictures and a forced main IDR reset. Native YUV format and allocation
+geometry are included in the synthetic validation report; no desktop is read.
+Regenerate the desktop fixture from the matching macrdp exporter:
+
+```sh
+cargo run -p macrdp-encode --release --example export_avc444_fixture -- \
+  /tmp/avc444-desktop --size 2560 1264 --fps 60 --backend both --frames 6 --bitrate 50000000
+python3 client/guacamole-common-js/test/export-avc444-fixture.py \
+  /tmp/avc444-desktop/fixture.json \
+  --output client/guacamole-common-js/src/test/javascript/AVC444DesktopSyntheticFixture.js \
+  --variable AVC444_DESKTOP_SYNTHETIC_FIXTURE
+```
+
+Run the first command in macrdp and the second in this repository, then run
+`npm run test:browser` from `client/guacamole-common-js`.

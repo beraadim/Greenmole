@@ -142,10 +142,35 @@ void guac_rdp_avc420_invalidate(guac_client* client, const char* reason) {
     if (started) guac_rdp_avc420_stop(client, reason);
 }
 
+/**
+ * Map only exact, content-free browser codes. Never retain or log peer text:
+ * arbitrary ACK strings can contain desktop data or log-control characters.
+ * Keep this list aligned with AVC444VideoPlayer.isFailureReason().
+ */
+static const char* avc444_failure_reason(const char* message) {
+    static const struct { const char* ack; const char* reason; } reasons[] = {
+        {"AVC444:fallback:invalid-stream", "browser AVC444 stream validation failed"},
+        {"AVC444:fallback:unsupported-config", "browser AVC444 configuration unsupported"},
+        {"AVC444:fallback:decoder-error", "browser AVC444 decoder error"},
+        {"AVC444:fallback:native-layout", "browser AVC444 native YUV layout unsupported"},
+        {"AVC444:fallback:native-copy", "browser AVC444 native YUV copy failed"},
+        {"AVC444:fallback:renderer-error", "browser AVC444 reconstruction failed"},
+        {"AVC444:fallback:context-lost", "browser AVC444 graphics context lost"},
+        {"AVC444:fallback:frame-timeout", "browser AVC444 frame presentation deadline exceeded"},
+        {"AVC444:fallback:assembly-timeout", "browser AVC444 frame assembly deadline exceeded"},
+        {"AVC444:fallback:backlog-limit", "browser AVC444 queue safety limit exceeded"},
+        {"AVC444:fallback:presentation-error", "browser AVC444 ordered presentation failed"}
+    };
+    for (size_t i = 0; i < sizeof(reasons) / sizeof(reasons[0]); i++)
+        if (!strcmp(message, reasons[i].ack)) return reasons[i].reason;
+    return NULL;
+}
+
 static int video_ack(guac_user* user, guac_stream* stream,
         char* message, guac_protocol_status status) {
     guac_rdp_avc420* video = video_for(user->client);
     int invalid = 0;
+    const char* reason = "browser decoder rejected frame or invalid ACK";
     pthread_mutex_lock(&video->lock);
     if (video->stream != stream || video->disabled) {
         pthread_mutex_unlock(&video->lock);
@@ -154,8 +179,11 @@ static int video_ack(guac_user* user, guac_stream* stream,
     const char* codec = video->stream_avc444 ? "AVC444" : "AVC420";
     char ready[32];
     snprintf(ready, sizeof(ready), "%s:ready", codec);
-    if (status != GUAC_PROTOCOL_STATUS_SUCCESS)
+    if (status != GUAC_PROTOCOL_STATUS_SUCCESS) {
         invalid = 1;
+        const char* failure = video->stream_avc444 ? avc444_failure_reason(message) : NULL;
+        if (failure) reason = failure;
+    }
     else if (!video->ready && !strcmp(message, ready)) {
         video->ready = 1;
         pthread_cond_broadcast(&video->ready_changed);
@@ -176,7 +204,7 @@ static int video_ack(guac_user* user, guac_stream* stream,
     else invalid = 1;
     pthread_mutex_unlock(&video->lock);
     if (invalid)
-        guac_rdp_avc420_stop(user->client, "browser decoder rejected frame or invalid ACK");
+        guac_rdp_avc420_stop(user->client, reason);
     return 0;
 }
 
