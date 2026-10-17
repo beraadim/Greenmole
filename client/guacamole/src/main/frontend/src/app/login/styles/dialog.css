@@ -1,4 +1,6 @@
 /*
+ * Modified for Greenmole by its maintainers.
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -67,7 +69,6 @@
 
 .login-ui .login-dialog .version .app-name {
     font-weight: bold;
-    text-transform: uppercase;
     text-align: center;
     font-size: 1.25em;
 }
@@ -103,7 +104,7 @@
     -moz-background-size:    3em 3em;
     -webkit-background-size: 3em 3em;
     -khtml-background-size:  3em 3em;
-    background-image: url("images/guac-tricolor.svg");
+    background-image: url("images/greenmole.svg");
 }
 
 .login-ui.continuation .login-dialog {

@@ -1,4 +1,5 @@
 {
+    "_greenmoleModificationNotice": "Modified for Greenmole by its maintainers. Based on Apache Guacamole; see LICENSE and NOTICE.",
     "private": true,
     "scripts": {
         "test": "node --test test/*.test.js",

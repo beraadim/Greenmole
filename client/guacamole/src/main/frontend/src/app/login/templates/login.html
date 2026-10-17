@@ -1,3 +1,4 @@
+<!-- Modified for Greenmole by its maintainers. -->
 <div class="login-ui" ng-class="{error: loginError, continuation: isContinuation(), initial: !isContinuation()}" >
 
     <!-- Login error message -->
@@ -10,8 +11,8 @@
 
             <form class="login-form" ng-submit="login()">
 
-                <!-- Guacamole version -->
-                <div class="logo"></div>
+                <!-- Greenmole version -->
+                <div class="logo" aria-hidden="true"></div>
                 <div class="version">
                     <div class="app-name">{{'APP.NAME' | translate}}</div>
                     <div class="version-number">{{'APP.VERSION' | translate}}</div>

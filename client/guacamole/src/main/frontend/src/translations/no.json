@@ -1,4 +1,5 @@
 {
+    "_greenmoleModificationNotice": "Modified for Greenmole by its maintainers. Based on Apache Guacamole; see LICENSE and NOTICE.",
     
     "NAME" : "Norsk Bokmål",
     
@@ -38,7 +39,7 @@
 
         "INFO_ACTIVE_USER_COUNT" : "Blir brukt av {USERS} {USERS, plural, one{user} other{users}}.",
 
-        "NAME" : "Guacamole ${project.version}",
+        "NAME" : "Greenmole",
 
         "TEXT_HISTORY_DURATION" : "{VALUE} {UNIT, select, second{{VALUE, plural, one{second} other{seconds}}} minute{{VALUE, plural, one{minute} other{minutes}}} hour{{VALUE, plural, one{hour} other{hours}}} day{{VALUE, plural, one{day} other{days}}} other{}}"
 
@@ -74,25 +75,25 @@
         "DIALOG_HEADER_DISCONNECTED"     : "Frakoblet",
 
         "ERROR_CLIENT_201"     : "Denne tilkoblingen har blitt lukket fordi server er opptatt. Vent noen minutter og prøv igjen.",
-        "ERROR_CLIENT_202"     : "Guacamole har lukket forbindelsen fordi serveren bruker for lang tid på å svare. Prøv igjen eller kontakt systemansvarlig.",
+        "ERROR_CLIENT_202"     : "Greenmole har lukket forbindelsen fordi serveren bruker for lang tid på å svare. Prøv igjen eller kontakt systemansvarlig.",
         "ERROR_CLIENT_203"     : "Det har oppstått en feil på terminalserveren og forbindelsen er lukket. Prøv igjen eller kontakt systemansvarlig.",
         "ERROR_CLIENT_205"     : "Denne forbindelsen er lukket fordi den er i konflikt med en annen forbindelse. Prøv igjen senere.",
         "ERROR_CLIENT_301"     : "Innlogging feilet. Koble til på nytt og prøv igjen.",
         "ERROR_CLIENT_303"     : "Du har ikke tilgang til denne forbindelsen. Kontakt systemansvarlig eller sjekk dine systeminnstillinger dersom du trenger tilgang.",
-        "ERROR_CLIENT_308"     : "Guacamole har lukket forbindelsen fordi nettleseren din ikke har svart og virker frakoblet. Dette kommer ofte av nettverksproblemer som f.eks. ustabilt wifi-signal eller tregt nettverk. Sjekk tilkoblingen din og prøv igjen.",
-        "ERROR_CLIENT_31D"     : "Guacamole nekter tilgang til denne forbindelsen fordi du har brukt opp maks antall samtidige forbindelser for en bruker. Avslutt en eller flere forbindelser og prøv igjen.",
-        "ERROR_CLIENT_DEFAULT" : "Det har oppstått en intern feil i Guacamole og forbindelsen er terminert. Kontakt systemansvarlig dersom problemet fortsetter eller sjekk systemlogger.",
+        "ERROR_CLIENT_308"     : "Greenmole har lukket forbindelsen fordi nettleseren din ikke har svart og virker frakoblet. Dette kommer ofte av nettverksproblemer som f.eks. ustabilt wifi-signal eller tregt nettverk. Sjekk tilkoblingen din og prøv igjen.",
+        "ERROR_CLIENT_31D"     : "Greenmole nekter tilgang til denne forbindelsen fordi du har brukt opp maks antall samtidige forbindelser for en bruker. Avslutt en eller flere forbindelser og prøv igjen.",
+        "ERROR_CLIENT_DEFAULT" : "Det har oppstått en intern feil i Greenmole og forbindelsen er terminert. Kontakt systemansvarlig dersom problemet fortsetter eller sjekk systemlogger.",
 
-        "ERROR_TUNNEL_201"     : "Guacamole har avvist oppkoblingen fordi det er for mange aktive forbindelser. Vent noen minutter og prøv igjen.",
+        "ERROR_TUNNEL_201"     : "Greenmole har avvist oppkoblingen fordi det er for mange aktive forbindelser. Vent noen minutter og prøv igjen.",
         "ERROR_TUNNEL_202"     : "Forbindelsen er lukket fordi server bruker for lang tid på å svare. Dette kommer ofte av nettverksproblemer som f.eks. ustabilt wifi-signal eller tregt nettverk. Sjekk tilkoblingen din og prøv igjen eller kontakt systemadministrator.",
         "ERROR_TUNNEL_203"     : "Serveren støtte på en feil og har lukket forbindelsen. Prøv igjen eller kontakt systemadministrator.",
         "ERROR_TUNNEL_204"     : "Den etterspurte tilkoblingen eksisterer ikke. Sjekk navnet på tilkoblingen og prøv igjen.",
         "ERROR_TUNNEL_205"     : "Denne tilkoblingen er i bruk og flere forbindelser til denne tilkoblingen er ikke lov. Prøv igjen senere.",
         "ERROR_TUNNEL_301"     : "Du har ikke tilgang til denne tilkoblingen fordi du er ikke pålogget. Logg inn og prøv igjen.",
         "ERROR_TUNNEL_303"     : "Du har ikke tilgang til denne tilkoblingen. Be systemadministrator legge deg til i listen over godkjente brukere dersom du skal ha tilgang eller sjekk systeminstillingene dine.",
-        "ERROR_TUNNEL_308"     : "Guacamole har lukket forbindelsen fordi nettleseren din ikke svarer og virker frakoblet. Dette kommer ofte av nettverksproblemer som f.eks. ustabilt wifi-signal eller tregt nettverk. Sjekk tilkoblingen din og prøv igjen.",
-        "ERROR_TUNNEL_31D"     : "Guacamole nekter tilgang til denne forbindelsen fordi du har brukt opp maks antall samtidige forbindelser for en bruker. Avslutt en eller flere forbindelser og prøv igjen.",
-        "ERROR_TUNNEL_DEFAULT" : "En intern feil har oppstått i Guacamole og forbindelsen er terminert. Kontakt systemadministrator dersom problemet fortsetter eller sjekk systemloggene dine.",
+        "ERROR_TUNNEL_308"     : "Greenmole har lukket forbindelsen fordi nettleseren din ikke svarer og virker frakoblet. Dette kommer ofte av nettverksproblemer som f.eks. ustabilt wifi-signal eller tregt nettverk. Sjekk tilkoblingen din og prøv igjen.",
+        "ERROR_TUNNEL_31D"     : "Greenmole nekter tilgang til denne forbindelsen fordi du har brukt opp maks antall samtidige forbindelser for en bruker. Avslutt en eller flere forbindelser og prøv igjen.",
+        "ERROR_TUNNEL_DEFAULT" : "En intern feil har oppstått i Greenmole og forbindelsen er terminert. Kontakt systemadministrator dersom problemet fortsetter eller sjekk systemloggene dine.",
 
         "ERROR_UPLOAD_100"     : "Filoverføring er enten ikke støttet eller ikke aktivert. Kontakt systemadministrator eller sjekk systemlogger.",
         "ERROR_UPLOAD_201"     : "For mange filer blir overført. Vent til aktive overføringer fullfører og prøv igjen.",
@@ -104,13 +105,13 @@
         "ERROR_UPLOAD_303"     : "Du har ikke tillatelse til å laste opp denne filen. Sjekk systeminnstillingene dine eller kontakt systemadministrator dersom du skal ha tilgang.",
         "ERROR_UPLOAD_308"     : "Filoverføringen har stoppet. Dette kommer ofte av nettverksproblemer som f.eks. ustabilt wifi-signal eller tregt nettverk. Sjekk tilkoblingen din og prøv igjen.",
         "ERROR_UPLOAD_31D"     : "For mange filer blir overført. Vent til aktive overføringer fullfører og prøv igjen.",
-        "ERROR_UPLOAD_DEFAULT" : "En intern feil har oppstått i Guacamole og forbindelsen er terminert. Kontakt systemadministrator dersom problemet fortsetter eller sjekk systemloggene dine.",
+        "ERROR_UPLOAD_DEFAULT" : "En intern feil har oppstått i Greenmole og forbindelsen er terminert. Kontakt systemadministrator dersom problemet fortsetter eller sjekk systemloggene dine.",
 
         "FIELD_PLACEHOLDER_FILTER" : "@:APP.FIELD_PLACEHOLDER_FILTER",
 
-        "HELP_CLIPBOARD"           : "Tekst som er kopiert eller klippet i Guacamole vises her. Endringer i teksten under vil påvirke den eksterne utklippstavlen.",
+        "HELP_CLIPBOARD"           : "Tekst som er kopiert eller klippet i Greenmole vises her. Endringer i teksten under vil påvirke den eksterne utklippstavlen.",
         "HELP_INPUT_METHOD_NONE"   : "Ingen innenhet er brukt. Tastetrykk fra et fysisk tilkoblet tastatur blir akseptert.",
-        "HELP_INPUT_METHOD_OSK"    : "Vis og aksepter tastetrykk fra det innebygde skjermtastaturet i Guacamole. Skjermtastaturet tillater tasting av tastekombinasjoner som ellers kan være umulig (f.eks. Ctrl-Alt-Del).",
+        "HELP_INPUT_METHOD_OSK"    : "Vis og aksepter tastetrykk fra det innebygde skjermtastaturet i Greenmole. Skjermtastaturet tillater tasting av tastekombinasjoner som ellers kan være umulig (f.eks. Ctrl-Alt-Del).",
         "HELP_INPUT_METHOD_TEXT"   : "Tillat tasting av tekst og emuler hendinger basert på tastet tekst. Dette er nødvendig for enheter som mobiltelefoner som mangler fysisk tastatur.",
         "HELP_MOUSE_MODE"          : "Bestemmer hvordan den fjernstyrte musen reagerer på berøringer.",
         "HELP_MOUSE_MODE_ABSOLUTE" : "Trykk for å klikke. Klikket oppstår der man berører.",
@@ -137,9 +138,9 @@
 
         "TEXT_ZOOM_AUTO_FIT"              : "Skaler automatisk til nettleservindu.",
         "TEXT_CLIENT_STATUS_IDLE"         : "Passiv.",
-        "TEXT_CLIENT_STATUS_CONNECTING"   : "Kobler til Guacamole...",
+        "TEXT_CLIENT_STATUS_CONNECTING"   : "Kobler til Greenmole...",
         "TEXT_CLIENT_STATUS_DISCONNECTED" : "Du er frakoblet.",
-        "TEXT_CLIENT_STATUS_WAITING"      : "Tilkoblet Guacamole. Venter på svar...",
+        "TEXT_CLIENT_STATUS_WAITING"      : "Tilkoblet Greenmole. Venter på svar...",
         "TEXT_RECONNECT_COUNTDOWN"        : "Kobler til på nytt om {REMAINING} {REMAINING, plural, one{second} other{seconds}}...",
         "TEXT_FILE_TRANSFER_PROGRESS"     : "{PROGRESS} {UNIT, select, b{B} kb{KB} mb{MB} gb{GB} other{}}"
 
@@ -604,12 +605,12 @@
         "FIELD_HEADER_PASSWORD_NEW_AGAIN" : "Verifiser Nytt Passord:",
         "FIELD_HEADER_USERNAME"           : "Brukernavn:",
     
-        "HELP_DEFAULT_INPUT_METHOD" : "Standard inndatametode bestemmer hvordan tastetrykk mottas av Guacamole. Det kan være nødvendig å endre på dette når du bruker mobile enheter eller IME. Denne instillingen kan overstyres på hver forbindelse i Guacamolemenyen.",
-        "HELP_DEFAULT_MOUSE_MODE"   : "Standard musemulering bestemmer hvordan den eksterne musen vil oppføre seg med hensyn til berøringer. Denne instillingen kan overstyres på hver forbindelse i Guacamolemenyen.",
+        "HELP_DEFAULT_INPUT_METHOD" : "Standard inndatametode bestemmer hvordan tastetrykk mottas av Greenmole. Det kan være nødvendig å endre på dette når du bruker mobile enheter eller IME. Denne instillingen kan overstyres på hver forbindelse i Greenmolemenyen.",
+        "HELP_DEFAULT_MOUSE_MODE"   : "Standard musemulering bestemmer hvordan den eksterne musen vil oppføre seg med hensyn til berøringer. Denne instillingen kan overstyres på hver forbindelse i Greenmolemenyen.",
         "HELP_INPUT_METHOD_NONE"    : "@:CLIENT.HELP_INPUT_METHOD_NONE",
         "HELP_INPUT_METHOD_OSK"     : "@:CLIENT.HELP_INPUT_METHOD_OSK",
         "HELP_INPUT_METHOD_TEXT"    : "@:CLIENT.HELP_INPUT_METHOD_TEXT",
-        "HELP_LANGUAGE"             : "Velg et språk under for å endre språket på all tekst i Guacamole. Tilgjengelige valg er avhengig av hvilke språk som er installert.",
+        "HELP_LANGUAGE"             : "Velg et språk under for å endre språket på all tekst i Greenmole. Tilgjengelige valg er avhengig av hvilke språk som er installert.",
         "HELP_MOUSE_MODE_ABSOLUTE"  : "@:CLIENT.HELP_MOUSE_MODE_ABSOLUTE",
         "HELP_MOUSE_MODE_RELATIVE"  : "@:CLIENT.HELP_MOUSE_MODE_RELATIVE",
         "HELP_UPDATE_PASSWORD"      : "Skriv inn ditt gamle passord og det nye passordet under dersom du ønsker å endre passord. Klikk \"Oppdater Passord\". Endringen trer i kraft umiddelbart.",

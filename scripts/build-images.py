@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a matched private image pair from reviewed release inputs."""
+"""Build a matched Greenmole image pair from reviewed release inputs."""
 
 import argparse
 import json
@@ -39,7 +39,7 @@ def main():
             "--tag", spec["tag"],
             "--label", f"org.opencontainers.image.revision={revision}",
             "--label", f"org.opencontainers.image.version={release['version']}",
-            "--label", "org.opencontainers.image.source=https://github.com/beraadim/guacamole-private",
+            "--label", "org.opencontainers.image.source=https://github.com/beraadim/Greenmole",
         ]
         build_args = dict(spec["build_args"])
         if component == "server":

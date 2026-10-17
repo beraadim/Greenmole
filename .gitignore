@@ -6,3 +6,12 @@
 /artifacts/
 /compose.override.yml
 /compose.override.yaml
+
+# Local signing and publication material.
+/security-audit/
+/publication/
+*.pem
+*.key
+*.p12
+*.pfx
+/.ssh/

@@ -1,11 +1,12 @@
 {
+    "_greenmoleModificationNotice": "Modified for Greenmole by its maintainers. Based on Apache Guacamole; see LICENSE and NOTICE.",
 
     "NAME" : "Polski",
 
     "APP" : {
 
-        "NAME"    : "Apache Guacamole",
-        "VERSION" : "${project.version}",
+        "NAME"    : "Greenmole",
+        "VERSION" : "${project.version}-greenmole.1",
 
         "ACTION_ACKNOWLEDGE"        : "OK",
         "ACTION_CANCEL"             : "Anuluj",
@@ -89,7 +90,7 @@
         "DIALOG_HEADER_DISCONNECTED"     : "Rozłączono",
 
         "ERROR_CLIENT_201"     : "Połączenie zostało zamknięte, ponieważ serwer jest zajęty. Odczekaj kilka minut i spróbuj ponownie.",
-        "ERROR_CLIENT_202"     : "Serwer Guacamole zamknął połączenie, ponieważ zdalny pulpit nie odpowiada przez zbyt długi czas. Spróbuj ponownie lub skontaktuj się z administratorem.",
+        "ERROR_CLIENT_202"     : "Serwer Greenmole zamknął połączenie, ponieważ zdalny pulpit nie odpowiada przez zbyt długi czas. Spróbuj ponownie lub skontaktuj się z administratorem.",
         "ERROR_CLIENT_203"     : "Serwer zdalnego pulpitu napotkał błąd i zamknął połączenie. Spróbuj ponownie lub skontaktuj się z administratorem.",
         "ERROR_CLIENT_207"     : "Serwer zdalnego pulpitu jest aktualnie nieosiągalny. Jeśli problem nie zniknie powiadom administratora systemu lub sprawdź log systemu.",
         "ERROR_CLIENT_208"     : "Serwer zdalnego pulpitu jest aktualnie nieosiągalny. Jeśli problem nie zniknie powiadom administratora systemu lub sprawdź log systemu.",
@@ -98,22 +99,22 @@
         "ERROR_CLIENT_20B"     : "Serwer zdalnego pulpitu wymusił zamknięcie połączenia. Jeśli nie jest to pożądane zachowanie powiadom administratora systemu lub sprawdź log systemu.",
         "ERROR_CLIENT_301"     : "Logowanie nieudane. Spróbuj ponownie.",
         "ERROR_CLIENT_303"     : "Serwer zdalnego pulpitu nie zezwolił na połączenie. Poproś administratora systemu o nadanie uprawnień dla Twojego konta lub sprawdź ustawienia.",
-        "ERROR_CLIENT_308"     : "Serwer Guacamole zamknął połączenie, ponieważ nie otrzymał odpowiedzi od Twojej przeglądarki przez zbyt długi czas. Zazwyczaj jest to spowodowane niską szybkością i jakością połączenia. Sprawdź swoje ustawienia sieci i spróbuj ponownie.",
-        "ERROR_CLIENT_31D"     : "Serwer Guacamole nie zezwolił na połączenie, ponieważ wykorzystałeś limit jednoczesnych połączeń dla pojedynczego użytkownika. Zamknij jedno lub kilka połączeń i spróbuj ponownie.",
-        "ERROR_CLIENT_DEFAULT" : "Wystąpił błąd wewnętrzny serwera Guacamole i połączenie zostało zakończone. Jeśli problem nie zniknie, powiadom administratora systemu lub sprawdź log systemu.",
+        "ERROR_CLIENT_308"     : "Serwer Greenmole zamknął połączenie, ponieważ nie otrzymał odpowiedzi od Twojej przeglądarki przez zbyt długi czas. Zazwyczaj jest to spowodowane niską szybkością i jakością połączenia. Sprawdź swoje ustawienia sieci i spróbuj ponownie.",
+        "ERROR_CLIENT_31D"     : "Serwer Greenmole nie zezwolił na połączenie, ponieważ wykorzystałeś limit jednoczesnych połączeń dla pojedynczego użytkownika. Zamknij jedno lub kilka połączeń i spróbuj ponownie.",
+        "ERROR_CLIENT_DEFAULT" : "Wystąpił błąd wewnętrzny serwera Greenmole i połączenie zostało zakończone. Jeśli problem nie zniknie, powiadom administratora systemu lub sprawdź log systemu.",
 
-        "ERROR_TUNNEL_201"     : "Serwer Guacamole odrzucił tę próbę połączenia, ponieważ istnieje zbyt wiele aktywnych połączeń. Poczekaj kilka minut i spróbuj ponownie.",
+        "ERROR_TUNNEL_201"     : "Serwer Greenmole odrzucił tę próbę połączenia, ponieważ istnieje zbyt wiele aktywnych połączeń. Poczekaj kilka minut i spróbuj ponownie.",
         "ERROR_TUNNEL_202"     : "Połączenie zostało zamknięte, ponieważ serwer nie odpowiada przez zbyt długo czas. Zazwyczaj spowodowane jest to niską szybkością i jakością połączenia. Sprawdź swoje ustawienia sieci i spróbuj ponownie lub poinformuj administratora systemu.",
         "ERROR_TUNNEL_203"     : "Serwer napotkał błąd i zamknął połączenie. Spróbuj ponownie lub skontaktuj się z administratorem systemu",
         "ERROR_TUNNEL_204"     : "Żądane połączenie nie istnieje. Sprawdź nazwę połączenia i spróbuj ponownie",
         "ERROR_TUNNEL_205"     : "To połączenie jest aktualnie w użyciu oraz jednoczesny dostęp dla tego połączenia nie jest dozwolony. Spróbuj ponownie później.",
-        "ERROR_TUNNEL_207"     : "Serwer Guacamole jest aktualnie nieosiągalny. Sprawdź swoją sieć i spróbuj ponownie.",
-        "ERROR_TUNNEL_208"     : "Serwer Guacamole nie akceptuje połączeń. Sprawdź swoją sieć i spróbuj ponownie.",
+        "ERROR_TUNNEL_207"     : "Serwer Greenmole jest aktualnie nieosiągalny. Sprawdź swoją sieć i spróbuj ponownie.",
+        "ERROR_TUNNEL_208"     : "Serwer Greenmole nie akceptuje połączeń. Sprawdź swoją sieć i spróbuj ponownie.",
         "ERROR_TUNNEL_301"     : "Nie masz dostępu do tego połączenia, ponieważ nie jesteś zalogowany. Zaloguj się i spróbuj ponownie.",
         "ERROR_TUNNEL_303"     : "Nie masz uprawnień do tego połączenia. Jeśli potrzebujesz uprawnień poproś administratora systemu o dodanie Cię do listy użytkowników z zezwoleniem lub sprawdź ustawienia systemu. ",
-        "ERROR_TUNNEL_308"     : "Serwer Guacamole zamknął połączenie, ponieważ nie otrzymał odpowiedzi od Twojej przeglądarki przez zbyt długi czas. Zazwyczaj jest to spowodowane niską szybkością i jakością połączenia. Sprawdź swoje ustawienia sieci i spróbuj ponownie.",
-        "ERROR_TUNNEL_31D"     : "Serwer Guacamole nie zezwolił na połączenie, ponieważ wykorzystałeś limit jednoczesnych połączeń dla pojedynczego użytkownika. Zamknij jedno lub kilka połączeń i spróbuj ponownie.",
-        "ERROR_TUNNEL_DEFAULT" : "Wystąpił błąd wewnętrzny serwera Guacamole i połączenie zostało zakończone. Jeśli problem nie zniknie, powiadom administratora systemu lub sprawdź log systemu.",
+        "ERROR_TUNNEL_308"     : "Serwer Greenmole zamknął połączenie, ponieważ nie otrzymał odpowiedzi od Twojej przeglądarki przez zbyt długi czas. Zazwyczaj jest to spowodowane niską szybkością i jakością połączenia. Sprawdź swoje ustawienia sieci i spróbuj ponownie.",
+        "ERROR_TUNNEL_31D"     : "Serwer Greenmole nie zezwolił na połączenie, ponieważ wykorzystałeś limit jednoczesnych połączeń dla pojedynczego użytkownika. Zamknij jedno lub kilka połączeń i spróbuj ponownie.",
+        "ERROR_TUNNEL_DEFAULT" : "Wystąpił błąd wewnętrzny serwera Greenmole i połączenie zostało zakończone. Jeśli problem nie zniknie, powiadom administratora systemu lub sprawdź log systemu.",
 
         "ERROR_UPLOAD_100"     : "Transfer plików jest nie wspierany lub wyłączony. Skontaktuj się z administratorem systemu lub sprawdź log systemu.",
         "ERROR_UPLOAD_201"     : "Zbyt wiele plików jest aktualnie transferowanych. Poczekaj na zakończenie trwających transferów i spróbuj ponownie.",
@@ -125,13 +126,13 @@
         "ERROR_UPLOAD_303"     : "Nie masz uprawnień do przesłania tego pliku. Jeśli potrzebujesz dostępu sprawdź ustawienia systemu lub skontaktuj się z administratorem systemu.",
         "ERROR_UPLOAD_308"     : "Transfer pliku utknął w martwym punkcie. Zazwyczaj jest to spowodowane niską szybkością i jakością połączenia. Sprawdź swoje ustawienia sieci i spróbuj ponownie.",
         "ERROR_UPLOAD_31D"     : "Zbyt wiele plików jest aktualnie transferowanych. Poczekaj na zakończenie trwających transferów i spróbuj ponownie.",
-        "ERROR_UPLOAD_DEFAULT" : "Wystąpił błąd wewnętrzny serwera Guacamole i połączenie zostało zakończone. Jeśli problem nie zniknie, powiadom administratora systemu lub sprawdź log systemu.",
+        "ERROR_UPLOAD_DEFAULT" : "Wystąpił błąd wewnętrzny serwera Greenmole i połączenie zostało zakończone. Jeśli problem nie zniknie, powiadom administratora systemu lub sprawdź log systemu.",
 
         "FIELD_PLACEHOLDER_FILTER" : "@:APP.FIELD_PLACEHOLDER_FILTER",
 
-        "HELP_CLIPBOARD"           : "Tekst skopiowany/wycięty wewnątrz serwera Guacamole pojawi się tutaj. Zmiany dokonane w tym miejscu będą miały wpływ na zawartość zdalnego schowka",
+        "HELP_CLIPBOARD"           : "Tekst skopiowany/wycięty wewnątrz serwera Greenmole pojawi się tutaj. Zmiany dokonane w tym miejscu będą miały wpływ na zawartość zdalnego schowka",
         "HELP_INPUT_METHOD_NONE"   : "Żadna metoda wejścia nie jest w użyciu. Wejście klawiatury jest akceptowane z podłączonej fizycznej klawiatury.",
-        "HELP_INPUT_METHOD_OSK"    : "Wyświetl i zaakceptuj dane wejściowe z wbudowanej klawiatury ekranowej Guacamole. Klawiatura ekranowa umożliwia wpisywanie kombinacji klawiszy, które w innym przypadku byłyby niemożliwe (takich jak Ctrl-Alt-Del)",
+        "HELP_INPUT_METHOD_OSK"    : "Wyświetl i zaakceptuj dane wejściowe z wbudowanej klawiatury ekranowej Greenmole. Klawiatura ekranowa umożliwia wpisywanie kombinacji klawiszy, które w innym przypadku byłyby niemożliwe (takich jak Ctrl-Alt-Del)",
         "HELP_INPUT_METHOD_TEXT"   : "Zezwalaj na pisanie tekstu i emuluj zdarzenia klawiatury na podstawie wpisanego tekstu. Jest to konieczne w przypadku urządzeń takich jak telefony komórkowe, które nie mają fizycznej klawiatury.",
         "HELP_MOUSE_MODE"          : "Określa zachowanie zdalnej myszy w odniesieniu do dotknięć.",
         "HELP_MOUSE_MODE_ABSOLUTE" : "Dotknij, aby kliknąć. Kliknięcie następuje w miejscu dotknięcia.",
@@ -160,10 +161,10 @@
 
         "TEXT_ZOOM_AUTO_FIT"              : "Automatycznie dopasuj do okna przeglądarki",
         "TEXT_CLIENT_STATUS_IDLE"         : "Bezczynne.",
-        "TEXT_CLIENT_STATUS_CONNECTING"   : "Łączenie z Guacamole...",
+        "TEXT_CLIENT_STATUS_CONNECTING"   : "Łączenie z Greenmole...",
         "TEXT_CLIENT_STATUS_DISCONNECTED" : "Zostałeś rozłączony.",
-        "TEXT_CLIENT_STATUS_UNSTABLE"     : "Połączenie sieciowe z serwerem Guacamole wydaje się być niestabilne.",
-        "TEXT_CLIENT_STATUS_WAITING"      : "Połączono z Guacamole. Czekanie na odpowiedź...",
+        "TEXT_CLIENT_STATUS_UNSTABLE"     : "Połączenie sieciowe z serwerem Greenmole wydaje się być niestabilne.",
+        "TEXT_CLIENT_STATUS_WAITING"      : "Połączono z Greenmole. Czekanie na odpowiedź...",
         "TEXT_RECONNECT_COUNTDOWN"        : "Ponowne połączenie za {REMAINING} {REMAINING, plural, one{sekundę} other{sekund(-y)}}...",
         "TEXT_FILE_TRANSFER_PROGRESS"     : "{PROGRESS} {UNIT, select, b{B} kb{KB} mb{MB} gb{GB} other{}}",
 
@@ -953,8 +954,8 @@
         "FIELD_HEADER_TIMEZONE"           : "Strefa Czasowa:",
         "FIELD_HEADER_USERNAME"           : "Użytkownik:",
 
-        "HELP_DEFAULT_INPUT_METHOD" : "Domyślna metoda wprowadzania określa sposób odbierania zdarzeń klawiatury przez Guacamole. Zmiana tego ustawienia może być konieczna w przypadku korzystania z urządzenia mobilnego lub pisania w edytorze IME. To ustawienie można zmienić dla każdego połączenia w menu Guacamole.",
-        "HELP_DEFAULT_MOUSE_MODE"   : "Domyślny tryb emulacji myszy określa, jak zdalna mysz będzie się zachowywać w nowych połączeniach w odniesieniu do dotknięć. To ustawienie można zmienić dla każdego połączenia w menu Guacamole.",
+        "HELP_DEFAULT_INPUT_METHOD" : "Domyślna metoda wprowadzania określa sposób odbierania zdarzeń klawiatury przez Greenmole. Zmiana tego ustawienia może być konieczna w przypadku korzystania z urządzenia mobilnego lub pisania w edytorze IME. To ustawienie można zmienić dla każdego połączenia w menu Greenmole.",
+        "HELP_DEFAULT_MOUSE_MODE"   : "Domyślny tryb emulacji myszy określa, jak zdalna mysz będzie się zachowywać w nowych połączeniach w odniesieniu do dotknięć. To ustawienie można zmienić dla każdego połączenia w menu Greenmole.",
         "HELP_INPUT_METHOD_NONE"    : "@:CLIENT.HELP_INPUT_METHOD_NONE",
         "HELP_INPUT_METHOD_OSK"     : "@:CLIENT.HELP_INPUT_METHOD_OSK",
         "HELP_INPUT_METHOD_TEXT"    : "@:CLIENT.HELP_INPUT_METHOD_TEXT",

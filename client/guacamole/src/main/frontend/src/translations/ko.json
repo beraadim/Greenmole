@@ -1,4 +1,5 @@
 {
+    "_greenmoleModificationNotice": "Modified for Greenmole by its maintainers. Based on Apache Guacamole; see LICENSE and NOTICE.",
 
     "NAME" : "한국어",
 
@@ -81,7 +82,7 @@
         "DIALOG_HEADER_DISCONNECTED"     : "연결 끊김",
 
         "ERROR_CLIENT_201"     : "서버 사용량이 많아 연결이 종료되었습니다. 몇 분 후에 다시 시도하십시요.",
-        "ERROR_CLIENT_202"     : "원격 데스크톱이 응답하는데 너무 오래걸려서 Guacamole 서버가 연결을 닫았습니다. 다시 시도하거나 시스템 관리자에게 문의하십시오.",
+        "ERROR_CLIENT_202"     : "원격 데스크톱이 응답하는데 너무 오래걸려서 Greenmole 서버가 연결을 닫았습니다. 다시 시도하거나 시스템 관리자에게 문의하십시오.",
         "ERROR_CLIENT_203"     : "원격 데스크톱 서버에 오류가 발생해서 연결을 닫았습니다. 다시 시도하거나 시스템 관리자에게 문의하십시오.",
         "ERROR_CLIENT_207"     : "원격 데스크톱 서버에 현재 연결할 수 없습니다. 문제가 지속되면, 시스템 관리자에게 문의하거나 시스템 로그를 확인하십시오.",
         "ERROR_CLIENT_208"     : "원격 데스크톱 서버를 현재 사용 할 수 없습니다. 문제가 지속되면, 시스템 관리자에게 문의하거나 시스템 로그를 확인하십시오.",
@@ -90,22 +91,22 @@
         "ERROR_CLIENT_20B"     : "원격 데스크톱 서버가 강제로 연결을 끊었습니다. 원치 않거나 예기치 않은 경우, 시스템 관리자에게 문의하거나 시스템 로그를 확인하십시오.",
         "ERROR_CLIENT_301"     : "로그인이 실패했습니다. 다시 연결한 다음 다시 시도하십시오",
         "ERROR_CLIENT_303"     : "원격 데스크톱 서버가 이 연결에 대한 액세스를 거부했습니다. 액세스 권한이 필요하면, 시스템 관리자에게 계정 액세스 권한을 부여하도록 요청하거나 시스템 설정을 확인하십시오.",
-        "ERROR_CLIENT_308"     : "브라우저에서 연결이 끊긴 것처럼 보일 정도로 오랫동안 응답이 없었기 때문에 Guacamole 서버가 연결을 닫았습니다. 이는 보통 불안정한 무선 신호나 단지 네트워크의 느린 속도같은 네트워크 문제로 일어납니다. 네트워크 상태를 확인 후에 다시 시도 하십시오.", 
-        "ERROR_CLIENT_31D"     : "개별 사용자의 동시 연결 사용 제한을 초과했기 때문에 Guacamole 서버가 이 연결에 대한 액세스를 거부했습니다. 하나 이상의 연결을 닫고 다시 시도 하십시오.",
-        "ERROR_CLIENT_DEFAULT" : "Guacamole 서버 내에서 내부 오류가 발생해서 연결이 종료되었습니다. 문제가 지속되면, 시스템 관리자에게 문의하거나 시스템 로그를 확인하십시오.",
+        "ERROR_CLIENT_308"     : "브라우저에서 연결이 끊긴 것처럼 보일 정도로 오랫동안 응답이 없었기 때문에 Greenmole 서버가 연결을 닫았습니다. 이는 보통 불안정한 무선 신호나 단지 네트워크의 느린 속도같은 네트워크 문제로 일어납니다. 네트워크 상태를 확인 후에 다시 시도 하십시오.",
+        "ERROR_CLIENT_31D"     : "개별 사용자의 동시 연결 사용 제한을 초과했기 때문에 Greenmole 서버가 이 연결에 대한 액세스를 거부했습니다. 하나 이상의 연결을 닫고 다시 시도 하십시오.",
+        "ERROR_CLIENT_DEFAULT" : "Greenmole 서버 내에서 내부 오류가 발생해서 연결이 종료되었습니다. 문제가 지속되면, 시스템 관리자에게 문의하거나 시스템 로그를 확인하십시오.",
 
-        "ERROR_TUNNEL_201"     : "활성 연결이 너무 많기 때문에 Guacamole 서버에서 이 연결 시도를 거부했습니다. 잠시 후에 다시 시도하십시오",
+        "ERROR_TUNNEL_201"     : "활성 연결이 너무 많기 때문에 Greenmole 서버에서 이 연결 시도를 거부했습니다. 잠시 후에 다시 시도하십시오",
         "ERROR_TUNNEL_202"     : "서버 응답시간이 너무 길어 연결을 닫았습니다. 이것은 보통 불안정한 무선 신호나, 네트워크의 느린 속도같은 네트워크의 문제입니다. 네트워크 연결을 확인해 주시거나 시스템 관리자에게 문의하십시오.",
         "ERROR_TUNNEL_203"     : "서버에 오류가 발생해서 연결을 닫았습니다. 다시 시도하거나 시스템 관리자에게 문의하십시오.",
         "ERROR_TUNNEL_204"     : "요청한 연결이 존재하지 않습니다. 연결 이름을 확인하고 다시 시도하십시오",
         "ERROR_TUNNEL_205"     : "이 연결은 현재 사용 중이며 이 연결에 대한 동시 액세스가 허용되지 않습니다. 나중에 다시 시도하십시오.",
-        "ERROR_TUNNEL_207"     : "Guacamole 서버에 현재 접근할 수 없습니다. 네트워크 상태를 확인 후에 다시 시도하십시오.",
-        "ERROR_TUNNEL_208"     : "Guacamole 서버가 연결을 허용하지 않습니다. 네트워크 상태를 확인 후에 다시 시도하십시오.",
+        "ERROR_TUNNEL_207"     : "Greenmole 서버에 현재 접근할 수 없습니다. 네트워크 상태를 확인 후에 다시 시도하십시오.",
+        "ERROR_TUNNEL_208"     : "Greenmole 서버가 연결을 허용하지 않습니다. 네트워크 상태를 확인 후에 다시 시도하십시오.",
         "ERROR_TUNNEL_301"     : "로그인하지 않았기 때문에, 이 연결에 접근할 수 있는 권한이 없습니다. 로그인 후에 다시 시도하십시오.",
         "ERROR_TUNNEL_303"     : "이 연결에 접근할 수 있는 권한이 없습니다. 접근 권한이 필요하다면, 허가 사용자 목록에 당신을 추가하도록 시스템 관리자에게 요청하거나 시스템 설정을 확인하십시오.",
-        "ERROR_TUNNEL_308"     : "브라우저에서 연결이 끊긴 것처럼 보일 정도로 오랫동안 응답이 없었기 때문에 Guacamole server가 연결을 닫았습니다. 이는 보통 불안정한 무선 신호나 단지 네트워크의 느린 속도같은 네트워크 문제로 일어납니다. 네트워크 상태를 확인 후에 다시 시도 하십시오",
-        "ERROR_TUNNEL_31D"     : "개별 사용자의 동시 연결 사용 제한을 초과했기 때문에 Guacamole server가 이 연결에 대한 액세스를 거부하고 있습니다. 하나 이상의 연결을 닫고 다시 시도하십시오.",
-        "ERROR_TUNNEL_DEFAULT" : "Guacamole 서버 내에서 내부 오류가 발생해서 연결이 종료되었습니다. 문제가 지속되면, 시스템 관리자에게 문의하거나 시스템 로그를 확인하십시오.",
+        "ERROR_TUNNEL_308"     : "브라우저에서 연결이 끊긴 것처럼 보일 정도로 오랫동안 응답이 없었기 때문에 Greenmole server가 연결을 닫았습니다. 이는 보통 불안정한 무선 신호나 단지 네트워크의 느린 속도같은 네트워크 문제로 일어납니다. 네트워크 상태를 확인 후에 다시 시도 하십시오",
+        "ERROR_TUNNEL_31D"     : "개별 사용자의 동시 연결 사용 제한을 초과했기 때문에 Greenmole server가 이 연결에 대한 액세스를 거부하고 있습니다. 하나 이상의 연결을 닫고 다시 시도하십시오.",
+        "ERROR_TUNNEL_DEFAULT" : "Greenmole 서버 내에서 내부 오류가 발생해서 연결이 종료되었습니다. 문제가 지속되면, 시스템 관리자에게 문의하거나 시스템 로그를 확인하십시오.",
 
         "FIELD_PLACEHOLDER_FILTER" : "@:APP.FIELD_PLACEHOLDER_FILTER",
 
@@ -119,12 +120,12 @@
         "ERROR_UPLOAD_303"     : "이 파일을 업로드 할 권한이 없습니다. 액세스가 필요한 경우 시스템 설정을 확인하거나 시스템 관리자에게 확인하십시오.",
         "ERROR_UPLOAD_308"     : "파일 전송이 중단되었습니다. 이는 일반적으로 무선 신호가 불안정하거나 네트워크 속도가 매우 느린 것과 같은 네트워크 문제로 인해 발생합니다. 네트워크를 확인하고 다시 시도하십시오.",
         "ERROR_UPLOAD_31D"     : "현재 너무 많은 파일이 전송되고 있습니다. 기존 전송이 완료될 때까지 기다린 후 다시 시도하십시오.",
-        "ERROR_UPLOAD_DEFAULT" : "Guacamole 서버 내에서 내부 오류가 발생해서 연결이 종료되었습니다. 문제가 지속되면, 시스템 관리자에게 문의하거나 시스템 로그를 확인하십시오.",
+        "ERROR_UPLOAD_DEFAULT" : "Greenmole 서버 내에서 내부 오류가 발생해서 연결이 종료되었습니다. 문제가 지속되면, 시스템 관리자에게 문의하거나 시스템 로그를 확인하십시오.",
 
 
-        "HELP_CLIPBOARD"           : "Guacamole에서 복사하거나 잘라낸 텍스트가 여기에 표시됩니다. 텍스트 변경 사항은 원격 클립보드에 직접 적용됩니다.",
+        "HELP_CLIPBOARD"           : "Greenmole에서 복사하거나 잘라낸 텍스트가 여기에 표시됩니다. 텍스트 변경 사항은 원격 클립보드에 직접 적용됩니다.",
         "HELP_INPUT_METHOD_NONE"   : "사용중인 입력 방법이 없습니다. 키보드 입력은 연결된 물리적 키보드에서 받아들여집니다.",
-        "HELP_INPUT_METHOD_OSK"    : "내장된 Guacamole 화상 키보드의 입력을 표시하고 허용합니다. 화상 키보드는 다른 방법으로는 불가능할 수 있는 키 조합을 입력할 수 있습니다. (Ctrl-Alt-Del 등)",
+        "HELP_INPUT_METHOD_OSK"    : "내장된 Greenmole 화상 키보드의 입력을 표시하고 허용합니다. 화상 키보드는 다른 방법으로는 불가능할 수 있는 키 조합을 입력할 수 있습니다. (Ctrl-Alt-Del 등)",
         "HELP_INPUT_METHOD_TEXT"   : "텍스트 입력을 허용하고, 입력된 텍스트를 바탕으로 키보드 이벤트를 에뮬레이트 합니다. 이것은 물리적 키보드가 없는 휴대폰과 같은 장치에 필요합니다.",
         "HELP_MOUSE_MODE"          : "터치와 관련하여 원격 마우스가 어떻게 동작하는지 결정합니다.",
         "HELP_MOUSE_MODE_ABSOLUTE" : "탭하여 클릭합니다. 클릭은 터치 위치에서 발생합니다.",
@@ -152,10 +153,10 @@
 
         "TEXT_ZOOM_AUTO_FIT"              : "브라우저 창에 자동으로 맞춤",
         "TEXT_CLIENT_STATUS_IDLE"         : "유휴 상태.",
-        "TEXT_CLIENT_STATUS_CONNECTING"   : "Guacamole에 연결 중...",
+        "TEXT_CLIENT_STATUS_CONNECTING"   : "Greenmole에 연결 중...",
         "TEXT_CLIENT_STATUS_DISCONNECTED" : "연결이 끊어졌습니다.",
-        "TEXT_CLIENT_STATUS_UNSTABLE"     : "Guacamole 서버에 대한 네트워크 연결이 불안정합니다.",
-        "TEXT_CLIENT_STATUS_WAITING"      : "Guacamole에 연결됐습니다. 응답을 기다리는 중...",
+        "TEXT_CLIENT_STATUS_UNSTABLE"     : "Greenmole 서버에 대한 네트워크 연결이 불안정합니다.",
+        "TEXT_CLIENT_STATUS_WAITING"      : "Greenmole에 연결됐습니다. 응답을 기다리는 중...",
         "TEXT_RECONNECT_COUNTDOWN"        : "다시 연결하는 중 {REMAINING}초...",
         "TEXT_FILE_TRANSFER_PROGRESS"     : "{PROGRESS} {UNIT, select, b{B} kb{KB} mb{MB} gb{GB} other{}}"
     },
@@ -893,8 +894,8 @@
         "FIELD_HEADER_TIMEZONE"           : "시간대:",
         "FIELD_HEADER_USERNAME"           : "사용자 이름:",
 
-        "HELP_DEFAULT_INPUT_METHOD" : "기본 입력 방법은 키보드 이벤트가 Guacamole에 의해 수신되는 방법을 결정합니다. 모바일 장치를 사용하거나 IME를 통해 입력할 때 이 설정을 변경해야 할 수도 있습니다. 이 세팅은 Guacamole 메뉴 내에서 연결마다 재정의할 수 있습니다.",
-        "HELP_DEFAULT_MOUSE_MODE"   : "기본 마우스 에뮬레이션 방법은 원격 마우스가 터치와 관련해서 새 연결에서 어떻게 작동할지 결정합니다. 이 세팅은 Guacamole 메뉴 내에서 연결마다 재정의할 수 있습니다.",
+        "HELP_DEFAULT_INPUT_METHOD" : "기본 입력 방법은 키보드 이벤트가 Greenmole에 의해 수신되는 방법을 결정합니다. 모바일 장치를 사용하거나 IME를 통해 입력할 때 이 설정을 변경해야 할 수도 있습니다. 이 세팅은 Greenmole 메뉴 내에서 연결마다 재정의할 수 있습니다.",
+        "HELP_DEFAULT_MOUSE_MODE"   : "기본 마우스 에뮬레이션 방법은 원격 마우스가 터치와 관련해서 새 연결에서 어떻게 작동할지 결정합니다. 이 세팅은 Greenmole 메뉴 내에서 연결마다 재정의할 수 있습니다.",
         "HELP_INPUT_METHOD_NONE"    : "@:CLIENT.HELP_INPUT_METHOD_NONE",
         "HELP_INPUT_METHOD_OSK"     : "@:CLIENT.HELP_INPUT_METHOD_OSK",
         "HELP_INPUT_METHOD_TEXT"    : "@:CLIENT.HELP_INPUT_METHOD_TEXT",

@@ -1,4 +1,5 @@
 {
+    "_greenmoleModificationNotice": "Modified for Greenmole by its maintainers. Based on Apache Guacamole; see LICENSE and NOTICE.",
     
     "NAME" : "Português",
     
@@ -81,7 +82,7 @@
         "DIALOG_HEADER_DISCONNECTED"     : "Desconectado",
 
         "ERROR_CLIENT_201"     : "Essa conexão foi fechada porque o servidor está ocupado. Por favor aguarde alguns minutos e tente novamente.",
-        "ERROR_CLIENT_202"     : "O Servidor Guacamole fechou a sessão porque a estação remota estava levando muito tempo para responder. Por favor tente novamente ou contate o administrador do sistema.",
+        "ERROR_CLIENT_202"     : "O Servidor Greenmole fechou a sessão porque a estação remota estava levando muito tempo para responder. Por favor tente novamente ou contate o administrador do sistema.",
         "ERROR_CLIENT_203"     : "A estação remota encontrou um erro e fechou a conexão. Por favor, tente novamente mais tarde ou contate o administrador do sistema.",
         "ERROR_CLIENT_207"     : "A estação remota não pode ser encontrada. Caso o problema persista, por favor notifique o administrador do sistema, ou verifique os logs do sistema.",
         "ERROR_CLIENT_208"     : "A estação remota não está disponível no momento. Caso o problema persista, por favor notifique o administrador do sistema, ou verifique os logs do sistema.",
@@ -90,22 +91,22 @@
         "ERROR_CLIENT_20B"     : "A estação remota encerrou a conexão forçadamente. Caso isto seja inexperado ou indesejável, por favor notifique o administrador do sistema, ou verifique os logs do sistema.",
         "ERROR_CLIENT_301"     : "Erro de autenticação. Por favor reconecte e tente novamente.",
         "ERROR_CLIENT_303"     : "A estação remota negou o acesso a esta conexão. Se você precisa deste acesso, por favor peça ao administrador do sistema, ou verifique as configurações do sistema.",
-        "ERROR_CLIENT_308"     : "O servidor do Guacamole encerrou a conexão porque não houve resposta do seu navegador por tempo suficiente para parecer desconectado. Normalmente isso ocorre por problemas na rede, como sinal de wifi irregular, ou simplesmente velocidades de rede muito lentas. Por favor verifique sua rede e tente novamente.",
-        "ERROR_CLIENT_31D"     : "O servidor do Guacamole está negando acesso a esta conexão porque você esgotou o limite de uso de conexões simultâneas para um único usuário. Por favor, feche uma ou mais conexões e tente novamente.",
-        "ERROR_CLIENT_DEFAULT" : "Um erro interno ocorreu no servidor do Guacamole e a conexão foi finalizada. Se o problema persistir, por favor informe o administrador do sistema, ou verifique os logs do sistema.",
+        "ERROR_CLIENT_308"     : "O servidor do Greenmole encerrou a conexão porque não houve resposta do seu navegador por tempo suficiente para parecer desconectado. Normalmente isso ocorre por problemas na rede, como sinal de wifi irregular, ou simplesmente velocidades de rede muito lentas. Por favor verifique sua rede e tente novamente.",
+        "ERROR_CLIENT_31D"     : "O servidor do Greenmole está negando acesso a esta conexão porque você esgotou o limite de uso de conexões simultâneas para um único usuário. Por favor, feche uma ou mais conexões e tente novamente.",
+        "ERROR_CLIENT_DEFAULT" : "Um erro interno ocorreu no servidor do Greenmole e a conexão foi finalizada. Se o problema persistir, por favor informe o administrador do sistema, ou verifique os logs do sistema.",
 
-        "ERROR_TUNNEL_201"     : "O servidor de Guacamole rejeitou essa tentativa de conexão porque há muitas conexões ativas. Por favor, aguarde alguns minutos e tente novamente.",
+        "ERROR_TUNNEL_201"     : "O servidor de Greenmole rejeitou essa tentativa de conexão porque há muitas conexões ativas. Por favor, aguarde alguns minutos e tente novamente.",
         "ERROR_TUNNEL_202"     : "A conexão foi encerrada porque o servidor está demorando muito par responder. Normalmente isso ocorre por problemas na rede, como sinal de wifi irregular, ou simplesmente velocidades de rede muito lentas. Por favor verifique sua rede e tente novamente ou contate o administrador do sistema.",
         "ERROR_TUNNEL_203"     : "O servidor encontrou um erro e encerrou a conexão. Por favor, tente novamente ou informe o administrador do sistema.",
         "ERROR_TUNNEL_204"     : "A conexão solicitada não existe. Por favor, verifique o nome da conexão e tente novamente.",
         "ERROR_TUNNEL_205"     : "Essa conexão está atualmente em uso e o acesso concorrente a ela não é permitido. Por favor, tente mais tarde.",
-        "ERROR_TUNNEL_207"     : "O servidor de Guacamole não está acessível neste momento. Por favor, verifique a sua rede e tente novamente.",
-        "ERROR_TUNNEL_208"     : "O servidor de Guacamole não está aceitando conexões. Por favor, verifique a sua rede e tente novamente.",
+        "ERROR_TUNNEL_207"     : "O servidor de Greenmole não está acessível neste momento. Por favor, verifique a sua rede e tente novamente.",
+        "ERROR_TUNNEL_208"     : "O servidor de Greenmole não está aceitando conexões. Por favor, verifique a sua rede e tente novamente.",
         "ERROR_TUNNEL_301"     : "Você não tem permissão para acessar essa conexão porque você não está logado. Por favor, logue-se e tente novamente.",
         "ERROR_TUNNEL_303"     : "Você não tem permissão para acessar essa conexão. Se você precisa do acesso, por favor solicite ao administrador do sistema a inclusão do seu usuário da lista de usuários permitidos, ou verifique as configurações do sistema.",
-        "ERROR_TUNNEL_308"     : "O servidor do Guacamole encerrou a conexão porque não houve resposta do seu navegador por tempo suficiente para parecer desconectado. Normalmente isso ocorre por problemas na rede, como sinal de wifi irregular, ou simplesmente velocidades de rede muito lentas. Por favor verifique sua rede e tente novamente.",
-        "ERROR_TUNNEL_31D"     : "O servidor do Guacamole está negando acesso a esta conexão porque você esgotou o limite de uso de conexões simultâneas para um único usuário. Por favor feche uma ou mais conexões e tente novamente.",
-        "ERROR_TUNNEL_DEFAULT" : "Um erro interno ocorreu no servidor do Guacamole e a conexão foi finalizada. Se o problema persistir, por favor informe o administrador do sistema, ou verifique os logs do sistema.",
+        "ERROR_TUNNEL_308"     : "O servidor do Greenmole encerrou a conexão porque não houve resposta do seu navegador por tempo suficiente para parecer desconectado. Normalmente isso ocorre por problemas na rede, como sinal de wifi irregular, ou simplesmente velocidades de rede muito lentas. Por favor verifique sua rede e tente novamente.",
+        "ERROR_TUNNEL_31D"     : "O servidor do Greenmole está negando acesso a esta conexão porque você esgotou o limite de uso de conexões simultâneas para um único usuário. Por favor feche uma ou mais conexões e tente novamente.",
+        "ERROR_TUNNEL_DEFAULT" : "Um erro interno ocorreu no servidor do Greenmole e a conexão foi finalizada. Se o problema persistir, por favor informe o administrador do sistema, ou verifique os logs do sistema.",
 
         "ERROR_UPLOAD_100"     : "A transferência de arquivos não é suportada ou não foi habilitada. Por favor contate o administrador do sistema ou verifique os logs do sistema",
         "ERROR_UPLOAD_201"     : "Muitos arquivos estão sendo transferidos ao mesmo tempo. Por favor aguarde que as transferências atuais terminem e tente novamente.",
@@ -117,13 +118,13 @@
         "ERROR_UPLOAD_303"     : "Você não tem permissão para enviar este arquivo. Se já solicitou esta permisssão verifique as configurações de sistema, ou contate o administrador do sistema.",
         "ERROR_UPLOAD_308"     : "A transferência do arquivo está parada. Normalmente isso ocorre por problemas na rede, como sinal de wifi irregular, ou simplesmente velocidades de rede muito lentas. Por favor verifique sua rede e tente novamente.",
         "ERROR_UPLOAD_31D"     : "Muitos arquivos estão sendo transferidos ao mesmo tempo. Por favor aguarde que as transferências atuais terminem e tente novamente.",
-        "ERROR_UPLOAD_DEFAULT" : "Um erro interno ocorreu no servidor do Guacamole e a conexão foi finalizada. Se o problema persistir, por favor informe o administrador do sistema, ou verifique os logs do sistema.",
+        "ERROR_UPLOAD_DEFAULT" : "Um erro interno ocorreu no servidor do Greenmole e a conexão foi finalizada. Se o problema persistir, por favor informe o administrador do sistema, ou verifique os logs do sistema.",
 
         "FIELD_PLACEHOLDER_FILTER" : "@:APP.FIELD_PLACEHOLDER_FILTER",
 
-        "HELP_CLIPBOARD"           : "Texto copiado/cortado dentro do Guacamole será mostrado aqui. Mudanças no text abaixo afetarão a área de transferência remota.",
+        "HELP_CLIPBOARD"           : "Texto copiado/cortado dentro do Greenmole será mostrado aqui. Mudanças no text abaixo afetarão a área de transferência remota.",
         "HELP_INPUT_METHOD_NONE"   : "Nenhum método de entrada está sendo usado. A entrada do teclado é aceita a partir de um teclado físico conectado.",
-        "HELP_INPUT_METHOD_OSK"    : "Mostrar e aceitar entrada de dados a partir do teclado virtual integrado do Guacamole. O teclado virtual possibilita digitar combinações de teclas que, de outra forma, seriam impossíveis (como Ctrl-Alt-Del).",
+        "HELP_INPUT_METHOD_OSK"    : "Mostrar e aceitar entrada de dados a partir do teclado virtual integrado do Greenmole. O teclado virtual possibilita digitar combinações de teclas que, de outra forma, seriam impossíveis (como Ctrl-Alt-Del).",
         "HELP_INPUT_METHOD_TEXT"   : "Permite digitação do texto e emulaçao dos eventos de teclado baseado no texto digitado. Isto é necessário para dispositivos como telefones celulares que não possuem teclado físico.",
         "HELP_MOUSE_MODE"          : "Determina como o mouse remoto se comportará em ralção aos toques.",
         "HELP_MOUSE_MODE_ABSOLUTE" : "Toque para clicar. O clique ocorre no local do toque.",
@@ -152,10 +153,10 @@
 
         "TEXT_ZOOM_AUTO_FIT"              : "Ajustar automaticamente à janela do navegador",
         "TEXT_CLIENT_STATUS_IDLE"         : "Ocioso.",
-        "TEXT_CLIENT_STATUS_CONNECTING"   : "Conectando ao Guacamole...",
+        "TEXT_CLIENT_STATUS_CONNECTING"   : "Conectando ao Greenmole...",
         "TEXT_CLIENT_STATUS_DISCONNECTED" : "Você foi desconectado.",
-        "TEXT_CLIENT_STATUS_UNSTABLE"     : "A conexão de rede ao servidor do Guacamole parece instável.",
-        "TEXT_CLIENT_STATUS_WAITING"      : "Conectado ao Guacamole. Aguardando resposta...",
+        "TEXT_CLIENT_STATUS_UNSTABLE"     : "A conexão de rede ao servidor do Greenmole parece instável.",
+        "TEXT_CLIENT_STATUS_WAITING"      : "Conectado ao Greenmole. Aguardando resposta...",
         "TEXT_RECONNECT_COUNTDOWN"        : "Reconectando em {REMAINING} {REMAINING, plural, one{second} other{seconds}}...",
         "TEXT_FILE_TRANSFER_PROGRESS"     : "{PROGRESS} {UNIT, select, b{B} kb{KB} mb{MB} gb{GB} other{}}",
 
@@ -914,8 +915,8 @@
         "FIELD_HEADER_TIMEZONE"           : "Fuso Horário:",
         "FIELD_HEADER_USERNAME"           : "Usuário:",
         
-        "HELP_DEFAULT_INPUT_METHOD" : "O método de entrada padrão determina como os eventos do teclado serão recebidos pelo Guacamole. Mudar este parâmetro pode ser necessário para utilização de um dispositivo móvel, ou ao digitar através de um IME (método de entrada). Esta configuração pode ser substituída em cada conexão através do menu do Guacamole.",
-        "HELP_DEFAULT_MOUSE_MODE"   : "O modo de emulação padrão do mouse determina como o mouse remoto vai se comportar em novas conexões em relação aos toques. Esta configuração pode ser substituída em cada conexão através do menu do Guacamole.",
+        "HELP_DEFAULT_INPUT_METHOD" : "O método de entrada padrão determina como os eventos do teclado serão recebidos pelo Greenmole. Mudar este parâmetro pode ser necessário para utilização de um dispositivo móvel, ou ao digitar através de um IME (método de entrada). Esta configuração pode ser substituída em cada conexão através do menu do Greenmole.",
+        "HELP_DEFAULT_MOUSE_MODE"   : "O modo de emulação padrão do mouse determina como o mouse remoto vai se comportar em novas conexões em relação aos toques. Esta configuração pode ser substituída em cada conexão através do menu do Greenmole.",
         "HELP_INPUT_METHOD_NONE"    : "@:CLIENT.HELP_INPUT_METHOD_NONE",
         "HELP_INPUT_METHOD_OSK"     : "@:CLIENT.HELP_INPUT_METHOD_OSK",
         "HELP_INPUT_METHOD_TEXT"    : "@:CLIENT.HELP_INPUT_METHOD_TEXT",

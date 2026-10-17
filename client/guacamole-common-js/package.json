@@ -1,4 +1,5 @@
 {
+    "_greenmoleModificationNotice": "Modified for Greenmole by its maintainers. Based on Apache Guacamole; see LICENSE and NOTICE.",
   "description": "Dependencies to be installed by Maven for running unit tests and generating documentation",
   "scripts": { "test:browser": "node test/run-browser-tests.mjs" },
   "devDependencies": {

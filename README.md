@@ -1,38 +1,99 @@
-# Guacamole private fork
+# Greenmole
 
-Private development repository for our Guacamole fixes and releases. This is
-independent of macronrdp and contains both upstream components:
+Greenmole is an independently maintained fork of [Apache Guacamole](https://guacamole.apache.org/),
+a browser-based remote desktop gateway for RDP, VNC, and SSH. It focuses on
+responsive desktop updates, connection recovery, and experimental browser video
+decoding. No browser plugin is required.
 
-- `server/`: guacd, native protocol handlers, and its Docker build.
-- `client/`: the Java web application, browser client, extensions, and its Docker build.
+This project is not an Apache Software Foundation release and is not endorsed by
+the Apache Software Foundation. Apache Guacamole and Apache are trademarks of
+the Apache Software Foundation.
 
-The baseline comes from Apache's **unreleased `staging/1.6.1` branches**, not an
-official 1.6.1 release. `UPSTREAM.json` records the exact imported commits. Both
-component histories are preserved through Git subtree imports. Upstream LICENSE,
-NOTICE, and source headers remain unchanged; private hosting does not change
-the upstream Apache licensing terms.
+## Source and maintenance
 
-## Repository
+The public repository is [beraadim/Greenmole](https://github.com/beraadim/Greenmole).
+Its owner maintains the project and controls changes to this repository. Public
+issues and pull requests are welcome; the Apache License also permits others to
+maintain their own forks.
 
-- GitHub: <https://github.com/beraadim/guacamole-private> (private).
-- Development branch: `codex/private-1.6.1`.
-- `origin`: our private GitHub repository; normal pushes go here.
-- `upstream-server`, `upstream-client`: official Apache sources; their local push
-  URLs are disabled to guard against accidental upstream pushes.
+- `server/`: guacd, native protocol handlers, and the server Docker build.
+- `client/`: the Java web application, browser client, extensions, and the client Docker build.
+- `docs/`: downstream feature guides and performance measurements.
+- `releases/`: reviewed build inputs and historical release records.
 
-Future clones should add the optional upstream remotes before fetching updates:
+The imported baseline comes from Apache's **unreleased `staging/1.6.1` branches**,
+not an official Apache Guacamole 1.6.1 release. [UPSTREAM.json](UPSTREAM.json)
+records the exact imported commits. Both component histories are preserved
+through Git subtree imports. Earlier downstream releases retain their original
+`private.N` names as historical records.
+
+Guacamole protocol, Java package, extension, configuration, and API names remain
+unchanged for compatibility. Existing deployments do not need to rename their
+configuration keys or authentication extensions.
+
+## Features
+
+Greenmole includes improvements to image encoding, browser update scheduling,
+frame recovery, resizing, and clipboard handling. Experimental AVC420 and AVC444
+browser decoding can improve desktop video performance with a compatible server
+such as macrdp. These options default off, require a compatible secure-context
+WebCodecs decoder, and need a full reconnect after opt-in. Ordinary connections
+continue to use image updates.
+
+See the [AVC444 activation guide](docs/experimental-avc444.md),
+[AVC420 transport guide](docs/experimental-avc420.md), and
+[performance review](docs/performance-review-2026-10.md). Published measurements
+describe the tested workloads and are not a guarantee for every client or network.
+
+## Build
+
+Each Dockerfile expects its own component directory as the build context:
+
+```sh
+docker build -t greenmole/guacd:dev server/
+docker build -t greenmole/web:dev client/
+```
+
+For reviewed downstream releases, use the pinned build inputs:
+
+```sh
+python3 scripts/build-images.py releases/1.6.1-greenmole.1.json --jobs 4
+```
+
+The driver builds local images; it does not publish or deploy them. It pins base
+image digests and native dependency commits. Distribution packages and Maven
+artifacts still resolve through their package repositories. Archive build logs
+and final image IDs with each release. Use `--component server` or
+`--component client` to build one image.
+
+When building an exported source archive, set `SOURCE_REVISION` to its Git commit
+and preserve source file permissions when extracting it (`tar -xp`). Runtime
+entrypoints execute as unprivileged container users; the driver rejects
+entrypoints whose permissions would prevent this.
+
+Native `make check` gates the server image. The client build runs Java, Firefox
+browser, and frontend Node tests with `-DskipTests=false`. Also test a real remote
+desktop session before deploying a new build.
+
+Use the [upstream configuration guide](https://guacamole.apache.org/doc/gug/)
+for standard gateway, authentication, and connection settings. Greenmole-specific
+settings are documented in `docs/`. Runtime configuration, credentials, database
+contents, and operational logs belong outside source control. `local/` is ignored
+for private development and deployment material.
+
+## Upstream updates
+
+Optional upstream remotes are read-only sources:
 
 ```sh
 git remote add upstream-server https://github.com/apache/guacamole-server.git
 git remote set-url --push upstream-server disabled://upstream-read-only
 git remote add upstream-client https://github.com/apache/guacamole-client.git
 git remote set-url --push upstream-client disabled://upstream-read-only
-git config remote.pushDefault origin
 ```
 
-## Bring in upstream fixes
-
-Start from a clean working tree and review the new upstream commits first:
+Start from a clean working tree, fetch and review the upstream changes, and use
+Git subtree merges to preserve their history:
 
 ```sh
 git fetch --no-tags upstream-server staging/1.6.1
@@ -43,61 +104,17 @@ git subtree merge --prefix=server upstream-server/staging/1.6.1
 git subtree merge --prefix=client upstream-client/staging/1.6.1
 ```
 
-Resolve conflicts, update `UPSTREAM.json`, and validate before publishing an
-internal release. Keep local fixes in separate, descriptive commits. Our Git
-history can move independently of Apache's release schedule.
+Resolve conflicts, update `UPSTREAM.json`, and validate the result before a
+release. Keep downstream fixes in separate, descriptive commits.
 
-## Build matched images
+## License and attribution
 
-Each upstream Dockerfile expects its own component directory as the build
-context. Use private/local tags, for example:
+Greenmole is distributed under the [Apache License 2.0](LICENSE). Preserve the
+[NOTICE](NOTICE), component license and notice files, source copyright headers,
+and bundled third-party notices when redistributing it. Downstream modifications
+are identified separately from the original Apache work. See the component
+`LICENSE` and `NOTICE` files for their full attribution and dependency notices.
 
-```sh
-docker build -t guacamole-private/guacd:1.6.1-private.16 server/
-docker build -t guacamole-private/web:1.6.1-private.16 client/
-```
-
-For the reviewed release, use the pinned build inputs instead:
-
-```sh
-python3 scripts/build-images.py releases/1.6.1-private.16.json --jobs 4
-```
-
-The script uses local image tags and does not publish or deploy them. It pins
-base-image digests and native dependency commits; distribution packages and
-Maven artifacts still resolve through their package repositories. Archive build
-logs and final image IDs with each deployment. Use `--component server` or
-`--component client` to build one image. When building an exported source
-archive, supply its Git commit through `SOURCE_REVISION`.
-Preserve source file permissions when extracting that archive (`tar -xp`);
-the runtime entrypoints execute as unprivileged container users. The build
-driver rejects entrypoints whose permissions would prevent this.
-
-Native `make check` gates the server image. The client build runs the Java,
-Firefox browser, and frontend Node tests with `-DskipTests=false`. These checks
-do not replace testing a real remote desktop session.
-
-The currently deployed release is
-[`1.6.1-private.16`](releases/1.6.1-private.16.md). It reduces browser video
-packet parsing and gateway blob dispatch overhead in AVC420 and AVC444 while
-retaining the desktop-size AVC444 reliability fixes. Pair it with macrdp 0.1.21.
-The experiment defaults off and requires a compatible secure-context WebCodecs
-decoder and a full reconnect after opt-in. See the
-[AVC444 activation guide](docs/experimental-avc444.md),
-[AVC420 transport guide](docs/experimental-avc420.md), and
-[performance review](docs/performance-review-2026-10.md).
-Ordinary connections retain images and remain compatible with older macrdp
-builds. Previous performance, display recovery, resizing and clipboard work
-remains included; release records describe those changes individually.
-
-Oberon's configured persistent encoder pool remains 22 workers. Eligible partial
-batches admit up to 12 at once; broad updates retain the pool. The production
-planner/FIFO benchmarks measure CPU efficiency and frame-time tradeoffs, while
-the browser replay measures responsiveness versus backlog completion time.
-See the [encoder method and measurements](docs/encoder-workers.md) and
-[browser protocol budget](docs/browser-protocol-budget.md). These synthetic
-checks do not replace acceptance testing a live remote desktop.
-
-This repository does not include production configuration, credentials,
-database contents, or operational logs. Keep local deployment files in the
-ignored `local/` directory and private deployment records outside Git.
+[Attribution guidance](docs/ATTRIBUTION.md) explains the source history and
+modification notices. Run `python3 scripts/check-attribution.py` before publishing
+a source release.

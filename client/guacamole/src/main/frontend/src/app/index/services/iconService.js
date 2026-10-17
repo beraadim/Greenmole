@@ -1,4 +1,6 @@
 /*
+ * Modified for Greenmole by its maintainers.
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -31,7 +33,7 @@ angular.module('index').factory('iconService', ['$rootScope', function iconServi
      * @constant
      * @type String
      */
-    var DEFAULT_SMALL_ICON_URL = 'images/logo-64.png';
+    var DEFAULT_SMALL_ICON_URL = 'images/greenmole-64.png';
 
     /**
      * The URL of the image used for the high-resolution (144x144) favicon. This
@@ -40,7 +42,7 @@ angular.module('index').factory('iconService', ['$rootScope', function iconServi
      * @constant
      * @type String
      */
-    var DEFAULT_LARGE_ICON_URL = 'images/logo-144.png';
+    var DEFAULT_LARGE_ICON_URL = 'images/greenmole-144.png';
 
     /**
      * JQuery-wrapped array of all link tags which point to the small,
