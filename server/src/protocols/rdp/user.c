@@ -48,6 +48,15 @@
 static int guac_rdp_user_display_refresh_handler(guac_user* user) {
     guac_rdp_client* rdp_client = (guac_rdp_client*) user->client->data;
     guac_timestamp started = guac_timestamp_current();
+    int was_video = guac_rdp_avc420_enabled(user->client);
+    guac_rdp_avc420_stop(user->client, "explicit image refresh");
+    if (was_video) {
+        /* The RDP owner first closes video and publishes a full shadow-GDI
+         * repaint. Do not race it with a snapshot of the older image cache. */
+        guac_protocol_send_display_refresh(user->socket, "busy");
+        guac_socket_flush(user->socket);
+        return 0;
+    }
     /* Snapshot work can outlast the render-state wait while encoding/sending.
      * Log both ends so a blocked request is distinguishable from no request. */
     guac_user_log(user, GUAC_LOG_INFO, "Display snapshot refresh requested.");
@@ -86,6 +95,8 @@ int guac_rdp_user_join_handler(guac_user* user, int argc, char** argv) {
     user->display_refresh_handler = guac_rdp_user_display_refresh_handler;
     guac_protocol_send_display_refresh(user->socket, "ready");
     guac_socket_flush(user->socket);
+
+    guac_rdp_avc420_join(user->client, user);
 
     /* Connect via RDP if owner */
     if (user->owner) {
@@ -173,6 +184,8 @@ int guac_rdp_user_file_handler(guac_user* user, guac_stream* stream,
 int guac_rdp_user_leave_handler(guac_user* user) {
 
     guac_rdp_client* rdp_client = (guac_rdp_client*) user->client->data;
+
+    guac_rdp_avc420_leave(user->client, user);
 
     /* Update shared cursor state if the display still exists */
     if (rdp_client->display != NULL)

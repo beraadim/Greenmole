@@ -50,6 +50,7 @@ ARG PREFIX_DIR=/opt/guacamole
 # library (these can be overridden at build time if a specific version is
 # needed)
 #
+ARG WITH_OPENH264=652bdb7719f30b52b08e506645a7322ff1b2cc6f
 ARG WITH_FREERDP="${FREERDP_VERSION}(\.\d+)+"
 ARG WITH_LIBSSH2='libssh2-\d+(\.\d+)+'
 ARG WITH_LIBTELNET='\d+(\.\d+)+'
@@ -83,7 +84,7 @@ ARG FREERDP_OPTS="\
     -DWITH_KRB5=ON \
     -DWITH_LIBSYSTEMD=OFF \
     -DWITH_MANPAGES=OFF \
-    -DWITH_OPENH264=OFF \
+    -DWITH_OPENH264=ON \
     -DWITH_OPENSSL=ON \
     -DWITH_OSS=OFF \
     -DWITH_PCSC=OFF \
@@ -181,6 +182,7 @@ RUN apk add --no-cache                \
         libtool                       \
         libwebp-dev                   \
         make                          \
+        nasm                          \
         openssl1.1-compat-dev         \
         pango-dev                     \
         pulseaudio-dev                \
@@ -253,10 +255,24 @@ RUN ${BUILD_DIR}/src/guacd-docker/bin/autobuild.sh "LIBWEBSOCKETS" \
     "https://github.com/warmcat/libwebsockets"
 
 #
+# Software H.264 decoder: pin source to OpenH264 v2.6.0. It remains necessary
+# for a complete image fallback even when the browser displays the same AVC.
+#
+FROM builder AS openh264
+ARG BUILD_JOBS
+ARG PREFIX_DIR
+ARG WITH_OPENH264
+RUN git clone https://github.com/cisco/openh264.git /tmp/openh264 && \
+    git -C /tmp/openh264 checkout --detach "${WITH_OPENH264}" && \
+    make -C /tmp/openh264 -j"${BUILD_JOBS:-4}" libraries && \
+    make -C /tmp/openh264 PREFIX="${PREFIX_DIR}" install-shared
+
+#
 # Build dependency: FreeRDP
 #
 
 FROM builder AS freerdp
+COPY --from=openh264 /opt/guacamole /opt/guacamole
 ARG BUILD_DIR
 ARG FREERDP_ARM_OPTS
 ARG FREERDP_OPTS
@@ -315,6 +331,7 @@ ARG PREFIX_DIR
 
 # Copy build artifacts into this stage
 COPY --from=guacamole-server ${PREFIX_DIR} ${PREFIX_DIR}
+COPY --from=openh264 /tmp/openh264/LICENSE ${PREFIX_DIR}/share/licenses/openh264/LICENSE
 
 # Bring runtime environment up to date and install runtime dependencies
 RUN apk add --no-cache                \

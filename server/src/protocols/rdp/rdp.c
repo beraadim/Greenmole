@@ -936,6 +936,8 @@ static int guac_rdp_handle_connection(guac_client* client) {
         } while (!connection_closing &&
                 (wait_result = rdp_guac_client_wait_for_events(client, 0)) > 0);
 
+        guac_rdp_avc420_poll(client);
+
         /* Notify display of any changes to the GDI that may have occurred
          * while handling events/messages */
         if (rdp_client->gdi_modified) {

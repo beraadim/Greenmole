@@ -34,6 +34,7 @@
 
 #include <cairo/cairo.h>
 #include <pthread.h>
+#include <time.h>
 
 guac_display* guac_display_alloc(guac_client* client) {
 
@@ -314,4 +315,29 @@ guac_display_layer* guac_display_alloc_buffer(guac_display* display, int opaque)
 
 void guac_display_free_layer(guac_display_layer* display_layer) {
     guac_display_remove_layer(display_layer);
+}
+
+int guac_display_flush_to_idle(guac_display* display, int timeout) {
+    guac_timestamp deadline = guac_timestamp_current() + timeout;
+    const struct timespec pause = { .tv_nsec = 2000000 };
+    do {
+        guac_display_end_multiple_frames(display, 0);
+        /* Follow the same lock order as commit and workers. A frame may be
+         * queued before the worker publishes FRAME_IN_PROGRESS, so checking
+         * render_state alone is not an ordering barrier. */
+        guac_rwlock_acquire_write_lock(&display->pending_frame.lock);
+        guac_rwlock_acquire_read_lock(&display->last_frame.lock);
+        guac_fifo_lock(&display->ops);
+        int idle = guac_fifo_is_valid(&display->ops)
+            && !(display->ops.state.value & GUAC_FIFO_STATE_NONEMPTY)
+            && !display->active_workers && !display->frame_deferred
+            && !display->source_frame_open;
+        guac_fifo_unlock(&display->ops);
+        guac_rwlock_release_lock(&display->last_frame.lock);
+        guac_rwlock_release_lock(&display->pending_frame.lock);
+        if (idle)
+            return 1;
+        nanosleep(&pause, NULL);
+    } while (guac_timestamp_current() < deadline);
+    return 0;
 }

@@ -58,6 +58,8 @@ libguac_client_rdp_la_SOURCES =                  \
     channels/rdpdr/rdpdr-printer.c               \
     channels/rdpdr/rdpdr.c                       \
     channels/rdpei.c                             \
+    channels/avc420.c                            \
+    channels/avc420-graphics.c                   \
     channels/rdpgfx.c                            \
     channels/rdpsnd/rdpsnd-messages.c            \
     channels/rdpsnd/rdpsnd.c                     \
@@ -104,6 +106,8 @@ noinst_HEADERS =                                 \
     channels/rdpdr/rdpdr-printer.h               \
     channels/rdpdr/rdpdr.h                       \
     channels/rdpei.h                             \
+    channels/avc420.h                            \
+    channels/avc420-priv.h                       \
     channels/rdpgfx.h                            \
     channels/rdpsnd/rdpsnd-messages.h            \
     channels/rdpsnd/rdpsnd.h                     \

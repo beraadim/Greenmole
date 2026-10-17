@@ -23,6 +23,7 @@
 #include "channels/audio-input/audio-buffer.h"
 #include "channels/cliprdr.h"
 #include "channels/disp.h"
+#include "channels/avc420.h"
 #include "channels/rdpei.h"
 #include "common/clipboard.h"
 #include "common/list.h"
@@ -105,6 +106,9 @@ typedef struct guac_rdp_client {
      * The display.
      */
     guac_display* display;
+
+    /** Experimental browser AVC420 state; independent of RDP message locks. */
+    guac_rdp_avc420* avc420;
 
     /**
      * The surface that GDI operations should draw to. RDP messages exist which

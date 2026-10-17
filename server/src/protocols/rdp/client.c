@@ -203,6 +203,7 @@ int guac_client_init(guac_client* client, int argc, char** argv) {
     /* Alloc client data */
     guac_rdp_client* rdp_client = guac_mem_zalloc(sizeof(guac_rdp_client));
     client->data = rdp_client;
+    rdp_client->avc420 = guac_rdp_avc420_alloc();
 
     /* Create queue for input events (to avoid RDP I/O blocking processing of
      * further Guacamole instructions) and associated signalling handle */
@@ -322,6 +323,7 @@ int guac_rdp_client_free_handler(guac_client* client) {
     pthread_mutex_destroy(&(rdp_client->message_lock));
 
     /* Free client data */
+    guac_rdp_avc420_free(rdp_client->avc420);
     guac_mem_free(rdp_client);
 
     return 0;

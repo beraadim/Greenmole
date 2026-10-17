@@ -139,6 +139,10 @@ BOOL guac_rdp_gdi_end_paint(rdpContext* context) {
      * checking and bailing out here if an external bug breaks that. */
     GUAC_ASSERT(w <= INT_MAX && h <= INT_MAX);
 
+    /* The shadow GDI remains current while video replaces image transmission. */
+    if (guac_rdp_avc420_suppress_paint(client))
+        goto paint_complete;
+
     /* Mark modified region as dirty, but only within the bounds of the
      * rendering surface */
     guac_rect dst_rect;
@@ -170,6 +174,8 @@ BOOL guac_rdp_gdi_desktop_resize(rdpContext* context) {
 
     int width = guac_rdp_get_width(context->instance);
     int height = guac_rdp_get_height(context->instance);
+
+    guac_rdp_avc420_invalidate(client, "desktop resize");
 
     /* A reactivation may discard an unfinished source frame. Its missing END
      * must not hold the resized display until the recovery deadline expires. */

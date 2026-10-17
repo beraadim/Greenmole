@@ -65,9 +65,11 @@ static void guac_rdp_rdpgfx_channel_connected(rdpContext* context,
     if (!gdi_graphics_pipeline_init(gdi, rdpgfx))
         guac_client_log(client, GUAC_LOG_WARNING, "Rendering backend for RDPGFX "
                 "channel could not be loaded. Graphics may not render at all!");
-    else
+    else {
         guac_client_log(client, GUAC_LOG_DEBUG, "RDPGFX channel will be used for "
                 "the RDP Graphics Pipeline Extension.");
+        guac_rdp_avc420_init_graphics(client, rdpgfx);
+    }
 
 }
 
@@ -95,6 +97,8 @@ static void guac_rdp_rdpgfx_channel_disconnected(rdpContext* context,
     /* Ignore disconnection event if it's not for the RDPGFX channel */
     if (strcmp(args->name, RDPGFX_DVC_CHANNEL_NAME) != 0)
         return;
+
+    guac_rdp_avc420_stop(client, "graphics channel disconnected");
 
     /* Un-init GDI-backed support for the Graphics Pipeline */
     RdpgfxClientContext* rdpgfx = (RdpgfxClientContext*) args->pInterface;

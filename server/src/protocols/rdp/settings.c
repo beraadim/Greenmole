@@ -1538,6 +1538,12 @@ void guac_rdp_push_settings(guac_client* client,
     freerdp_settings_set_bool(rdp_settings, FreeRDP_FastPathInput, TRUE);
     freerdp_settings_set_bool(rdp_settings, FreeRDP_FastPathOutput, TRUE);
 
+    /* H.264 decoding is present for safe fallback, but must never silently
+     * enable decode/re-encode for ordinary image-only browser sessions. */
+    int browser_avc420 = guac_rdp_avc420_enabled(client);
+    freerdp_settings_set_bool(rdp_settings, FreeRDP_GfxH264, browser_avc420);
+    freerdp_settings_set_bool(rdp_settings, FreeRDP_GfxAVC444, FALSE);
+
     /* Enable RemoteFX / Graphics Pipeline */
     if (guac_settings->enable_gfx) {
 
@@ -1569,6 +1575,9 @@ void guac_rdp_push_settings(guac_client* client,
         freerdp_settings_set_string(rdp_settings, FreeRDP_ClientHostname, 
                 guac_strndup(guac_settings->client_name, RDP_CLIENT_HOSTNAME_SIZE));
     }
+
+    if (browser_avc420)
+        freerdp_settings_set_string(rdp_settings, FreeRDP_ClientHostname, "GuacamoleAVC420");
 
     /* Console */
     freerdp_settings_set_bool(rdp_settings, FreeRDP_ConsoleSession, guac_settings->console);
@@ -1772,6 +1781,8 @@ void guac_rdp_push_settings(guac_client* client,
 
     rdp_settings->FastPathInput = TRUE;
     rdp_settings->FastPathOutput = TRUE;
+    rdp_settings->GfxH264 = guac_rdp_avc420_enabled(client);
+    rdp_settings->GfxAVC444 = FALSE;
 
     /* Enable RemoteFX / Graphics Pipeline */
     if (guac_settings->enable_gfx) {
@@ -1804,6 +1815,11 @@ void guac_rdp_push_settings(guac_client* client,
         free(rdp_settings->ClientHostname);
         rdp_settings->ClientHostname = guac_strndup(guac_settings->client_name,
                 RDP_CLIENT_HOSTNAME_SIZE);
+    }
+
+    if (rdp_settings->GfxH264) {
+        free(rdp_settings->ClientHostname);
+        rdp_settings->ClientHostname = guac_strdup("GuacamoleAVC420");
     }
 
     /* Console */

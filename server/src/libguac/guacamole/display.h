@@ -270,6 +270,16 @@ void guac_display_dup(guac_display* display, guac_socket* socket);
 int guac_display_refresh(guac_display* display, guac_socket* socket);
 
 /**
+ * Commits pending image changes and waits for all image operations to finish.
+ * This is a transport-ordering barrier for a protocol producer switching to
+ * video. The caller must prevent new default-layer image changes until video
+ * is sent. The timeout bounds polling; ordinary frame-lock/socket waits retain
+ * their existing transport deadlines. Returns nonzero on success.
+ */
+int guac_display_flush_to_idle(guac_display* display, int timeout);
+
+
+/**
  * Notifies the given guac_display that a specific user has left the connection
  * and need no longer be considered for future updates/events. This SHOULD
  * always be called when a user leaves the connection to ensure other future,
