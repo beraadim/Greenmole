@@ -40,7 +40,7 @@ describe('Guacamole AVC420 real WebCodecs integration', function() {
         }
     }
     function near(actual, expected) {
-        for (var i = 0; i < 3; i++) expect(Math.abs(actual[i] - expected[i])).toBeLessThan(40);
+        for (var i = 0; i < 3; i++) expect(Math.abs(actual[i] - expected[i])).toBeLessThan(12);
         expect(actual[3]).toBe(255);
     }
 

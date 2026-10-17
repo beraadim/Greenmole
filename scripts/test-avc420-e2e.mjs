@@ -20,10 +20,12 @@
 
 // Only use a disposable guacd and the no-input synthetic macrdp fixture server.
 // No production configuration, desktop, account or clipboard is read or changed.
+// The fixture uses an ephemeral TLS certificate and the public test credentials
+// synthetic-fixture / synthetic-fixture. They are not a real system account.
 import { spawn } from 'node:child_process';
 import { createConnection } from 'node:net';
 import { createServer } from 'node:http';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, createHash } from 'node:crypto';
 import { readFile, readdir, mkdtemp, rm } from 'node:fs/promises';
 import { StringDecoder } from 'node:string_decoder';
 import { createContext, runInContext } from 'node:vm';
@@ -34,10 +36,10 @@ import { acceptWebSocket, ClientInstructions, instruction } from './benchmarks/i
 import { trackBrowserProcess } from './benchmarks/browser-process.mjs';
 
 const options = { guacdPort: 14822, rdpPort: 23989, browser: process.env.CHROME_BIN
-    || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', mode: 'both', timeoutMs: 60000, rdpSecurity: 'tls' };
+    || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', mode: 'both', timeoutMs: 60000, rdpSecurity: 'tls', commonJs: null };
 for (let i = 2; i < process.argv.length; i += 2) {
-    const key = { '--guacd-port': 'guacdPort', '--rdp-port': 'rdpPort', '--browser': 'browser', '--mode': 'mode', '--timeout-ms': 'timeoutMs', '--rdp-security': 'rdpSecurity' }[process.argv[i]];
-    if (!key || !process.argv[i + 1]) throw new Error('Usage: test-avc420-e2e.mjs [--guacd-port 14822] [--rdp-port 23989] [--browser executable] [--mode both|avc|images] [--timeout-ms 60000] [--rdp-security tls|rdp]');
+    const key = { '--guacd-port': 'guacdPort', '--rdp-port': 'rdpPort', '--browser': 'browser', '--mode': 'mode', '--timeout-ms': 'timeoutMs', '--rdp-security': 'rdpSecurity', '--common-js': 'commonJs' }[process.argv[i]];
+    if (!key || !process.argv[i + 1]) throw new Error('Usage: test-avc420-e2e.mjs [--guacd-port 14822] [--rdp-port 23989] [--browser executable] [--mode both|avc|images] [--timeout-ms 60000] [--rdp-security tls|rdp] [--common-js packaged-all.min.js]');
     options[key] = ['guacdPort', 'rdpPort', 'timeoutMs'].includes(key) ? Number(process.argv[i + 1]) : process.argv[i + 1];
 }
 for (const key of ['guacdPort', 'rdpPort'])
@@ -72,12 +74,14 @@ async function browserTest(config) {
         assert(canvas.width === 320 && canvas.height === 180, 'Wrong visible desktop size/cropping: ' + canvas.width + 'x' + canvas.height);
         const context = canvas.getContext('2d');
         const points = [[5, 5, [220, 16, 16]], [315, 5, [16, 220, 16]], [5, 175, [16, 16, 220]], [315, 175, [28, 28, 28]]];
-        return points.map(([x, y, expected]) => {
-            const actual = [...context.getImageData(x, y, 1, 1).data];
-            assert(actual[3] === 255 && expected.every((value, i) => Math.abs(actual[i] - value) < 40),
+        const pixels = points.map(([x, y]) => [...context.getImageData(x, y, 1, 1).data]);
+        window.avc420TestContext.quarterPixels = pixels;
+        points.forEach(([x, y, expected], index) => {
+            const actual = pixels[index];
+            assert(actual[3] === 255 && expected.every((value, i) => Math.abs(actual[i] - value) < 12),
                 'Unexpected synthetic quarter pixel at ' + x + ',' + y + ': ' + actual);
-            return actual;
         });
+        return pixels;
     }
     const available = await Guacamole.AVC420VideoPlayer.checkSupport();
     if (config.mode !== 'images') assert(available, 'Secure H.264 WebCodecs is required for the AVC test');
@@ -115,14 +119,16 @@ async function browserTest(config) {
             if (opcode === 'sync') protocol.syncs++;
             handler(opcode, args);
         };
-        const item = { videoRequested: video, protocol };
+        const item = { videoRequested: video, protocol, phase: 'connecting' };
+        window.avc420TestContext = item;
         const originalDecode = window.VideoDecoder?.prototype.decode;
         try {
             client.setExperimentalAvc420Enabled(video);
             client.connect('video=' + Number(video));
             if (video) {
-                await waitFor(() => client.getVideoStatistics().presentedFrames >= 3,
-                    'No three real AVC420 frames presented: ' + JSON.stringify(client.getVideoStatistics()), errors);
+                await waitFor(() => client.getVideoStatistics().presentedFrames >= 12,
+                    'No twelve real AVC420 frames presented: ' + JSON.stringify(client.getVideoStatistics()), errors);
+                item.phase = 'active-video-pixels';
                 item.active = client.getVideoStatistics(); item.videoPixels = quarters(display);
                 assert(item.active.status === 'playing' && protocol.videos > 0, 'AVC420 was not active');
                 const beforeImages = protocol.images, beforePaintedImages = paint.completedImages;
@@ -133,6 +139,7 @@ async function browserTest(config) {
                 await waitFor(() => protocol.images > beforeImages && paint.completedImages > beforePaintedImages
                     && !display.getQueueStatistics().pendingFrames,
                     'No complete image repaint after decoder failure', errors);
+                item.phase = 'image-fallback-pixels';
                 item.fallback = client.getVideoStatistics(); item.fallbackPixels = quarters(display);
                 item.newFallbackImages = protocol.images - beforeImages;
                 item.newFallbackDraws = paint.completedImages - beforePaintedImages;
@@ -140,11 +147,13 @@ async function browserTest(config) {
             else {
                 await waitFor(() => protocol.images > 0 && paint.completedImages > 0 && display.getWidth() === 320
                     && !display.getQueueStatistics().pendingFrames, 'No ordinary image frame', errors);
+                item.phase = 'ordinary-image-pixels';
                 item.imagePixels = quarters(display);
                 assert(protocol.videos === 0 && client.getVideoStatistics().presentedFrames === 0,
                     'Video was sent to an image-only client');
             }
             assert(errors.length === 0, errors.join('; '));
+            item.phase = 'passed';
             results.push(item);
         }
         finally {
@@ -156,12 +165,16 @@ async function browserTest(config) {
     return { browser: navigator.userAgent, secure: window.isSecureContext, h264Supported: available, cases: results };
 }
 const script = source => '<script>' + source.replaceAll('</script', '<\\/script') + '</script>';
-const moduleSources = (await Promise.all((await readdir(modules)).filter(name => name.endsWith('.js')).sort()
-    .map(name => readFile(path.join(modules, name), 'utf8')))).map(script).join('');
+const clientSource = options.commonJs ? await readFile(path.resolve(options.commonJs), 'utf8')
+    : (await Promise.all((await readdir(modules)).filter(name => name.endsWith('.js')).sort()
+        .map(name => readFile(path.join(modules, name), 'utf8')))).join('\n');
+const clientProvenance = { packagedBundle: options.commonJs ? path.basename(options.commonJs) : null,
+    sha256: createHash('sha256').update(clientSource).digest('hex') };
+const moduleSources = script(clientSource);
 const html = '<!doctype html><meta charset="utf-8"><body>' + moduleSources
     + script('(' + browserTest.toString() + ')(' + JSON.stringify({ websocketPath, mode: options.mode }) + ')'
         + '.then(result=>fetch(' + JSON.stringify(reportPath) + ',{method:"POST",body:JSON.stringify({passed:true,...result})}))'
-        + '.catch(error=>fetch(' + JSON.stringify(reportPath) + ',{method:"POST",body:JSON.stringify({passed:false,error:error.stack})}));');
+        + '.catch(error=>fetch(' + JSON.stringify(reportPath) + ',{method:"POST",body:JSON.stringify({passed:false,error:error.stack,context:window.avc420TestContext})}));');
 const server = createServer((request, response) => {
     if (request.method === 'GET' && request.url === '/') response.writeHead(200, { 'Content-Type': 'text/html' }).end(html);
     else if (request.method === 'POST' && request.url === reportPath) {
@@ -201,8 +214,8 @@ server.on('upgrade', (request, socket, head) => {
     parser.oninstruction = (opcode, args) => {
         if (opcode === 'args') {
             const values = { hostname: '127.0.0.1', port: String(options.rdpPort), username: 'synthetic-fixture',
-                password: 'synthetic-fixture', security: options.rdpSecurity, 'disable-auth': 'true', width: '320', height: '180', dpi: '96',
-                'disable-audio': 'true', 'disable-gfx': 'false', 'color-depth': '32', 'ignore-cert': 'true', 'resize-method': 'display-update' };
+                password: 'synthetic-fixture', security: options.rdpSecurity, 'disable-auth': 'false', width: '320', height: '180', dpi: '96',
+                'disable-audio': 'true', 'disable-gfx': 'false', 'color-depth': '32', 'ignore-cert': 'true', 'resize-method': 'display-update', 'force-lossless': 'true' };
             tcp.write(instruction(['size', 320, 180, 96]) + instruction(['audio'])
                 + instruction(video ? ['video', 'video/x-guacamole-avc420;v=1'] : ['video'])
                 + instruction(['image', 'image/png']) + instruction(['timezone', 'UTC'])
@@ -241,7 +254,7 @@ try {
         deadline = setTimeout(() => reject(new Error('Synthetic AVC420 integration timed out')), options.timeoutMs);
     });
     const result = await Promise.race([report, failed]);
-    console.log(JSON.stringify({ ...result, relay: connections }, null, 2));
+    console.log(JSON.stringify({ ...result, clientProvenance, relay: connections }, null, 2));
     if (!result.passed || connections.some(connection => connection.errors.length)) process.exitCode = 1;
 }
 finally {

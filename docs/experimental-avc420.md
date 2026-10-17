@@ -41,6 +41,10 @@ height (16 bits each), flags (32 bits; bit 0 means IDR), and payload length
 Guacamole blobs may split a header or payload at any byte. Every IDR must include
 SPS and PPS so a new decoder does not depend on a previous stream.
 
+The matching macrdp build uses full-range BT.709 consistently for captured NV12,
+RGB conversions and H.264 color metadata. This keeps generic browser decoding
+and RDP's decoded image baseline consistent when changing paths.
+
 The browser reserves ordered display tasks before decoding and crops macroblock
 padding to the visible desktop. It acknowledges presentation after the canvas
 operation, not merely receipt of encoded bytes. Decoder state, tasks and native

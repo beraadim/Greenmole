@@ -53,14 +53,14 @@ Each upstream Dockerfile expects its own component directory as the build
 context. Use private/local tags, for example:
 
 ```sh
-docker build -t guacamole-private/guacd:1.6.1-private.7 server/
-docker build -t guacamole-private/web:1.6.1-private.7 client/
+docker build -t guacamole-private/guacd:1.6.1-private.13 server/
+docker build -t guacamole-private/web:1.6.1-private.13 client/
 ```
 
 For the reviewed internal release, use the pinned build inputs instead:
 
 ```sh
-python3 scripts/build-images.py releases/1.6.1-private.7.json --jobs 4
+python3 scripts/build-images.py releases/1.6.1-private.13.json --jobs 4
 ```
 
 The script uses local image tags and does not publish or deploy them. It pins
@@ -77,15 +77,14 @@ Native `make check` gates the server image. The client build runs the Java,
 Firefox browser, and frontend Node tests with `-DskipTests=false`. These checks
 do not replace testing a real remote desktop session.
 
-The release and validation record is
-[`1.6.1-private.7`](releases/1.6.1-private.7.md), covering reusable browser
-deadlines, bounded planner storage, fixed-cell hashing and reduced copy-search
-work. It retains stabilized remote resizing, bounded WebSocket burst processing
-and workload-aware encoding, along with private.5's render-continuation and
-clipboard fixes, complete-frame
-rendering, bounded display recovery, source-frame boundaries, adaptive grouping,
-and dirty-region copies. Existing macrdp 0.1.12 remains compatible and requires
-no package update.
+The current release and validation record is
+[`1.6.1-private.13`](releases/1.6.1-private.13.md). It adds optional AVC420
+browser decoding with image fallback, paired with macrdp 0.1.16. The experiment
+defaults off and requires a compatible secure-context WebCodecs decoder and a
+full reconnect after opt-in. See the [activation guide](docs/experimental-avc420.md).
+Ordinary connections retain images and remain compatible with older macrdp
+builds. Previous performance, display recovery, resizing and clipboard work
+remains included; release records describe those changes individually.
 
 Oberon's configured persistent encoder pool remains 22 workers. Eligible partial
 batches admit up to 12 at once; broad updates retain the pool. The production

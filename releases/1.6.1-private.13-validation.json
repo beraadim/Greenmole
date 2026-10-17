@@ -1,0 +1,259 @@
+{
+  "schema": "guacamole-private-avc420-validation-v1",
+  "release": "1.6.1-private.13",
+  "runtime": {
+    "guacd_image_id": "sha256:1b0f514b341e442c0459f69a5ca99b510e9a9728bb7317405a7653a03bc45e79",
+    "source_revision": "a7539eb9dd4a6f8c73da9a335c3e854496c55f42",
+    "disposable_container_id": "04ce8bdc55fee4eb7c4c001702a4010749e4de616e7c6e1a85a9b1206efbedd4",
+    "identity_provenance": "Verified with Docker inspect against the exact final runtime image and disposable container; tests connected only through isolated loopback SSH forwards.",
+    "production_services_modified_by_tests": false,
+    "web_image_id": "sha256:fe0756a59f04c78bec6527ceafeb7b278e1dc7a7014de82dffc5e014f4c8ada4"
+  },
+  "browser_bundle": {
+    "sha256": "cc131d6dc97fa61a870ed640d559eee3799de1d8a7a3257978788a17471f4718",
+    "provenance": "Extracted from the final web runtime image WAR; both E2E tests loaded the packaged bundle. Its hash also matches the served production asset after deployment.",
+    "archive_entry": "guacamole-common-js/all.min.js"
+  },
+  "synthetic_input": {
+    "no_desktop_capture": true,
+    "no_user_input": true,
+    "size": [
+      320,
+      180
+    ],
+    "coded_size": [
+      320,
+      192
+    ],
+    "colour_contract": "Explicit full-range BT.709, SPS primaries=1/transfer=1/matrix=1/full_range=true for OpenH264 and VideoToolbox.",
+    "macrdp_source_revision": "02350147ee662da54f6633867f4c23e95d925547",
+    "exporter": "crates/macrdp-encode/examples/export_avc420_fixture.rs",
+    "exporter_sha256": "76f22e16a72401662709d8b73c36ed0ced4be7cc558543d35c1db324791dd42a",
+    "checked_in_browser_fixture": "client/guacamole-common-js/src/test/javascript/AVC420SyntheticFixture.js",
+    "checked_in_browser_fixture_sha256": "f7afcb16c6fec88d6c4a0adfc145ac53bd3105b2375968178127dfb07b45fb12",
+    "frames": [
+      {
+        "file": "openh264_320x180_0.h264",
+        "sha256": "9ff94231a6fb1a7297556d4499419e8496ee894fba60192de37e175adaeae61b",
+        "bytes": 514
+      },
+      {
+        "file": "openh264_320x180_1.h264",
+        "sha256": "e22943d10fb715a687c7bc72358a5187d010002766805948596a1064f64bffa8",
+        "bytes": 61
+      },
+      {
+        "file": "openh264_320x180_2.h264",
+        "sha256": "1ec7f1b29cc6ff1130ed33764597a79496c085a2997911063a39e701c05fa507",
+        "bytes": 110
+      },
+      {
+        "file": "openh264_320x180_3.h264",
+        "sha256": "4ddccec9ad9dda5eaee8b7e606f8f2af7b920ab03910c5eafc5029dedd26948e",
+        "bytes": 165
+      },
+      {
+        "file": "openh264_320x180_4.h264",
+        "sha256": "7f912bad671cadaf602e5164db77f4cb45a1c70efa8287f7adb02416e28ff78c",
+        "bytes": 497
+      },
+      {
+        "file": "openh264_320x180_5.h264",
+        "sha256": "cc609a053d040b647a62ec230770b0abd06e8360fd861a21c74e6acfee9da921",
+        "bytes": 89
+      },
+      {
+        "file": "openh264_352x208_0.h264",
+        "sha256": "438ce593321a4207ed349915f40aa5211f45011671db3631e0cde4ec20564056",
+        "bytes": 469
+      },
+      {
+        "file": "openh264_352x208_1.h264",
+        "sha256": "b5309be321e8728a9ee73fe53d08d04ad3151e0256083b85874d36401be2ebe0",
+        "bytes": 67
+      },
+      {
+        "file": "openh264_352x208_2.h264",
+        "sha256": "d586c50bac0f8bba1e85ac4490c587123175eda90ac3517e23f42dffbc2404ff",
+        "bytes": 157
+      },
+      {
+        "file": "openh264_352x208_3.h264",
+        "sha256": "88d0102e4a54aff2d482b8be1b25c4feed9a18f8d1b3eb9f8333c2a23d3ac351",
+        "bytes": 80
+      },
+      {
+        "file": "openh264_352x208_4.h264",
+        "sha256": "747ceb381986905c0fc62ce22538fa736a6ecb6f6cabe9b4dd7612a7f2464357",
+        "bytes": 440
+      },
+      {
+        "file": "openh264_352x208_5.h264",
+        "sha256": "a9065693346476d9e5a71873331d602625a890628e1e6c3e664d227099729dc1",
+        "bytes": 99
+      },
+      {
+        "file": "videotoolbox_320x180_0.h264",
+        "sha256": "45a63a13a9d23411d07d074b05bdd81441a060cf8e6c2be1f994046a7d276cf7",
+        "bytes": 662
+      },
+      {
+        "file": "videotoolbox_320x180_1.h264",
+        "sha256": "63e93761bdcee4f72df994c0cf7f6a435ecb65dfb3c434ade5dc001835b9cd29",
+        "bytes": 61
+      },
+      {
+        "file": "videotoolbox_320x180_2.h264",
+        "sha256": "ccd43f5b024f319ec10c23641359eae39cdef4c84c5eb481576018ec4d894f75",
+        "bytes": 192
+      },
+      {
+        "file": "videotoolbox_320x180_3.h264",
+        "sha256": "71b7fddf888efa3f20206c8d3270fb95d1ead391cdc7f4e573ad69d0a3a4fe6d",
+        "bytes": 73
+      },
+      {
+        "file": "videotoolbox_320x180_4.h264",
+        "sha256": "063546c0012365e4f476dcd61ec529ae6cfd1304cc651a643900c2e237a4514e",
+        "bytes": 651
+      },
+      {
+        "file": "videotoolbox_320x180_5.h264",
+        "sha256": "d807e33b4dceb6efb0968c40a43208a122923d7188bc35e91eeb03fd0a281825",
+        "bytes": 67
+      },
+      {
+        "file": "videotoolbox_352x208_0.h264",
+        "sha256": "ab04e3675b525be83c76498f6e472a638ad67aa6c168bde7952f8565a102b0b0",
+        "bytes": 497
+      },
+      {
+        "file": "videotoolbox_352x208_1.h264",
+        "sha256": "eceb8009a7e3d744a3955f6cd256771731bd8a20c8c176a5195ea68060f5dd1b",
+        "bytes": 64
+      },
+      {
+        "file": "videotoolbox_352x208_2.h264",
+        "sha256": "321028eb923b17c1a63e084bf5855a6fe6d072407db1360c9b74e0181f7a421c",
+        "bytes": 195
+      },
+      {
+        "file": "videotoolbox_352x208_3.h264",
+        "sha256": "3d87bcb1eefb1a2f3ac2771bd5fb971d6a993522bb5a9b081cd4968270bf64c6",
+        "bytes": 77
+      },
+      {
+        "file": "videotoolbox_352x208_4.h264",
+        "sha256": "9ebc23c0fa0474b84ca0aa8a7f4c54caf1f3096a0f6ff4a01bc6c9c1d55b1d68",
+        "bytes": 469
+      },
+      {
+        "file": "videotoolbox_352x208_5.h264",
+        "sha256": "5b59ac80f11cfbe36603cb5463446b928baff77df027ade3d7c8ac5201cdea62",
+        "bytes": 68
+      }
+    ],
+    "source_provenance": "Source commit contains the exporter, fixture server and color-corrected encoder implementation used to generate these synthetic access units.",
+    "source_sha256": {
+      "crates/macrdp-encode/src/color.rs": "50b3d1e1b0e34feb07fdfac1243e548184682eaa47d7e8d8c65a1f0ed53639ba",
+      "crates/macrdp-encode/src/color_convert.rs": "b4fb972d6ee2ee5bd174be525bc00a0ca000abf0f91ba8de38474ee9dac0b7c3",
+      "crates/macrdp-encode/src/openh264_enc.rs": "d23e9c0ca85f241f8ca4d4d180338b5ed702c313a66768876633aed508ba0b1f",
+      "crates/macrdp-encode/src/videotoolbox.rs": "a8034ff07e0f3246ee32dbf0a0fe82af58d2cef2f0c69fe171d6cf69620efb33",
+      "crates/macrdp-encode/src/yuv444_split.rs": "e7995db3edc9b2ec3b709d6338276a5ea5f3a188af32424f92a3979ab08c9b9e",
+      "crates/ironrdp-server-gfx/examples/avc420_fixture_server.rs": "ece06329046c771ffed6513cc0b0ab4e916ac0cbc7a5a3f723dee199c59aa228"
+    }
+  },
+  "e2e": {
+    "openh264": {
+      "sha256": "1c8da6ecd7b68024cd113242d3abc1505fb5647aa33cd6f9bdea42b0b1da9d65",
+      "passed": true,
+      "presented_video_frames": 12,
+      "native_video_streams": 1,
+      "decoder_failure_injected": true,
+      "failure_acknowledgments": 1,
+      "fresh_fallback_images": 2,
+      "completed_fallback_image_draws": 2,
+      "ordinary_image_only_reconnect": true,
+      "ordinary_video_streams": 0,
+      "maximum_quarter_channel_error": {
+        "browser_avc420": 2,
+        "native_image_fallback": 3,
+        "ordinary_images": 3
+      },
+      "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+      "secure_context": true,
+      "h264_supported": true,
+      "client_bundle": {
+        "packagedBundle": "final-all.min.js",
+        "sha256": "cc131d6dc97fa61a870ed640d559eee3799de1d8a7a3257978788a17471f4718"
+      },
+      "private_report_basename": "e2e-openh264-12frames-color-fixed.json"
+    },
+    "videotoolbox": {
+      "sha256": "ec349d5dd7be6098bae378726aac2114552eb8009c99ec168faec6f157a87c9b",
+      "passed": true,
+      "presented_video_frames": 12,
+      "native_video_streams": 1,
+      "decoder_failure_injected": true,
+      "failure_acknowledgments": 1,
+      "fresh_fallback_images": 2,
+      "completed_fallback_image_draws": 2,
+      "ordinary_image_only_reconnect": true,
+      "ordinary_video_streams": 0,
+      "maximum_quarter_channel_error": {
+        "browser_avc420": 1,
+        "native_image_fallback": 1,
+        "ordinary_images": 3
+      },
+      "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+      "secure_context": true,
+      "h264_supported": true,
+      "client_bundle": {
+        "packagedBundle": "final-all.min.js",
+        "sha256": "cc131d6dc97fa61a870ed640d559eee3799de1d8a7a3257978788a17471f4718"
+      },
+      "private_report_basename": "e2e-videotoolbox-12frames-color-fixed.json"
+    }
+  },
+  "additional_browser_validation": {
+    "common_js_jasmine": 203,
+    "pending": 0,
+    "real_webcodecs_frames": 24,
+    "node_frontend": 37,
+    "private_report_basenames": [
+      "browser-tests-color-fixed.json",
+      "frontend-tests.log",
+      "frontend-build.log",
+      "color-fixed-sps.jsonl"
+    ]
+  },
+  "assertions": {
+    "pixel_channel_absolute_error_must_be_less_than": 12,
+    "frame_ack_after_ordered_canvas_draw": true,
+    "decoder_failure_causes_fresh_native_image_repaint": true,
+    "image_only_client_receives_no_private_video": true,
+    "single_access_unit_protocol_blob_chunks_are_assembled": true
+  },
+  "limitations": [
+    "Synthetic functional and colour validation only; not a Wi-Fi, real desktop or browser-to-screen latency benchmark.",
+    "WebCodecs support was confirmed, but hardware acceleration selection was not independently measured."
+  ],
+  "cleanup": {
+    "disposable_guacd_removed": true,
+    "synthetic_macrdp_server_stopped": true,
+    "ssh_forwards_removed": true,
+    "production_macrdp_not_restarted_or_installed": true
+  },
+  "native_validation": {
+    "passed_per_configuration": 278,
+    "configurations": [
+      "normal",
+      "diagnostics-enabled",
+      "pthread-TLS-fallback"
+    ],
+    "failed": 0,
+    "network": "disabled",
+    "production_callbacks_and_workers": true
+  },
+  "performance_claim": "Functional validation only; no live latency or throughput improvement is claimed."
+}

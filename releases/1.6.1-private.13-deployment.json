@@ -1,0 +1,118 @@
+{
+  "schema": "guacamole-private13-deployment-v1",
+  "deployment": {
+    "revision": "a7539eb9dd4a6f8c73da9a335c3e854496c55f42",
+    "deployed_at_utc": "2026-10-17 07:21:27 UTC",
+    "images": {
+      "windows11-guac-lab-guacd": "sha256:1b0f514b341e442c0459f69a5ca99b510e9a9728bb7317405a7653a03bc45e79",
+      "windows11-guac-lab-web": "sha256:fe0756a59f04c78bec6527ceafeb7b278e1dc7a7014de82dffc5e014f4c8ada4"
+    },
+    "configuration_preserved": true,
+    "runtime_settings_preserved": true,
+    "languages": 16,
+    "web_url": "http://10.44.0.2:18080/",
+    "guacd_version": "Guacamole proxy daemon (guacd) version 1.6.1"
+  },
+  "verified_local_time": "2026-10-17T09:21:52+02:00",
+  "verification": {
+    "revision": "a7539eb9dd4a6f8c73da9a335c3e854496c55f42",
+    "build": "20261017070332",
+    "assets_verified": 12,
+    "languages": 16,
+    "browser_deadline_timers_budget_resize_and_clipboard_served": true,
+    "containers": {
+      "windows11-guac-lab-guacd": {
+        "image_id": "sha256:1b0f514b341e442c0459f69a5ca99b510e9a9728bb7317405a7653a03bc45e79",
+        "started_at": "2026-10-17T07:21:20.757445203Z",
+        "running": true,
+        "restarts": 0,
+        "oom_killed": false,
+        "health": "healthy",
+        "critical_startup_entries": 0
+      },
+      "windows11-guac-lab-web": {
+        "image_id": "sha256:fe0756a59f04c78bec6527ceafeb7b278e1dc7a7014de82dffc5e014f4c8ada4",
+        "started_at": "2026-10-17T07:21:20.85863455Z",
+        "running": true,
+        "restarts": 0,
+        "oom_killed": false,
+        "health": "not configured",
+        "critical_startup_entries": 0
+      }
+    },
+    "rollback_private_12_verified": true,
+    "fallback_private_3_verified": true,
+    "preflight_containers_removed": true,
+    "pipeline_diagnostics_api_served": true,
+    "diagnostics_disabled": true,
+    "experimental_avc420_player_and_gate_served": true,
+    "experimental_avc420_checkbox_status_and_help_served": true
+  },
+  "served_assets": {
+    "build": "20261017070332",
+    "root_sha256": "388c2261dfac39bb3d1dd15add39ff4357eb8c5a419559a2a68cafcb816d2285",
+    "assets": {
+      "guacamole.32df30316067fbd5.css": {
+        "bytes": 88133,
+        "sha256": "37c234e1cb6bde5ec06be36fe69469701e5c83b85275b6a8c5e480d8e9f67fe2"
+      },
+      "app.css?b=20261017070332": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "Blob.js?b=20261017070332": {
+        "bytes": 9048,
+        "sha256": "28113d138ef9ad40118a3ac184400339cf350b6b1244526270bca1862447d1d7"
+      },
+      "datalist-polyfill.min.js?b=20261017070332": {
+        "bytes": 6988,
+        "sha256": "46c39fae23661444ae4f0fa1dc7b9fba4f55cdec579c59899ff18e0f52f418f6"
+      },
+      "guacamole-common-js/all.min.js?b=20261017070332": {
+        "bytes": 102450,
+        "sha256": "cc131d6dc97fa61a870ed640d559eee3799de1d8a7a3257978788a17471f4718"
+      },
+      "jquery.min.js?b=20261017070332": {
+        "bytes": 86672,
+        "sha256": "a9329a132c34e8859d294fb346f9ef245bf6d1343a86cb3476f5d30f874549b0"
+      },
+      "lodash.min.js?b=20261017070332": {
+        "bytes": 70563,
+        "sha256": "7abc268ba482a68d9a44851fd65c4f2b6dd85ae9f186daa98884a4c3e2d0f23d"
+      },
+      "angular.min.js?b=20261017070332": {
+        "bytes": 175561,
+        "sha256": "6dd696fdefbe4db30625ba086e688ccd1c70b1f6c0fca1aa4d591e94ab3e3902"
+      },
+      "guacamole.6411e6d5f0166a68.js": {
+        "bytes": 1666,
+        "sha256": "f25fd1ce06ea32ef0d116668205f76996bc44bfa8678d519ea1d89be299280ba"
+      },
+      "guacamole.bc95d3615e520b13.js": {
+        "bytes": 596438,
+        "sha256": "fa04b6cfabaefe04088de7fc460dccf583416d871fc50d7656388b1d0ab8ab3d"
+      },
+      "templates.js?b=20261017070332": {
+        "bytes": 88544,
+        "sha256": "8c4b40fd58640440e1058a1390e5d0993051c7f03aba16ba665aa9533da27a2e"
+      },
+      "app.js?b=20261017070332": {
+        "bytes": 657,
+        "sha256": "6542b423dec29c3993e3896d44c6c61e3e5ac2f944f6d0a5e87d2aa098af118b"
+      }
+    }
+  },
+  "rollback": {
+    "guacamole-private/guacd:rollback-1.6.1-private.12-before-private.13": "sha256:5fb6d9f0145a516148a6a75ed5c04a0ccaf94b0e78a86b195c5f661a8527774a",
+    "guacamole-private/web:rollback-1.6.1-private.12-before-private.13": "sha256:53ce3b86abfdd14229a23af410a0ebf12b217065a36250be38288924beba17e2"
+  },
+  "preserved": {
+    "compose_changes_limited_to_two_image_references": true,
+    "configuration_hashes": true,
+    "compose_mode_and_ownership": true,
+    "runtime_environment_users_mounts_ports_network_aliases_restart_policy": true,
+    "no_user_data_or_images_pruned": true
+  },
+  "operational_material": "Configuration backup, container metadata, deployment helpers and raw logs remain outside Git in the private Oberon release state directory.",
+  "source_provenance": "Runtime images were built from the recorded frozen source revision. Subsequent source changes contain stricter synthetic test fixtures, test-harness assertions and delivery documentation only; the exact packaged browser bundle was exercised through the final guacd image and matched to the served bundle hash."
+}
