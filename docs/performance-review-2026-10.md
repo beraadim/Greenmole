@@ -37,6 +37,36 @@ has byte/frame/ACK verification and keeps its existing performance behavior.
 The complete measurements, source hashes and limitations are recorded in
 [the private.16 parser benchmark](../releases/1.6.1-private.16-browser-parser-benchmark.json).
 
+The reusable [parser replay driver](../scripts/benchmark-browser-avc-parser.mjs)
+requires Node.js 22+, Git and installed Chrome/Chromium with native Base64 byte
+APIs. It needs no external Node packages or live server. For example:
+
+```sh
+node scripts/benchmark-browser-avc-parser.mjs \
+  --baseline 1.6.1-private.15 \
+  --candidate db83cdf0680d4aa8b4a7304cf03f27e7d3cb5dc6 \
+  --samples 8 --output /tmp/guacamole-avc-parser-replay.json
+```
+
+Use `--browser` or `CHROME_BIN` to select a browser. The driver creates and closes
+its own temporary browser profile, uses synthetic bytes, bounds samples to
+2–20 and measurement time to 90 seconds, verifies complete byte/frame/ACK results,
+and checks the older-browser path with the native API disabled. Replay numbers
+vary; the original report and its driver hash remain distinct provenance. A
+two-sample replay of the committed driver passes all nine verification rows and
+12 timing rows with the original baseline/candidate module hashes.
+
+## Implemented: standard gateway blob sizing
+
+Compressed video now uses Guacamole's existing bounded 6048-byte blob sender
+instead of private 4096-byte chunks. The envelope and decoded bytes are identical;
+only the arbitrary transport fragment boundaries change. Six public synthetic
+2560×1264 pairs require 40 blob instructions instead of 58 for each encoder,
+including separate frame headers: about 31% fewer browser blob dispatches and
+Base64 calls. Both AVC420 and AVC444 benefit. Native boundary tests parse and
+reassemble the actual emitted wire stream at exact, neighboring and repeated
+6048-byte lengths, then verify frame termination and presentation ACK handling.
+
 The 259 Chrome browser tests pass with no skipped tests, including 12 new native
 and legacy Base64 regressions, real AVC420 playback, and desktop-size AVC444
 native-plane copying and GPU color reconstruction. The 40 frontend tests and

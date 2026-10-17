@@ -1,13 +1,13 @@
 # Experimental AVC444 browser decoding
 
-The private.15 browser/gateway pair supports an explicit AVC444 option alongside
-AVC420 and ordinary images. Use the matching macrdp 0.1.20 build for the browser
+The private.16 browser/gateway pair supports an explicit AVC444 option alongside
+AVC420 and ordinary images. Use the matching macrdp 0.1.21 build for the browser
 transport hint and corrected AVC444 encoder layout. Existing AVC420 preferences
 retain their meaning; this update does not enable experimental video globally.
 
 ## Try it
 
-1. Install macrdp 0.1.20 from the Mac mini Desktop test DMG.
+1. Install macrdp 0.1.21 from the Mac mini Desktop test DMG.
 2. Select **Full color (AVC444)** under Video color detail in macrdp. Use a video
    encoder and Performance, Balanced or High quality. Bitmap fallback and
    Lossless desktop deliberately use images.

@@ -11,19 +11,19 @@ See [AVC444 browser decoding](experimental-avc444.md) for full-color support.
 
 ## Try it
 
-1. Install macrdp 0.1.16 from the Mac mini Desktop DMG.
+1. Install macrdp 0.1.21 from the Mac mini Desktop DMG.
 2. Use Balanced or High quality in macrdp, with hardware encoding when available.
    Lossless desktop deliberately keeps using images: AVC420 is lossy.
 3. Open Guacamole through HTTPS, or a localhost URL. The browser must provide a
    compatible WebCodecs H.264 decoder. Ordinary HTTP on a LAN IP cannot use this
    API and automatically retains images.
-4. In the Guacamole connection menu, open Display and enable **Experimental
-   AVC420 browser decoding**. The preference is saved in that browser.
+4. In the Guacamole connection menu, open Display and select **AVC420** under experimental
+   browser video decoding. The preference is saved in that browser.
 5. Fully disconnect and reconnect. The Display section reports whether video is
    waiting, playing or has fallen back to images. macrdp reports the negotiated
    RDP graphics path separately; that alone does not prove browser decoding.
 
-Turn off the checkbox and reconnect to return to the original image path.
+Select Images and reconnect to return to the original image path.
 A browser fallback stays on images for that RDP connection; reconnecting makes a
 fresh capability decision. No system browser security flags are needed.
 
@@ -71,6 +71,5 @@ ordering barriers prevent an old image worker from overwriting newer video.
 
 AVC420 can soften small colored text. This is an experiment to measure motion
 and large desktop changes, not a promised performance improvement for every
-workload. Compare the same resolution, quality, network and workload with the
-checkbox off and on. Record browser presentation behavior, gateway CPU and both
+workload. Compare the same resolution, quality, network and workload with Images and AVC420 selected. Record browser presentation behavior, gateway CPU and both
 network legs; macrdp throughput alone does not measure laptop performance.

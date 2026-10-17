@@ -1,0 +1,570 @@
+{
+  "schema": "guacamole-private16-validation-v1",
+  "status": "built, tested and deployed",
+  "source_revision": "db83cdf0680d4aa8b4a7304cf03f27e7d3cb5dc6",
+  "verified_at_utc": "2026-10-17T10:20:53.415655+00:00",
+  "images": [
+    {
+      "image": "guacamole-private/guacd:1.6.1-private.16",
+      "image_id": "sha256:9bd0e3b41e63f1c52c891c80da45904354eb2ea01348ab5c018f69f0fae07d7b",
+      "revision": "db83cdf0680d4aa8b4a7304cf03f27e7d3cb5dc6"
+    },
+    {
+      "image": "guacamole-private/web:1.6.1-private.16",
+      "image_id": "sha256:8f4809a4a3fffb09613e9991bdc975861685e49e8beee61885b051b74460e649",
+      "revision": "db83cdf0680d4aa8b4a7304cf03f27e7d3cb5dc6"
+    },
+    {
+      "image": "guacamole-private/native-benchmark:1.6.1-private.16",
+      "image_id": "sha256:ff31af2038a6a4dd0f6283c55e1a1645594f3b9a571a83010031d627c8c3c2d4",
+      "revision": "db83cdf0680d4aa8b4a7304cf03f27e7d3cb5dc6"
+    },
+    {
+      "image": "guacamole-private/native-benchmark:private16-pthread-fallback",
+      "image_id": "sha256:9cc92c84ba30006cb49cdf5286ec80268cc6c59cf3fb06c2ec10db3d2f160734",
+      "revision": "db83cdf0680d4aa8b4a7304cf03f27e7d3cb5dc6"
+    }
+  ],
+  "native": [
+    {
+      "exit_code": 0,
+      "tests": 286,
+      "nonzero_failures": [],
+      "image": "guacamole-private/native-benchmark:1.6.1-private.16",
+      "revision": "db83cdf0680d4aa8b4a7304cf03f27e7d3cb5dc6",
+      "diagnostics": 0
+    },
+    {
+      "exit_code": 0,
+      "tests": 286,
+      "nonzero_failures": [],
+      "image": "guacamole-private/native-benchmark:1.6.1-private.16",
+      "revision": "db83cdf0680d4aa8b4a7304cf03f27e7d3cb5dc6",
+      "diagnostics": 1
+    },
+    {
+      "exit_code": 0,
+      "tests": 286,
+      "nonzero_failures": [],
+      "image": "guacamole-private/native-benchmark:private16-pthread-fallback",
+      "revision": "db83cdf0680d4aa8b4a7304cf03f27e7d3cb5dc6",
+      "diagnostics": 0
+    }
+  ],
+  "native_new_boundary_regression": {
+    "new_source_suite_passed": true,
+    "baseline_fails_only_new_boundary_regression": true,
+    "codecs": [
+      "avc420",
+      "avc444"
+    ],
+    "payload_boundaries_bytes": [
+      6047,
+      6048,
+      6049,
+      12096,
+      12097
+    ],
+    "checks": [
+      "exact header and payload bytes",
+      "bounded blob counts",
+      "full frame before sync",
+      "presentation acknowledgment clears queue"
+    ]
+  },
+  "browser": {
+    "chrome_jasmine_passed": 259,
+    "chrome_skipped": 0,
+    "headless_firefox_passed": 256,
+    "headless_firefox_capability_skipped": 3,
+    "frontend_node_passed": 40,
+    "production_frontend_build": "passed",
+    "docker_maven_java_license_frontend_tests": "passed"
+  },
+  "packaged_common_js_sha256": "f6be587aca8e4c8b65438c302e4ab302df48e54860c6eba961a9fb21d3fd86d6",
+  "synthetic_end_to_end": [
+    {
+      "codec": "avc444",
+      "backend": "videotoolbox",
+      "passed": true,
+      "packaged_common_js_sha256": "f6be587aca8e4c8b65438c302e4ab302df48e54860c6eba961a9fb21d3fd86d6",
+      "active": {
+        "status": "playing",
+        "presentedFrames": 12,
+        "codec": "avc444",
+        "fallbackReason": null
+      },
+      "fallback": {
+        "status": "fallback",
+        "presentedFrames": 12,
+        "codec": "avc444",
+        "fallbackReason": "decoder-error"
+      },
+      "video_quarter_pixels": [
+        [
+          220,
+          15,
+          18,
+          255
+        ],
+        [
+          16,
+          220,
+          15,
+          255
+        ],
+        [
+          17,
+          16,
+          220,
+          255
+        ],
+        [
+          28,
+          28,
+          28,
+          255
+        ]
+      ],
+      "fallback_quarter_pixels": [
+        [
+          219,
+          15,
+          18,
+          255
+        ],
+        [
+          15,
+          220,
+          15,
+          255
+        ],
+        [
+          18,
+          15,
+          220,
+          255
+        ],
+        [
+          28,
+          28,
+          28,
+          255
+        ]
+      ],
+      "fine_color_video_mean_absolute_error": 1.375,
+      "fine_color_fallback_mean_absolute_error": 1.375,
+      "relay": [
+        {
+          "videoRequested": true,
+          "ready": true,
+          "images": 12,
+          "videos": 1,
+          "frameAcks": 12,
+          "failureAcks": 1,
+          "errors": []
+        },
+        {
+          "videoRequested": false,
+          "ready": true,
+          "images": 4,
+          "videos": 0,
+          "frameAcks": 0,
+          "failureAcks": 0,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "codec": "avc444",
+      "backend": "openh264",
+      "passed": true,
+      "packaged_common_js_sha256": "f6be587aca8e4c8b65438c302e4ab302df48e54860c6eba961a9fb21d3fd86d6",
+      "active": {
+        "status": "playing",
+        "presentedFrames": 12,
+        "codec": "avc444",
+        "fallbackReason": null
+      },
+      "fallback": {
+        "status": "fallback",
+        "presentedFrames": 12,
+        "codec": "avc444",
+        "fallbackReason": "decoder-error"
+      },
+      "video_quarter_pixels": [
+        [
+          220,
+          16,
+          16,
+          255
+        ],
+        [
+          16,
+          220,
+          15,
+          255
+        ],
+        [
+          17,
+          16,
+          220,
+          255
+        ],
+        [
+          28,
+          28,
+          28,
+          255
+        ]
+      ],
+      "fallback_quarter_pixels": [
+        [
+          220,
+          16,
+          19,
+          255
+        ],
+        [
+          16,
+          220,
+          15,
+          255
+        ],
+        [
+          16,
+          16,
+          220,
+          255
+        ],
+        [
+          28,
+          28,
+          28,
+          255
+        ]
+      ],
+      "fine_color_video_mean_absolute_error": 0.9583333333333334,
+      "fine_color_fallback_mean_absolute_error": 1.28125,
+      "relay": [
+        {
+          "videoRequested": true,
+          "ready": true,
+          "images": 13,
+          "videos": 1,
+          "frameAcks": 12,
+          "failureAcks": 1,
+          "errors": []
+        },
+        {
+          "videoRequested": false,
+          "ready": true,
+          "images": 4,
+          "videos": 0,
+          "frameAcks": 0,
+          "failureAcks": 0,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "codec": "avc420",
+      "backend": "videotoolbox",
+      "passed": true,
+      "packaged_common_js_sha256": "f6be587aca8e4c8b65438c302e4ab302df48e54860c6eba961a9fb21d3fd86d6",
+      "active": {
+        "status": "playing",
+        "presentedFrames": 12,
+        "codec": "avc420",
+        "fallbackReason": null
+      },
+      "fallback": {
+        "status": "fallback",
+        "presentedFrames": 12,
+        "codec": "avc420",
+        "fallbackReason": null
+      },
+      "video_quarter_pixels": [
+        [
+          220,
+          16,
+          16,
+          255
+        ],
+        [
+          17,
+          220,
+          17,
+          255
+        ],
+        [
+          17,
+          16,
+          220,
+          255
+        ],
+        [
+          28,
+          28,
+          28,
+          255
+        ]
+      ],
+      "fallback_quarter_pixels": [
+        [
+          219,
+          15,
+          16,
+          255
+        ],
+        [
+          17,
+          219,
+          17,
+          255
+        ],
+        [
+          16,
+          16,
+          220,
+          255
+        ],
+        [
+          28,
+          28,
+          28,
+          255
+        ]
+      ],
+      "fine_color_video_mean_absolute_error": null,
+      "fine_color_fallback_mean_absolute_error": null,
+      "relay": [
+        {
+          "videoRequested": true,
+          "ready": true,
+          "images": 14,
+          "videos": 1,
+          "frameAcks": 12,
+          "failureAcks": 1,
+          "errors": []
+        },
+        {
+          "videoRequested": false,
+          "ready": true,
+          "images": 4,
+          "videos": 0,
+          "frameAcks": 0,
+          "failureAcks": 0,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "codec": "avc420",
+      "backend": "openh264",
+      "passed": true,
+      "packaged_common_js_sha256": "f6be587aca8e4c8b65438c302e4ab302df48e54860c6eba961a9fb21d3fd86d6",
+      "active": {
+        "status": "playing",
+        "presentedFrames": 12,
+        "codec": "avc420",
+        "fallbackReason": null
+      },
+      "fallback": {
+        "status": "fallback",
+        "presentedFrames": 12,
+        "codec": "avc420",
+        "fallbackReason": null
+      },
+      "video_quarter_pixels": [
+        [
+          220,
+          16,
+          16,
+          255
+        ],
+        [
+          16,
+          220,
+          15,
+          255
+        ],
+        [
+          18,
+          16,
+          220,
+          255
+        ],
+        [
+          28,
+          28,
+          28,
+          255
+        ]
+      ],
+      "fallback_quarter_pixels": [
+        [
+          220,
+          16,
+          17,
+          255
+        ],
+        [
+          15,
+          220,
+          15,
+          255
+        ],
+        [
+          18,
+          15,
+          220,
+          255
+        ],
+        [
+          28,
+          28,
+          28,
+          255
+        ]
+      ],
+      "fine_color_video_mean_absolute_error": null,
+      "fine_color_fallback_mean_absolute_error": null,
+      "relay": [
+        {
+          "videoRequested": true,
+          "ready": true,
+          "images": 17,
+          "videos": 1,
+          "frameAcks": 12,
+          "failureAcks": 1,
+          "errors": []
+        },
+        {
+          "videoRequested": false,
+          "ready": true,
+          "images": 4,
+          "videos": 0,
+          "frameAcks": 0,
+          "failureAcks": 0,
+          "errors": []
+        }
+      ]
+    }
+  ],
+  "synthetic_fixture_provenance": {
+    "fixture_compiled_for_release": "0.1.20",
+    "fixture_source_revision": "3d7f2a46978f7ce9839740351a92852ecd6bda4a",
+    "macrdp_test_release_revision": "ef58df08a45c3539d2dc9aec5e0e7f4286ae5f6e",
+    "fixture_source_unchanged_in_test_release": true,
+    "fixture_source_git_blob": "a1c47f690a32528ea5d719686cf99e75e317ad97",
+    "desktop_capture": false,
+    "input_injection": false,
+    "transport_fixture_size": [
+      320,
+      180
+    ]
+  },
+  "gateway_fragmentation_counts": [
+    {
+      "backend": "openh264",
+      "fixture_size": [
+        2560,
+        1264
+      ],
+      "frames": 6,
+      "compressed_payload_bytes": [
+        29609,
+        34734,
+        35175,
+        35250,
+        29642,
+        34976
+      ],
+      "baseline_blob_instructions": 58,
+      "candidate_blob_instructions": 40,
+      "blob_instruction_reduction_percent": 31.03
+    },
+    {
+      "backend": "videotoolbox",
+      "fixture_size": [
+        2560,
+        1264
+      ],
+      "frames": 6,
+      "compressed_payload_bytes": [
+        29190,
+        34565,
+        34498,
+        34770,
+        29886,
+        34839
+      ],
+      "baseline_blob_instructions": 58,
+      "candidate_blob_instructions": 40,
+      "blob_instruction_reduction_percent": 31.03
+    }
+  ],
+  "read_only_preflight": {
+    "revision": "db83cdf0680d4aa8b4a7304cf03f27e7d3cb5dc6",
+    "images": [
+      "sha256:9bd0e3b41e63f1c52c891c80da45904354eb2ea01348ab5c018f69f0fae07d7b",
+      "sha256:8f4809a4a3fffb09613e9991bdc975861685e49e8beee61885b051b74460e649"
+    ],
+    "host_mounts_read_only": true,
+    "http_languages": 16,
+    "configuration_readable": true,
+    "web_to_guacd_tcp": true,
+    "rdp_plugin_handshake": true,
+    "deadline_timers_and_receive_pump_served": true,
+    "pipeline_diagnostics_api_served": true,
+    "experimental_avc420_player_and_gate_served": true,
+    "experimental_avc444_selection_status_and_help_served": true,
+    "deployment_changed": false
+  },
+  "production_preparation": {
+    "schema": "guacamole-private16-preparation-v1",
+    "source_revision": "db83cdf0680d4aa8b4a7304cf03f27e7d3cb5dc6",
+    "verified_at_utc": "2026-10-17T10:19:59.934622+00:00",
+    "candidate_images": [
+      "sha256:9bd0e3b41e63f1c52c891c80da45904354eb2ea01348ab5c018f69f0fae07d7b",
+      "sha256:8f4809a4a3fffb09613e9991bdc975861685e49e8beee61885b051b74460e649"
+    ],
+    "production_release": "1.6.1-private.15",
+    "production_images": [
+      "sha256:908b25edd6a850cbfd596948d802a3bcd9b174eb16c0ec8c9dff9b7234afbd7c",
+      "sha256:695ef430465ed0f74dc97be640aefeb84313f55914749f002c1f05d5fa98133d"
+    ],
+    "production_containers_unchanged": true,
+    "production_configuration_unchanged": true,
+    "production_runtime_settings_unchanged": true,
+    "production_running": true,
+    "configuration_backup_prepared": true,
+    "configuration_backup_matches_current": true,
+    "deployment_and_verification_helpers_prepared": true,
+    "isolated_containers_removed": true,
+    "deployment_changed": false
+  },
+  "cleanup": {
+    "owned_synthetic_producers_stopped": true,
+    "owned_gateway_removed": true,
+    "preflight_containers_removed": true,
+    "temporary_ssh_forwards_cancelled": true,
+    "owned_local_ports_released": true
+  },
+  "limits": [
+    "The four transport integration cases use a 320x180 public synthetic desktop; actual 2560x1264 AVC444 streams are covered separately by browser tests.",
+    "Parser stage benchmarks do not measure a whole session or the reported older client.",
+    "Configuration backups, raw logs, container metadata and deployment helpers remain in private Oberon state outside Git."
+  ],
+  "deployment_record": "1.6.1-private.16-deployment.json",
+  "portable_parser_benchmark_replay": {
+    "driver": "scripts/benchmark-browser-avc-parser.mjs",
+    "driver_sha256": "a87c17e5e8d1b7501ed7ae3187483f7ca5af6527b55a8cd17ef8cabe6931ebc2",
+    "samples_per_version_per_size": 2,
+    "byte_frame_ack_verification_rows": 9,
+    "timed_rows": 12,
+    "original_module_hashes_match": true,
+    "method": "A separate bounded replay; original measurement record and its driver hash remain unchanged."
+  }
+}
