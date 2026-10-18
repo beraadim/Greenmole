@@ -64,7 +64,7 @@ docker build -t greenmole/web:dev client/
 For reviewed downstream releases, use the pinned build inputs:
 
 ```sh
-python3 scripts/build-images.py releases/1.6.1-greenmole.7.json --jobs 4
+python3 scripts/build-images.py releases/1.6.1-greenmole.8.json --jobs 4
 ```
 
 The driver builds local images; it does not publish or deploy them. It pins base

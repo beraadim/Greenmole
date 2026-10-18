@@ -6,7 +6,7 @@
     "APP" : {
 
         "NAME"    : "Greenmole",
-        "VERSION" : "${project.version}-greenmole.7",
+        "VERSION" : "${project.version}-greenmole.8",
 
         "ACTION_ACKNOWLEDGE"        : "OK",
         "ACTION_CANCEL"             : "Anuluj",
@@ -60,7 +60,7 @@
     "CLIENT" : {
 
         "ACTION_PAN_DESKTOP" : "Przesuwaj pulpit",
-        "HELP_PAN_DESKTOP" : "Pokaż klawiaturę włącza przesuwanie pulpitu, aby zachować w widoku ostatnie kliknięcie lub położenie wskaźnika. Przeciągaj, aby dostosować widok. Wyłącz przesuwanie, aby obsługiwać komputer zdalny; Ukryj klawiaturę również je wyłącza.",
+        "HELP_PAN_DESKTOP" : "Pokaż klawiaturę włącza przesuwanie pulpitu, aby zachować w widoku ostatnie kliknięcie lub położenie wskaźnika. Przeciągaj, aby dostosować widok. Wyłącz przesuwanie, aby obsługiwać komputer zdalny. Ukrycie lub zamknięcie klawiatury wyłącza je automatycznie.",
 
         "NAME_INPUT_METHOD_NATIVE" : "Klawiatura urządzenia",
         "HELP_INPUT_METHOD_NATIVE" : "Używaj klawiatury urządzenia ze stałym przyciskiem pokaż/ukryj. Po połączeniu dotknij „Pokaż klawiaturę”. Wybór jest zapisywany w tej przeglądarce.",

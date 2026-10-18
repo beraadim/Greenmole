@@ -58,8 +58,10 @@ angular.module('textInput').factory('guacNativeKeyboard', ['$window', function g
 
     service.setFocused = function setFocused(focused) {
         focused = service.enabled && !!focused;
-        if (service.focused !== focused) {
+        if (service.focused !== focused || (!focused && service.panning)) {
             service.focused = focused;
+            if (!focused)
+                service.panning = false;
             notify();
         }
     };

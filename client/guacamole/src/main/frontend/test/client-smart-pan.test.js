@@ -254,8 +254,10 @@ test('actual viewport service publishes a same-geometry Show blur/refocus and re
     assert.equal(f.main.scrollTop, 120);
 
     // Show deliberately blurs/refocuses the mounted editor even if iOS left
-    // it focused after hiding the software keyboard. Geometry is unchanged.
+    // it focused after hiding the software keyboard. It rearms Pan after
+    // blur has ended the previous cycle. Geometry is unchanged.
     native.setFocused(false);
+    native.setPanning(true);
     native.setFocused(true);
     assert.equal(f.main.scrollTop, 324);
     stop();

@@ -32,6 +32,13 @@ function fixture({ visualViewport = true, nativeState = {}, visualState = {} } =
         enabled: false,
         focused: false,
         toolbarHeight: 44,
+        setPanning(panning) {
+            panning = this.enabled && !!panning;
+            if (this.panning !== panning) {
+                this.panning = panning;
+                [...keyboardCallbacks].forEach(callback => callback());
+            }
+        },
         subscribe(callback) {
             keyboardCallbacks.add(callback);
             return () => keyboardCallbacks.delete(callback);
@@ -145,6 +152,132 @@ test('physical input preserves the last visible layout during browser pinch and 
     assert.deepEqual(f.scrolls, []);
     f.visible({ width: 1024, height: 680, pageTop: 70, pageLeft: 0, scale: 1 });
     assert.deepEqual(f.element.style, style);
+    f.scope.$broadcast('$destroy');
+});
+
+test('Show before keyboard opening and small browser chrome changes never dismiss Pan', () => {
+    const f = fixture({ nativeState: { enabled: true, focused: true, panning: true } });
+    f.clock.advance(1000);
+    assert.equal(f.native.panning, true);
+    for (const height of [740, 700, 768]) {
+        f.visible({ height });
+        f.clock.advance(500);
+        assert.equal(f.native.panning, true);
+    }
+    assert.equal(f.clock.timers.size, 0);
+    f.scope.$broadcast('$destroy');
+});
+
+test('observed keyboard dismissal clears Pan after quiet restoration with retained focus and browser chrome tolerance', () => {
+    for (const remainingChrome of [0, 28, 80]) {
+        const f = fixture({ nativeState: { enabled: true, focused: true, panning: true } });
+        f.visible({ height: 400 });
+        f.visible({ height: 768 - remainingChrome });
+        f.clock.advance(149);
+        assert.equal(f.native.panning, true);
+        f.clock.advance(1);
+        assert.equal(f.native.panning, false);
+        assert.equal(f.native.focused, true, 'iPadOS may leave the native editor focused');
+        assert.equal(f.clock.timers.size, 0);
+        f.native.setPanning(true);
+        f.clock.advance(1000);
+        assert.equal(f.native.panning, true, 'manual Pan after the consumed dismissal remains available');
+        f.scope.$broadcast('$destroy');
+    }
+});
+
+test('dismissal waits for viewport animation to settle and publishes coherent state through synchronous subscribers', () => {
+    const f = fixture({ nativeState: { enabled: true, focused: true, panning: true } });
+    const states = [];
+    const stop = f.service.subscribe(state => states.push({ panning: state.panning, actual: f.native.panning }));
+    f.visible({ height: 400 });
+    f.visible({ height: 720 });
+    f.clock.advance(100);
+    f.visible({ height: 740 });
+    f.clock.advance(149);
+    assert.equal(f.native.panning, true);
+    f.clock.advance(1);
+    assert.equal(f.native.panning, false);
+    assert.deepEqual(states.at(-1), { panning: false, actual: false });
+    assert(states.every(state => state.panning === state.actual));
+    f.clock.advance(5000);
+    assert.equal(f.clock.timers.size, 0, 'dismissal must not allocate an idle polling loop');
+    stop();
+    f.scope.$broadcast('$destroy');
+});
+
+test('turning Pan off consumes a pending dismissal so a later manual selection is not overridden', () => {
+    const f = fixture({ nativeState: { enabled: true, focused: true, panning: true } });
+    f.visible({ height: 400 });
+    f.visible({ height: 768 });
+    f.clock.advance(100);
+    f.native.setPanning(false);
+    f.native.setPanning(true);
+    f.clock.advance(500);
+    assert.equal(f.native.panning, true);
+    assert.equal(f.clock.timers.size, 0);
+    f.scope.$broadcast('$destroy');
+});
+
+test('pinch and rotation discard stale keyboard observations instead of falsely dismissing Pan', () => {
+    for (const transition of ['pinch', 'rotation']) {
+        const f = fixture({ nativeState: { enabled: true, focused: true, panning: true } });
+        f.visible({ height: 400 });
+        if (transition === 'pinch') {
+            f.visible({ width: 512, height: 200, scale: 2 });
+            f.visible({ width: 1024, height: 768, scale: 1 });
+        }
+        else {
+            f.window.innerWidth = 1366;
+            f.window.innerHeight = 1024;
+            f.visible({ width: 1366, height: 1024 });
+        }
+        f.clock.advance(1000);
+        assert.equal(f.native.panning, true);
+        assert.equal(f.clock.timers.size, 0);
+        f.scope.$broadcast('$destroy');
+    }
+});
+
+test('destroy cancels a pending native keyboard dismissal without changing detached input state', () => {
+    const f = fixture({ nativeState: { enabled: true, focused: true, panning: true } });
+    f.visible({ height: 400 });
+    f.visible({ height: 768 });
+    assert.equal(f.clock.timers.size, 1);
+    f.scope.$broadcast('$destroy');
+    assert.equal(f.clock.timers.size, 0);
+    f.clock.advance(1000);
+    assert.equal(f.native.panning, true);
+});
+
+test('automatic retained-focus dismissal preserves the actual remote desktop size and manual zoom', () => {
+    const f = fixture({ nativeState: { enabled: true } });
+    const client = directiveFixture({ viewportService: f.service, nativeKeyboard: f.native });
+    client.main.offsetWidth = 1024;
+    Object.defineProperty(client.main, 'offsetHeight', {
+        get: () => Math.round(parseFloat(f.element.style.height) - 44)
+    });
+    client.scope.mainElementResized();
+    client.clock.advance(150);
+    const display = client.displays.at(-1);
+    display.getWidth = () => 1024;
+    display.getHeight = () => 724;
+    client.watches.get('client.managedDisplay.size')();
+    client.scope.client.clientProperties.autoFit = false;
+    client.scope.client.clientProperties.scale = 1.25;
+    client.watches.get('client.clientProperties.scale')(1.25);
+    f.keyboard({ focused: true, panning: true });
+    f.visible({ height: 400 });
+    client.clock.advance(500);
+    f.visible({ height: 768 });
+    f.clock.advance(150);
+    client.clock.advance(500);
+    assert.equal(f.native.panning, false);
+    assert.equal(f.native.focused, true);
+    assert.equal(display.getScale(), 1.25);
+    assert.deepEqual(client.connections, [['first', 1024, 724]]);
+    assert.deepEqual(client.sent, [['first', 'size', 1024, 724]]);
+    client.scope.$broadcast('$destroy');
     f.scope.$broadcast('$destroy');
 });
 

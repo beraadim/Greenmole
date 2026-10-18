@@ -163,6 +163,8 @@ test('Show explicitly reopens after OS keyboard dismissal leaves the editor focu
     assert.equal(fixture.focusCalls, 2);
     assert.deepEqual(fixture.focusGestures, [true, true]);
     assert.equal(fixture.service.focused, true);
+    assert.equal(fixture.service.panning, true);
+    assert.deepEqual(fixture.focusPanning, [true, true]);
 });
 
 test('native text input sends Unicode codepoints once without echoing passwords in a history', () => {
@@ -395,12 +397,12 @@ test('only explicit Show rearms Pan; plain editor focus and in-progress composit
 });
 
 
-test('explicit Hide disables Pan without reopening while ordinary blur preserves its setting', () => {
+test('explicit Hide and ordinary blur both disable Pan without reopening the keyboard', () => {
     const fixture = textInputFixture();
     fixture.show();
     assert.equal(fixture.service.panning, true);
     fixture.target.blur();
-    assert.equal(fixture.service.panning, true);
+    assert.equal(fixture.service.panning, false);
     fixture.target.focus();
     fixture.hide();
     assert.equal(fixture.service.panning, false);

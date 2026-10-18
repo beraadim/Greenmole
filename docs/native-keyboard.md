@@ -9,8 +9,11 @@ the built-in Guacamole keyboard layout.
    keyboard, and use **Hide keyboard** when finished.
 4. **Show keyboard** enables **Pan desktop**. Drag the desktop to bring more of
    the remote screen into view. Turn Pan desktop off to send touch gestures to
-   the remote application while keeping the keyboard open. Hide keyboard also
-   turns panning off.
+   the remote application while keeping the keyboard open. Hiding the keyboard
+   or leaving the native editor turns panning off. When the browser reports the
+   normal viewing area restored after its software keyboard was visible,
+   panning also turns off even if the editor still has focus, as can happen
+   with the iPad keyboard's dismiss button. Show keyboard enables it again.
 
 New iOS browser preferences default to **Native keyboard** and **Touchpad** mouse
 mode, where dragging moves the remote pointer. Detection includes iPhone, iPod

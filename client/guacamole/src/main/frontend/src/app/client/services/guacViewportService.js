@@ -36,6 +36,8 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
     var fullHeight = 0;
     var lastWidth = 0;
     var holdingKeyboard = false;
+    var keyboardOcclusionObserved = false;
+    var panDismissTimer = null;
 
     var requestFrame = $window.requestAnimationFrame
         ? function(callback) { return $window.requestAnimationFrame(callback); }
@@ -48,6 +50,37 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
         if (settleTimer !== null) {
             $window.clearTimeout(settleTimer);
             settleTimer = null;
+        }
+    }
+
+    function cancelPanDismissal() {
+        if (panDismissTimer !== null) {
+            $window.clearTimeout(panDismissTimer);
+            panDismissTimer = null;
+        }
+    }
+
+    /** iPadOS can dismiss its keyboard without blurring the native editor. */
+    function observeKeyboardPan(intent, widthChanged, zoomed, inset) {
+        cancelPanDismissal();
+        if (!intent || !guacNativeKeyboard.panning || widthChanged || zoomed) {
+            keyboardOcclusionObserved = false;
+            return;
+        }
+        // Show focuses the editor before any keyboard inset exists. Only a
+        // keyboard-sized occlusion arms automatic dismissal; browser chrome
+        // changes alone must leave a deliberately selected Pan mode alone.
+        if (inset >= 120)
+            keyboardOcclusionObserved = true;
+        if (keyboardOcclusionObserved && inset <= 80) {
+            panDismissTimer = $window.setTimeout(function() {
+                panDismissTimer = null;
+                // Consume this opening before notifying subscribers. The
+                // resulting synchronous viewport update cannot arm another
+                // dismissal or override a later manual Pan selection.
+                keyboardOcclusionObserved = false;
+                guacNativeKeyboard.setPanning(false);
+            }, 150);
         }
     }
 
@@ -123,6 +156,8 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
             frame = requestFrame(function() { update(false, true); });
         }
         lastWidth = width;
+        var keyboardInset = holdingKeyboard ? Math.max(0, fullHeight - visibleHeight) : 0;
+        observeKeyboardPan(intent, widthChanged, zoomed, keyboardInset);
         publish({
             // Browser chrome can reduce the visible area in every input mode,
             // including None. Using innerHeight there would size the remote
@@ -133,7 +168,7 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
                 : (visual && !zoomed ? (visual.pageLeft || 0) : null),
             top: zoomGeometry ? zoomGeometry.top
                 : (visual && !zoomed ? (visual.pageTop || 0) : null),
-            keyboardInset: holdingKeyboard ? Math.max(0, fullHeight - visibleHeight) : 0,
+            keyboardInset: keyboardInset,
             // The permanent toolbar occupies layout space. The software
             // keyboard only clips that bar-adjusted desktop. Publish focus
             // intent before the keyboard animation has reported an inset.
@@ -149,6 +184,7 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
 
     function schedule() {
         cancelSettle();
+        cancelPanDismissal();
         if (frame === null)
             frame = requestFrame(function() { update(false); });
     }
@@ -181,6 +217,7 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
         unsubscribeKeyboard();
         unsubscribeKeyboard = null;
         cancelSettle();
+        cancelPanDismissal();
         if (frame !== null)
             cancelFrame(frame);
         frame = null;
@@ -188,6 +225,7 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
         fullHeight = 0;
         lastWidth = 0;
         holdingKeyboard = false;
+        keyboardOcclusionObserved = false;
     }
 
     return {

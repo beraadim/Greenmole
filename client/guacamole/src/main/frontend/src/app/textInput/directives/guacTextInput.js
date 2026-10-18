@@ -165,11 +165,11 @@ angular.module('textInput').directive('guacTextInput', [function guacTextInput()
                 // while leaving this editor focused. Never interrupt an IME.
                 if (composingText)
                     return;
-                // Each explicit Show starts with local pan/anchor assistance.
-                // The user can turn it off to interact with the remote desktop.
-                guacNativeKeyboard.setPanning(true);
                 if (hasFocus)
                     target.blur();
+                // Blur ends the previous Pan cycle. Rearm only afterwards,
+                // still synchronously inside the trusted Show gesture.
+                guacNativeKeyboard.setPanning(true);
                 try {
                     target.focus({ preventScroll: true });
                 }
