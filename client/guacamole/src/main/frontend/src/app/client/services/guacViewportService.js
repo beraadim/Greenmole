@@ -60,7 +60,7 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
             subscribers.slice().forEach(function(callback) { callback(next); });
     }
 
-    function update(allowSettledRelease) {
+    function update(allowSettledRelease, allowLayoutRelease) {
         frame = null;
         cancelSettle();
 
@@ -76,14 +76,15 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
         var widthChanged = lastWidth && Math.abs(width - lastWidth) > 1;
 
         // A browser pinch changes the visible rectangle without changing the
-        // available desktop. Leave its geometry and panning entirely alone.
-        if (nativeLayout && zoomed && !widthChanged)
-            return;
+        // available desktop. Keep its last geometry, but still publish native
+        // input controls/toolbar state. An already-pinched first subscription
+        // has no prior geometry, so initialize from the full layout viewport.
+        var zoomGeometry = nativeLayout && zoomed && !widthChanged ? state : null;
 
-        var visibleHeight = nativeLayout && visual && !zoomed && visual.height > 0
-            ? visual.height : height;
-        var visibleWidth = nativeLayout && visual && !zoomed && visual.width > 0
-            ? visual.width : width;
+        var visibleHeight = zoomGeometry ? zoomGeometry.height
+            : (nativeLayout && visual && !zoomed && visual.height > 0 ? visual.height : height);
+        var visibleWidth = zoomGeometry ? zoomGeometry.width
+            : (nativeLayout && visual && !zoomed && visual.width > 0 ? visual.width : width);
 
         if (!holdingKeyboard || widthChanged) {
             // Width changes indicate rotation or multitasking, rather than a
@@ -116,13 +117,31 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
         }
 
         nativeLayout = nativeEnabled || holdingKeyboard;
+        var preserveLayout = nativeLayout;
+        if (!preserveLayout && state && state.preserveLayout && !allowLayoutRelease) {
+            // Disabling native mode removes its Angular toolbar in the next
+            // digest. Keep the baseline until the resulting styles have been
+            // applied, rather than resizing once to the departing toolbar.
+            preserveLayout = true;
+            frame = requestFrame(function() { update(false, true); });
+        }
         lastWidth = width;
         publish({
             width: nativeLayout ? visibleWidth : width,
             height: nativeLayout ? visibleHeight : height,
-            left: nativeLayout && visual && !zoomed ? (visual.pageLeft || 0) : null,
-            top: nativeLayout && visual && !zoomed ? (visual.pageTop || 0) : null,
-            keyboardInset: holdingKeyboard ? Math.max(0, fullHeight - visibleHeight) : 0
+            left: nativeLayout && zoomGeometry ? zoomGeometry.left
+                : (nativeLayout && visual && !zoomed ? (visual.pageLeft || 0) : null),
+            top: nativeLayout && zoomGeometry ? zoomGeometry.top
+                : (nativeLayout && visual && !zoomed ? (visual.pageTop || 0) : null),
+            keyboardInset: holdingKeyboard ? Math.max(0, fullHeight - visibleHeight) : 0,
+            // Native text input and its toolbar reduce only the local view.
+            // Publish intent before keyboard animation has reported an inset.
+            preserveLayout: preserveLayout,
+            keyboardActive: holdingKeyboard,
+            keyboardFocused: intent,
+            layoutWidth: width,
+            panning: nativeEnabled && !!guacNativeKeyboard.panning,
+            toolbarHeight: nativeEnabled ? (guacNativeKeyboard.toolbarHeight || 0) : 0
         });
     }
 
@@ -189,17 +208,19 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
             };
         },
 
-        /** Exclude native keyboard occlusion from remote resize requests. */
+        /** Exclude native input UI and keyboard occlusion from remote size. */
         getRemoteSize: function(width, height, rows, previous) {
             var inset = state ? state.keyboardInset : 0;
+            if (state && state.preserveLayout && previous) {
+                // Reuse both dimensions from before native mode. Its input
+                // bar, Safari's focus scrolling, and asynchronous viewport
+                // events must never change the remote desktop. The client
+                // invalidates this baseline for real layout width/row changes.
+                return { width: previous.width, height: previous.height };
+            }
             return {
                 width: width,
-                // Reuse this client's baseline during occlusion. DOM and
-                // VisualViewport fractional rounding must not cause even a
-                // one-pixel remote resize as the keyboard animates.
-                height: inset && previous && previous.width === width
-                    ? previous.height
-                    : Math.round(height + inset / Math.max(rows || 1, 1))
+                height: Math.round(height + inset / Math.max(rows || 1, 1))
             };
         }
 

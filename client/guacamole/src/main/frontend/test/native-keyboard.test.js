@@ -24,7 +24,7 @@ function keyboardService(navigator = {}) {
         .factories.guacNativeKeyboard({ navigator });
 }
 
-function textInputFixture({ native = true } = {}) {
+function textInputFixture({ native = true, resizeObserver = true } = {}) {
     const service = keyboardService();
     service.setEnabled(native);
     const scope = eventBus();
@@ -41,6 +41,7 @@ function textInputFixture({ native = true } = {}) {
     let focusCalls = 0;
     let insideGesture = false;
     const focusGestures = [];
+    const focusPanning = [];
     const target = {
         value: '', selectionStart: 0,
         addEventListener(name, listener) { listeners.set(name, listener); },
@@ -52,16 +53,48 @@ function textInputFixture({ native = true } = {}) {
         focus(options) {
             focusCalls++;
             focusGestures.push(insideGesture);
+            focusPanning.push(service.panning);
             if (this.onfocus) this.onfocus();
         },
         blur() { if (this.onblur) this.onblur(); }
     };
+    const toolbar = { height: 44, getBoundingClientRect() { return { height: this.height }; } };
+    const observers = new Set();
+    const frames = new Map();
+    const windowListeners = new Map();
+    let nextFrame = 0;
+    const window = {
+        ResizeObserver: class {
+            constructor(callback) { this.callback = callback; observers.add(this); }
+            observe(element) { assert.equal(element, toolbar); }
+            disconnect() { observers.delete(this); }
+        },
+        requestAnimationFrame(callback) { const id = ++nextFrame; frames.set(id, callback); return id; },
+        cancelAnimationFrame(id) { frames.delete(id); },
+        addEventListener(name, callback) { windowListeners.set(name, callback); },
+        removeEventListener(name, callback) {
+            assert.equal(windowListeners.get(name), callback);
+            windowListeners.delete(name);
+        }
+    };
+    if (!resizeObserver)
+        delete window.ResizeObserver;
     const timeouts = [];
     const loaded = sources(['textInput/directives/guacTextInput.js']);
     loaded.directives.guacTextInput.controller.at(-1)(scope, root,
-        { find: () => [target] }, callback => timeouts.push(callback), service);
+        { 0: toolbar, find: () => [target] }, callback => timeouts.push(callback), service, window);
     return {
-        scope, target, service, sent, watches, listeners, timeouts, focusGestures,
+        scope, target, service, sent, watches, listeners, timeouts, focusGestures, focusPanning,
+        toolbar, observers, frames, windowListeners,
+        flushFrames() {
+            const pending = [...frames.values()];
+            frames.clear();
+            pending.forEach(callback => callback());
+        },
+        resizeToolbar(height) {
+            toolbar.height = height;
+            [...observers].forEach(observer => observer.callback());
+        },
         get focusCalls() { return focusCalls; },
         gesture(method) {
             insideGesture = true;
@@ -261,4 +294,122 @@ test('native input method survives the real preference provider browser-local sa
     service.preferences.inputMethod = service.inputMethods.NATIVE;
     service.save();
     assert.equal(load().preferences.inputMethod, 'native');
+});
+
+test('Show enables Pan desktop before focusing, its toggle keeps focus and disable resets it', () => {
+    const fixture = textInputFixture();
+    assert.equal(fixture.service.panning, false);
+    fixture.show();
+    assert.equal(fixture.service.panning, true);
+    assert.deepEqual(fixture.focusPanning, [true]);
+    fixture.gesture('toggleDesktopPan');
+    assert.equal(fixture.service.panning, false);
+    assert.equal(fixture.service.focused, true);
+    assert.equal(fixture.focusCalls, 1);
+    fixture.gesture('toggleDesktopPan');
+    assert.equal(fixture.service.panning, true);
+    fixture.service.setEnabled(false);
+    assert.equal(fixture.service.panning, false);
+    fixture.service.setPanning(true);
+    assert.equal(fixture.service.panning, false);
+});
+
+test('native overlay reports actual observed height and cleans up measurements on destruction', () => {
+    const fixture = textInputFixture();
+    fixture.watches.get('nativeKeyboard')(true);
+    assert.equal(fixture.frames.size, 1);
+    fixture.flushFrames();
+    assert.equal(fixture.service.toolbarHeight, 44);
+    fixture.resizeToolbar(96.25);
+    assert.equal(fixture.service.toolbarHeight, 97);
+    fixture.windowListeners.get('resize')();
+    assert.equal(fixture.frames.size, 1);
+    fixture.service.setPanning(true);
+    const staleObserver = [...fixture.observers][0];
+    fixture.scope.$broadcast('$destroy');
+    assert.equal(fixture.service.toolbarHeight, 0);
+    assert.equal(fixture.service.panning, false);
+    assert.equal(fixture.frames.size, 0);
+    assert.equal(fixture.observers.size, 0);
+    assert.equal(fixture.windowListeners.size, 0);
+    staleObserver.callback();
+    assert.equal(fixture.service.toolbarHeight, 0);
+});
+
+test('legacy input never reserves native overlay clearance and invalid heights are ignored', () => {
+    const fixture = textInputFixture({ native: false });
+    fixture.resizeToolbar(100);
+    assert.equal(fixture.service.toolbarHeight, 0);
+    fixture.service.setEnabled(true);
+    for (const height of [NaN, Infinity, -5, '40']) {
+        fixture.service.setToolbarHeight(height);
+        assert.equal(fixture.service.toolbarHeight, 0);
+    }
+    fixture.service.setToolbarHeight(44.5);
+    assert.equal(fixture.service.toolbarHeight, 45);
+    fixture.service.setEnabled(false);
+    assert.equal(fixture.service.toolbarHeight, 0);
+});
+
+
+test('native overlay measurement falls back to resize events without idle polling', () => {
+    const fixture = textInputFixture({ resizeObserver: false });
+    fixture.watches.get('nativeKeyboard')(true);
+    fixture.flushFrames();
+    assert.equal(fixture.service.toolbarHeight, 44);
+    assert.equal(fixture.frames.size, 0);
+    fixture.toolbar.height = 96;
+    fixture.windowListeners.get('resize')();
+    fixture.windowListeners.get('resize')();
+    assert.equal(fixture.frames.size, 1);
+    fixture.flushFrames();
+    assert.equal(fixture.service.toolbarHeight, 96);
+    assert.equal(fixture.frames.size, 0);
+    assert.equal(fixture.timeouts.length, 0);
+    fixture.scope.$broadcast('$destroy');
+    assert.equal(fixture.windowListeners.size, 0);
+});
+
+
+test('only explicit Show rearms Pan; plain editor focus and in-progress composition preserve opt-out', () => {
+    const fixture = textInputFixture();
+    fixture.show();
+    fixture.gesture('toggleDesktopPan');
+    assert.equal(fixture.service.panning, false);
+    fixture.target.blur();
+    fixture.target.focus();
+    fixture.text('a');
+    assert.equal(fixture.service.panning, false);
+    assert.equal(fixture.focusCalls, 2);
+    fixture.event('compositionstart');
+    fixture.text('日');
+    fixture.show();
+    assert.equal(fixture.service.panning, false);
+    assert.equal(fixture.focusCalls, 2);
+    fixture.event('compositionend');
+    fixture.show();
+    assert.equal(fixture.service.panning, true);
+    assert.equal(fixture.focusCalls, 3);
+    assert.deepEqual(fixture.focusPanning, [true, false, true]);
+    assert.deepEqual(fixture.focusGestures, [true, false, true]);
+});
+
+
+test('explicit Hide disables Pan without reopening while ordinary blur preserves its setting', () => {
+    const fixture = textInputFixture();
+    fixture.show();
+    assert.equal(fixture.service.panning, true);
+    fixture.target.blur();
+    assert.equal(fixture.service.panning, true);
+    fixture.target.focus();
+    fixture.hide();
+    assert.equal(fixture.service.panning, false);
+    assert.equal(fixture.service.focused, false);
+    assert.equal(fixture.focusCalls, 2);
+    fixture.watches.get('nativeKeyboard')(true);
+    fixture.flushFrames();
+    assert.equal(fixture.focusCalls, 2);
+    fixture.show();
+    assert.equal(fixture.service.panning, true);
+    assert.equal(fixture.focusCalls, 3);
 });

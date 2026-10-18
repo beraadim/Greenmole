@@ -1,4 +1,6 @@
 /*
+ * Modified for Greenmole by its maintainers.
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -134,4 +136,14 @@ body.client {
 
 .client .drop-pending .display > *{
     opacity: 0.5;
+}
+
+/* Native controls cover the local desktop rather than changing its measured
+   viewport. This also preserves full resolution on a fresh native-mode page. */
+.client-view .client-bottom.native-keyboard-overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
 }

@@ -182,7 +182,27 @@
 /* Split View leaves little width: retain labelled 44px controls without
    squeezing the real textarea out of the available touch area. */
 @media (max-width: 600px) {
+    .text-input.native-keyboard {
+        flex-wrap: wrap;
+    }
+
     .text-input.native-keyboard .native-keyboard-label {
         display: none;
     }
+
+    .text-input.native-keyboard .text-input-buttons {
+        order: 1;
+        margin-left: auto;
+    }
+
+    .text-input.native-keyboard .text-input-field {
+        order: 2;
+        flex: 1 0 100%;
+    }
+}
+
+.text-input.native-keyboard .native-keyboard-pan[aria-pressed="true"] {
+    color: #182218;
+    background: #9fd378;
+    border-color: #c3e5a8;
 }

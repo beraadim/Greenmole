@@ -25,7 +25,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const { sources, eventBus, fakeClock, directiveFixture } = require('./helpers/client-fixtures');
 
-function fixture({ visualViewport = true } = {}) {
+function fixture({ visualViewport = true, nativeState = {}, visualState = {} } = {}) {
     const clock = fakeClock();
     const keyboardCallbacks = new Set();
     const native = {
@@ -34,7 +34,8 @@ function fixture({ visualViewport = true } = {}) {
         subscribe(callback) {
             keyboardCallbacks.add(callback);
             return () => keyboardCallbacks.delete(callback);
-        }
+        },
+        ...nativeState
     };
     const window = Object.assign(clock.window, {
         innerWidth: 1024, innerHeight: 768,
@@ -45,7 +46,8 @@ function fixture({ visualViewport = true } = {}) {
     const visualClock = fakeClock();
     if (visualViewport)
         window.visualViewport = Object.assign(visualClock.window, {
-            width: 1024, height: 768, pageLeft: 0, pageTop: 0, scale: 1
+            width: 1024, height: 768, pageLeft: 0, pageTop: 0, scale: 1,
+            ...visualState
         });
     const loaded = sources(['client/services/guacViewportService.js',
         'client/directives/guacViewport.js']);
@@ -94,7 +96,7 @@ test('viewport initializes synchronously and uses events without idle polling', 
     assert.equal(f.keyboardCallbacks.size, 1);
 });
 
-test('native keyboard fits locally while remote height remains stable through blur and dismissal', () => {
+test('native keyboard limits the visible area while remote height remains stable through blur and dismissal', () => {
     const f = fixture();
     f.keyboard({ enabled: true, focused: true });
     for (const height of [700, 600, 420]) {
@@ -130,6 +132,7 @@ test('disabling native mode holds the inset until the keyboard finishes closing'
     assert.equal(f.element.style.left, '');
     assert.equal(f.element.style.top, '');
     assert.equal(f.element.style.right, '');
+    f.clock.advance(16);
     assert.equal(f.clock.timers.size, 0);
 });
 
@@ -188,6 +191,56 @@ test('browser pinch zoom and pan do not resize or reposition the desktop', () =>
     assert.deepEqual(f.scrolls, []);
     f.visible({ width: 1024, height: 400, pageLeft: 0, pageTop: 10, scale: 1 });
     assert.deepEqual(f.element.style, style);
+});
+
+test('already-pinched native mode initializes its layout and publishes toolbar and Pan changes without resizing', () => {
+    const f = fixture({ nativeState: { enabled: true, focused: true, toolbarHeight: 48 },
+        visualState: { width: 512, height: 384, scale: 2, pageLeft: 100, pageTop: 50 } });
+    assert.equal(f.element.style.width, '1024px');
+    assert.equal(f.element.style.height, '768px');
+    const style = { ...f.element.style };
+    const client = directiveFixture({ viewportService: f.service });
+    client.main.offsetWidth = 1024;
+    client.main.offsetHeight = 768;
+    client.scope.mainElementResized();
+    client.clock.advance(150);
+    client.displays.at(-1).getWidth = () => 1024;
+    client.displays.at(-1).getHeight = () => 768;
+    client.watches.get('client.managedDisplay.size')();
+    assert.equal(client.container.style.paddingBottom, '48px');
+    const states = [];
+    const stop = f.service.subscribe(state => states.push({ ...state }));
+
+    f.keyboard({ panning: true, toolbarHeight: 96 });
+    assert.equal(states.at(-1).panning, true);
+    assert.equal(client.container.style.paddingBottom, '96px');
+    f.visible({ width: 400, height: 300, pageLeft: 200, pageTop: 100 });
+    client.clock.advance(500);
+    assert.deepEqual(f.element.style, style);
+    assert.deepEqual(client.sent, [['first', 'size', 1024, 768]]);
+    assert.deepEqual(client.connections, [['first', 1024, 768]]);
+    stop();
+    client.scope.$broadcast('$destroy');
+    f.scope.$broadcast('$destroy');
+    assert.equal(f.clock.timers.size, 0);
+});
+
+test('native controls still publish while a pinched keyboard view retains its last unzoomed geometry', () => {
+    const f = fixture();
+    f.keyboard({ enabled: true, focused: true, toolbarHeight: 48 });
+    f.visible({ height: 400, pageTop: 10 });
+    const style = { ...f.element.style };
+    f.visible({ width: 512, height: 200, scale: 2, pageLeft: 50, pageTop: 80 });
+    const states = [];
+    const stop = f.service.subscribe(state => states.push({ ...state }));
+    f.keyboard({ panning: true, toolbarHeight: 96 });
+    assert.equal(states.at(-1).panning, true);
+    assert.equal(states.at(-1).toolbarHeight, 96);
+    assert.equal(states.at(-1).keyboardInset, 368);
+    assert.deepEqual(f.element.style, style);
+    assert.deepEqual({ ...f.service.getRemoteSize(1024, 400) }, { width: 1024, height: 768 });
+    stop();
+    f.scope.$broadcast('$destroy');
 });
 
 test('browsers without VisualViewport preserve resolution when innerHeight shrinks for the keyboard', () => {
@@ -251,6 +304,220 @@ test('actual client directive does not request remote resizes during native keyb
     f.scope.$broadcast('$destroy');
 });
 
+test('native keyboard preserves auto-fit scale and enables scrolling instead of shrinking the desktop', () => {
+    const f = fixture();
+    f.keyboard({ enabled: true });
+    const client = directiveFixture({ viewportService: f.service });
+    const display = client.displays.at(-1);
+    display.getWidth = () => 1024;
+    display.getHeight = () => 724;
+    client.scope.client.clientProperties.autoFit = true;
+    client.main.offsetWidth = 1024;
+    client.main.offsetHeight = 724;
+    client.scope.mainElementResized();
+    client.watches.get('client.clientProperties.scale')(client.scope.client.clientProperties.scale);
+    client.clock.advance(150);
+    assert.equal(display.getScale(), 1);
+    assert.equal(client.main.style.overflow, 'auto');
+
+    f.keyboard({ focused: true });
+    assert.equal(client.main.style.overflow, 'auto');
+    for (const height of [600, 400]) {
+        f.visible({ height });
+        client.main.offsetHeight = height - 44;
+        client.scope.mainElementResized();
+        client.watches.get('client.clientProperties.scale')(client.scope.client.clientProperties.scale);
+        client.clock.advance(200);
+        assert.equal(client.scope.client.clientProperties.minScale, 1);
+        assert.equal(display.getScale(), 1);
+        assert.equal(client.main.style.overflow, 'auto');
+    }
+    f.keyboard({ focused: false });
+    assert.equal(client.main.style.overflow, 'auto',
+        'the desktop remains scrollable throughout keyboard dismissal');
+    f.visible({ height: 768 });
+    client.main.offsetHeight = 724;
+    client.scope.mainElementResized();
+    client.watches.get('client.clientProperties.scale')(client.scope.client.clientProperties.scale);
+    client.clock.advance(500);
+    assert.equal(display.getScale(), 1);
+    assert.equal(client.main.style.overflow, 'auto');
+    assert.deepEqual(client.sent, [['first', 'size', 1024, 724]]);
+    client.scope.$broadcast('$destroy');
+    f.scope.$broadcast('$destroy');
+});
+
+test('focus freezes remote geometry before the keyboard inset or visual viewport has caught up', () => {
+    const f = fixture();
+    f.keyboard({ enabled: true });
+    const client = directiveFixture({ viewportService: f.service });
+    client.main.offsetWidth = 1024;
+    client.main.offsetHeight = 724;
+    client.scope.mainElementResized();
+    client.clock.advance(150);
+    client.displays.at(-1).getWidth = () => 1024;
+    client.displays.at(-1).getHeight = () => 724;
+    client.watches.get('client.managedDisplay.size')();
+    f.keyboard({ focused: true });
+    // Safari can resize the layout before reporting the first keyboard inset.
+    client.main.offsetHeight = 600;
+    client.scope.mainElementResized();
+    client.clock.advance(500);
+    // Its visible width can also briefly differ from the layout width. This
+    // is not a rotation or a request to change the remote desktop resolution.
+    f.visible({ width: 1000, height: 400 });
+    client.main.offsetWidth = 1000;
+    client.main.offsetHeight = 356;
+    client.scope.mainElementResized();
+    client.clock.advance(500);
+    assert.deepEqual(client.sent, [['first', 'size', 1024, 724]]);
+    client.scope.$broadcast('$destroy');
+    f.scope.$broadcast('$destroy');
+});
+
+test('native mode activation, toolbar measurement, keyboard opening and closing keep the original remote layout and manual zoom', () => {
+    const f = fixture();
+    const client = directiveFixture({ viewportService: f.service });
+    const display = client.displays.at(-1);
+    display.getWidth = () => 1024;
+    display.getHeight = () => 768;
+    client.main.offsetWidth = 1024;
+    client.main.offsetHeight = 768;
+    client.scope.mainElementResized();
+    client.scope.client.clientProperties.autoFit = false;
+    client.scope.client.clientProperties.scale = 1.75;
+    client.watches.get('client.clientProperties.scale')(1.75);
+    client.clock.advance(150);
+    client.watches.get('client.managedDisplay.size')();
+
+    f.keyboard({ enabled: true });
+    f.keyboard({ toolbarHeight: 48 });
+    assert.equal(client.container.style.paddingBottom, '48px');
+    client.clock.advance(500);
+    f.keyboard({ focused: true });
+    for (const height of [600.25, 400.75]) {
+        f.visible({ height });
+        client.main.offsetHeight = Math.round(height);
+        client.scope.mainElementResized();
+        client.watches.get('client.clientProperties.scale')(client.scope.client.clientProperties.scale);
+        client.clock.advance(500);
+        assert.equal(display.getScale(), 1.75);
+        assert.equal(client.scope.client.clientProperties.minScale, 1);
+    }
+    f.keyboard({ focused: false });
+    f.visible({ height: 740 });
+    client.main.offsetHeight = 740;
+    f.clock.advance(500);
+    client.clock.advance(500);
+    assert.equal(display.getScale(), 1.75);
+    assert.deepEqual(client.sent, [['first', 'size', 1024, 768]]);
+    client.scope.$broadcast('$destroy');
+    f.scope.$broadcast('$destroy');
+});
+
+test('a new connection with remembered native mode uses the full desktop and actual overlay clearance', () => {
+    const f = fixture();
+    f.keyboard({ enabled: true, focused: true, toolbarHeight: 96 });
+    f.visible({ height: 400 });
+    const client = directiveFixture({ viewportService: f.service });
+    client.main.offsetWidth = 1024;
+    client.main.offsetHeight = 400;
+    client.scope.mainElementResized();
+    client.clock.advance(150);
+    assert.deepEqual(client.connections, [['first', 1024, 768]]);
+    assert.deepEqual(client.sent, [['first', 'size', 1024, 768]]);
+    assert.equal(client.container.style.paddingBottom, '96px');
+    f.keyboard({ toolbarHeight: 48 });
+    assert.equal(client.container.style.paddingBottom, '48px');
+    client.clock.advance(500);
+    assert.deepEqual(client.connections, [['first', 1024, 768]]);
+    client.scope.$broadcast('$destroy');
+    f.scope.$broadcast('$destroy');
+});
+
+test('native mode removal waits for the departing input UI to leave the DOM before releasing layout', () => {
+    const f = fixture();
+    const client = directiveFixture({ viewportService: f.service });
+    client.main.offsetWidth = 1024;
+    client.main.offsetHeight = 768;
+    client.scope.mainElementResized();
+    client.clock.advance(150);
+    client.displays.at(-1).getWidth = () => 1024;
+    client.displays.at(-1).getHeight = () => 768;
+    client.watches.get('client.managedDisplay.size')();
+    f.keyboard({ enabled: true });
+    // Protect against an intermediate layout during Angular mode teardown.
+    client.main.offsetHeight = 720;
+    f.keyboard({ enabled: false });
+    client.clock.advance(500);
+    assert.deepEqual(client.sent, [['first', 'size', 1024, 768]]);
+    client.main.offsetHeight = 768;
+    f.clock.advance(16);
+    client.clock.advance(500);
+    assert.deepEqual(client.sent, [['first', 'size', 1024, 768]]);
+    client.scope.$broadcast('$destroy');
+    f.scope.$broadcast('$destroy');
+});
+
+test('a genuine layout width change rebases an actual native client while keyboard viewport changes do not', () => {
+    const f = fixture();
+    f.keyboard({ enabled: true });
+    const client = directiveFixture({ viewportService: f.service });
+    client.main.offsetWidth = 1024;
+    client.main.offsetHeight = 768;
+    client.scope.mainElementResized();
+    client.clock.advance(150);
+    client.displays.at(-1).getWidth = () => 1024;
+    client.displays.at(-1).getHeight = () => 768;
+    client.watches.get('client.managedDisplay.size')();
+    f.keyboard({ focused: true });
+    f.visible({ height: 400 });
+    client.main.offsetHeight = 400;
+    client.scope.mainElementResized();
+    client.clock.advance(500);
+    assert.deepEqual(client.sent, [['first', 'size', 1024, 768]]);
+
+    f.window.innerWidth = 1366;
+    f.window.innerHeight = 1024;
+    client.main.offsetWidth = 1366;
+    client.main.offsetHeight = 600;
+    f.visible({ width: 1366, height: 600 });
+    client.clock.advance(500);
+    assert.deepEqual(client.sent, [['first', 'size', 1024, 768],
+        ['first', 'size', 1366, 1024]]);
+    client.scope.$broadcast('$destroy');
+    f.scope.$broadcast('$destroy');
+});
+
+test('changing tile columns rebases native desktop width without treating keyboard animation as a layout change', () => {
+    const f = fixture();
+    f.keyboard({ enabled: true });
+    const client = directiveFixture({ viewportService: f.service });
+    const row = { children: [{}] };
+    const grid = { children: [row] };
+    client.main.closest = selector => selector === '.tiled-client-grid' ? grid : row;
+    client.main.offsetWidth = 1024;
+    client.main.offsetHeight = 768;
+    client.scope.mainElementResized();
+    client.clock.advance(150);
+    client.displays.at(-1).getWidth = () => 1024;
+    client.displays.at(-1).getHeight = () => 768;
+    client.watches.get('client.managedDisplay.size')();
+    f.keyboard({ focused: true });
+    f.visible({ height: 400 });
+    client.main.offsetHeight = 400;
+    client.scope.mainElementResized();
+    client.clock.advance(500);
+    row.children.push({});
+    client.main.offsetWidth = 512;
+    client.scope.mainElementResized();
+    client.clock.advance(150);
+    assert.deepEqual(client.sent, [['first', 'size', 1024, 768],
+        ['first', 'size', 512, 768]]);
+    client.scope.$broadcast('$destroy');
+    f.scope.$broadcast('$destroy');
+});
+
 test('fractional keyboard heights never resize an actual client in a multi-row grid', () => {
     const f = fixture();
     f.keyboard({ enabled: true });
@@ -284,7 +551,7 @@ test('fractional keyboard heights never resize an actual client in a multi-row g
     assert.equal(f.clock.timers.size, 0);
 });
 
-test('a settled inset change reaches the actual client even when DOM dimensions do not change', () => {
+test('a settled Safari chrome change after dismissal preserves the remote layout in native mode', () => {
     const f = fixture();
     f.keyboard({ enabled: true });
     const client = directiveFixture({ viewportService: f.service });
@@ -305,10 +572,7 @@ test('a settled inset change reaches the actual client even when DOM dimensions 
     assert.deepEqual(client.sent, [['first', 'size', 1024, 724]]);
     f.clock.advance(250);
     client.clock.advance(150);
-    assert.deepEqual(client.sent, [
-        ['first', 'size', 1024, 724],
-        ['first', 'size', 1024, 696]
-    ]);
+    assert.deepEqual(client.sent, [['first', 'size', 1024, 724]]);
     client.scope.$broadcast('$destroy');
     f.scope.$broadcast('$destroy');
     assert.equal(f.clock.timers.size, 0);

@@ -32,8 +32,8 @@ angular.module('textInput').directive('guacTextInput', [function guacTextInput()
         },
 
         templateUrl: 'app/textInput/templates/guacTextInput.html',
-        controller: ['$scope', '$rootScope', '$element', '$timeout', 'guacNativeKeyboard',
-            function guacTextInput($scope, $rootScope, $element, $timeout, guacNativeKeyboard) {
+        controller: ['$scope', '$rootScope', '$element', '$timeout', 'guacNativeKeyboard', '$window',
+            function guacTextInput($scope, $rootScope, $element, $timeout, guacNativeKeyboard, $window) {
 
             /**
              * The number of characters to include on either side of text input
@@ -165,6 +165,9 @@ angular.module('textInput').directive('guacTextInput', [function guacTextInput()
                 // while leaving this editor focused. Never interrupt an IME.
                 if (composingText)
                     return;
+                // Each explicit Show starts with local pan/anchor assistance.
+                // The user can turn it off to interact with the remote desktop.
+                guacNativeKeyboard.setPanning(true);
                 if (hasFocus)
                     target.blur();
                 try {
@@ -178,13 +181,59 @@ angular.module('textInput').directive('guacTextInput', [function guacTextInput()
             $scope.hideNativeKeyboard = function hideNativeKeyboard(event) {
                 event.preventDefault();
                 target.blur();
+                guacNativeKeyboard.setPanning(false);
             };
 
+            $scope.nativeKeyboardState = guacNativeKeyboard;
+
+            $scope.toggleDesktopPan = function toggleDesktopPan(event) {
+                event.preventDefault();
+                guacNativeKeyboard.setPanning(!guacNativeKeyboard.panning);
+            };
+
+            var toolbar = $element[0];
+            var toolbarFrame = null;
+            var toolbarObserver = null;
+            var toolbarAlive = true;
+
+            var measureToolbar = function measureToolbar() {
+                if (!toolbarAlive)
+                    return;
+                var height = $scope.nativeKeyboard && toolbar
+                    ? toolbar.getBoundingClientRect().height : 0;
+                guacNativeKeyboard.setToolbarHeight(height);
+            };
+
+            var scheduleToolbarMeasurement = function scheduleToolbarMeasurement() {
+                if (toolbarFrame === null) {
+                    if ($window.requestAnimationFrame)
+                        toolbarFrame = $window.requestAnimationFrame(function() {
+                            toolbarFrame = null;
+                            measureToolbar();
+                        });
+                    else
+                        measureToolbar();
+                }
+            };
+
+            // Actual overlay height includes wrapping, safe-area padding and
+            // user font scaling. It affects only local scrolling clearance.
+            if ($window.ResizeObserver) {
+                toolbarObserver = new $window.ResizeObserver(measureToolbar);
+                toolbarObserver.observe(toolbar);
+            }
+            $window.addEventListener('resize', scheduleToolbarMeasurement);
+
             $scope.$watch('nativeKeyboard', function nativeKeyboardChanged(enabled) {
-                if (!enabled)
+                if (!enabled) {
                     guacNativeKeyboard.setFocused(false);
-                else
+                    guacNativeKeyboard.setToolbarHeight(0);
+                    guacNativeKeyboard.setPanning(false);
+                }
+                else {
                     guacNativeKeyboard.setFocused(hasFocus);
+                    scheduleToolbarMeasurement();
+                }
             });
 
             /**
@@ -413,8 +462,17 @@ angular.module('textInput').directive('guacTextInput', [function guacTextInput()
             });
 
             $scope.$on('$destroy', function destroyTextInput() {
-                if ($scope.nativeKeyboard)
+                toolbarAlive = false;
+                if (toolbarObserver)
+                    toolbarObserver.disconnect();
+                $window.removeEventListener('resize', scheduleToolbarMeasurement);
+                if (toolbarFrame !== null && $window.cancelAnimationFrame)
+                    $window.cancelAnimationFrame(toolbarFrame);
+                if ($scope.nativeKeyboard) {
                     guacNativeKeyboard.setFocused(false);
+                    guacNativeKeyboard.setPanning(false);
+                    guacNativeKeyboard.setToolbarHeight(0);
+                }
                 target.onfocus = target.onblur = null;
                 target.removeEventListener('input', handleTextInput, false);
                 target.removeEventListener('compositionstart', targetComposeStart, false);

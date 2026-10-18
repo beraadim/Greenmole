@@ -32,7 +32,9 @@ angular.module('textInput').factory('guacNativeKeyboard', ['$window', function g
         isIPad: /iPad/i.test(navigator.userAgent || '')
             || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1),
         enabled: false,
-        focused: false
+        focused: false,
+        panning: false,
+        toolbarHeight: 0
     };
 
     var notify = function notify() {
@@ -45,8 +47,11 @@ angular.module('textInput').factory('guacNativeKeyboard', ['$window', function g
         enabled = !!enabled;
         if (service.enabled !== enabled) {
             service.enabled = enabled;
-            if (!enabled)
+            if (!enabled) {
                 service.focused = false;
+                service.panning = false;
+                service.toolbarHeight = 0;
+            }
             notify();
         }
     };
@@ -55,6 +60,25 @@ angular.module('textInput').factory('guacNativeKeyboard', ['$window', function g
         focused = service.enabled && !!focused;
         if (service.focused !== focused) {
             service.focused = focused;
+            notify();
+        }
+    };
+
+    /** Pan mode belongs to this session and always starts disabled. */
+    service.setPanning = function setPanning(panning) {
+        panning = service.enabled && !!panning;
+        if (service.panning !== panning) {
+            service.panning = panning;
+            notify();
+        }
+    };
+
+    /** Actual overlay height; never subtract this from the remote desktop. */
+    service.setToolbarHeight = function setToolbarHeight(height) {
+        height = service.enabled && typeof height === 'number' && isFinite(height)
+            ? Math.max(0, Math.ceil(height)) : 0;
+        if (service.toolbarHeight !== height) {
+            service.toolbarHeight = height;
             notify();
         }
     };

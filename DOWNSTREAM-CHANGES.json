@@ -24,6 +24,7 @@
         "client/guacamole/src/main/frontend/src/app/client/directives/guacClient.js",
         "client/guacamole/src/main/frontend/src/app/client/directives/guacViewport.js",
         "client/guacamole/src/main/frontend/src/app/client/services/guacVideo.js",
+        "client/guacamole/src/main/frontend/src/app/client/styles/client.css",
         "client/guacamole/src/main/frontend/src/app/client/templates/client.html",
         "client/guacamole/src/main/frontend/src/app/client/templates/guacClient.html",
         "client/guacamole/src/main/frontend/src/app/client/types/ClientProperties.js",

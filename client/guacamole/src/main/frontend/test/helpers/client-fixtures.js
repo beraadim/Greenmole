@@ -82,6 +82,7 @@ class InputDevice {
 
 function directiveFixture({ blocked = false, root = eventBus(), clipboardService,
         clock = fakeClock(), state = 'CONNECTED', protocol = 'rdp', density = 1, evalAsync,
+        nativeKeyboard = { enabled: false, panning: false },
         viewportService = { getRemoteSize: (width, height) => ({ width, height }),
             subscribe: () => () => {} } } = {}) {
     const scope = eventBus();
@@ -122,11 +123,21 @@ function directiveFixture({ blocked = false, root = eventBus(), clipboardService
     const touchscreen = new InputDevice();
     const touchpad = new InputDevice();
     const touch = new InputDevice();
-    const main = { addEventListener() {}, style: {}, offsetWidth: 0, offsetHeight: 0,
-        scrollLeft: 0, scrollTop: 0 };
-    const container = { appendChild() {}, offsetLeft: 0, offsetTop: 0 };
+    const mainEvents = new Map();
+    const main = {
+        addEventListener(name, callback, options) {
+            if (!mainEvents.has(name)) mainEvents.set(name, new Map());
+            mainEvents.get(name).set(callback, options);
+        },
+        removeEventListener(name, callback) { mainEvents.get(name)?.delete(callback); },
+        style: {}, offsetWidth: 0, offsetHeight: 0,
+        clientWidth: 0, clientHeight: 0, scrollWidth: 0, scrollHeight: 0,
+        scrollLeft: 0, scrollTop: 0
+    };
+    const container = { appendChild() {}, offsetLeft: 0, offsetTop: 0, style: {} };
     const element = { 0: main, find: () => [container] };
-    const loaded = sources(['client/types/ClientInputQueue.js', 'client/types/ClientResizeQueue.js',
+    const loaded = sources(['client/types/ClientInputQueue.js', 'client/types/ClientLocalPan.js',
+        'client/types/ClientSmartPan.js', 'client/types/ClientResizeQueue.js',
         'client/types/ManagedClientState.js', 'client/directives/guacClient.js'], {
         document: { body: { focus() {} } },
         Guacamole: {
@@ -143,10 +154,13 @@ function directiveFixture({ blocked = false, root = eventBus(), clipboardService
             setClipboard: (target, data) => sent.push([target.id, 'clipboard', data.data]) },
         ManagedClientState: loaded.factories.ManagedClientState(),
         ClientInputQueue: loaded.factories.ClientInputQueue(),
+        ClientLocalPan: loaded.factories.ClientLocalPan(),
+        ClientSmartPan: loaded.factories.ClientSmartPan(),
         ClientResizeQueue: loaded.factories.ClientResizeQueue(clock.window),
         $rootScope: root, $window: Object.assign(clock.window, { devicePixelRatio: density }),
         clipboardService: clipboardService || { isSyncInProgress: () => blocked },
-        guacViewportService: viewportService
+        guacViewportService: viewportService,
+        guacNativeKeyboard: nativeKeyboard
     };
     scope.client = managed('first');
     const definition = loaded.directives.guacClient.controller;
@@ -154,7 +168,7 @@ function directiveFixture({ blocked = false, root = eventBus(), clipboardService
     const attach = value => { scope.client = value; watches.get('client')(value); };
     attach(scope.client);
     return { root, scope, sent, cursor, mouse, touch, touchpad, touchscreen,
-        attach, managed, services, displays, main, watches, clock, connections,
+        attach, managed, services, displays, main, container, mainEvents, watches, clock, connections,
         configureTouch: () => touchBehaviorChanged() };
 }
 

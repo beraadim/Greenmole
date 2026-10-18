@@ -6,7 +6,7 @@
     "APP" : {
 
         "NAME"    : "Greenmole",
-        "VERSION" : "${project.version}-greenmole.4",
+        "VERSION" : "${project.version}-greenmole.5",
 
         "ACTION_ACKNOWLEDGE"        : "OK",
         "ACTION_CANCEL"             : "Cancel",
@@ -63,6 +63,9 @@
     },
 
     "CLIENT" : {
+
+        "ACTION_PAN_DESKTOP" : "Pan desktop",
+        "HELP_PAN_DESKTOP" : "Show keyboard enables Pan desktop to keep the last remote click or pointer position in view. Drag to adjust the local view. Turn Pan desktop off to interact with the remote computer; Hide keyboard also turns it off.",
 
         "NAME_INPUT_METHOD_NATIVE" : "Native keyboard",
         "HELP_INPUT_METHOD_NATIVE" : "Use your device keyboard with a persistent show/hide button. Tap Show keyboard after connecting. This choice is saved in this browser.",

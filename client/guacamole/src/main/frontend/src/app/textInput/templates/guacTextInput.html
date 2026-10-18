@@ -9,6 +9,14 @@
             <span aria-hidden="true">⌨</span>
             <span class="native-keyboard-label">{{'CLIENT.ACTION_SHOW_NATIVE_KEYBOARD' | translate}}</span>
         </button>
+        <button type="button" class="native-keyboard-pan"
+                ng-mousedown="$event.preventDefault()" ng-click="toggleDesktopPan($event)"
+                aria-pressed="{{nativeKeyboardState.panning}}"
+                aria-label="{{'CLIENT.ACTION_PAN_DESKTOP' | translate}}"
+                title="{{'CLIENT.HELP_PAN_DESKTOP' | translate}}">
+            <span aria-hidden="true">↕</span>
+            <span class="native-keyboard-label">{{'CLIENT.ACTION_PAN_DESKTOP' | translate}}</span>
+        </button>
         <button type="button" class="native-keyboard-hide"
                 ng-mousedown="$event.preventDefault()" ng-click="hideNativeKeyboard($event)"
                 aria-label="{{'CLIENT.ACTION_HIDE_NATIVE_KEYBOARD' | translate}}"
