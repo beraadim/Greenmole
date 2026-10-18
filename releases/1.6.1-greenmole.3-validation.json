@@ -1,9 +1,9 @@
 {
   "schema": "greenmole-release-validation-v1",
   "release": "1.6.1-greenmole.3",
-  "status": "built and tested; deployment awaiting user approval",
+  "status": "built, tested and deployed",
   "source_revision": "670279dd43a3cb92e7335cc56844b46caf364cc7",
-  "verified_at_utc": "2026-10-18T08:55:27.626881+00:00",
+  "verified_at_utc": "2026-10-18T09:28:09.954239+00:00",
   "platform": "linux/amd64",
   "dependency_pins_unchanged_from": "1.6.1-greenmole.2",
   "release_inputs_sha256": "e540ab3111a86cb57c6c84791d26e7765a00989788d04decea49d490bc97781e",
@@ -161,7 +161,116 @@
   },
   "video_transport_behavior_baseline": "1.6.1-private.16-validation.json",
   "new_video_transport_matrix_run": false,
-  "production_deployed": false,
-  "production_release_unchanged": "1.6.1-greenmole.2",
-  "private_runtime_material_included": false
+  "production_deployed": true,
+  "private_runtime_material_included": false,
+  "deployment": {
+    "version": "1.6.1-greenmole.3",
+    "revision": "670279dd43a3cb92e7335cc56844b46caf364cc7",
+    "deployed_at_utc": "2026-10-18T09:27:19Z",
+    "images": {
+      "greenmole/guacd:1.6.1-greenmole.3": "sha256:7077d27d976d6aa9d2e64b22b7169e778d691771fd04765dfde5855cf708c9db",
+      "greenmole/web:1.6.1-greenmole.3": "sha256:78f245e745aee7901ed5fe40c64300bad5a3311598c1319e505dcd531d9aaed1"
+    },
+    "configuration_preserved": true,
+    "runtime_settings_preserved": true,
+    "unrelated_containers_unchanged": true,
+    "languages": 16,
+    "branding_assets": [
+      {
+        "path": "images/greenmole.png",
+        "sha256": "5c1cb410e7f474ad971f29cfd09895d1413a58abbe9cb038c1afd1e38a6729a7"
+      },
+      {
+        "path": "images/greenmole-64.png",
+        "sha256": "057f7d79653146b28275b8611a5d212c031cc8a3b3de1cedb3ddd7f8c837891d"
+      },
+      {
+        "path": "images/greenmole-144.png",
+        "sha256": "673509e1684cf7f6348c521c084e4fd9ec972d6b59ffed2d3500ce1ee8057e9a"
+      },
+      {
+        "path": "images/greenmole-256.png",
+        "sha256": "97d2c5adee44099733133d87d4c6e6d504c752f40c56b7097a357d61b7ba34e1"
+      }
+    ],
+    "rdp_plugin_handshake": true,
+    "web_to_guacd_tcp": true,
+    "video_apis_served": true,
+    "rollback_images": [
+      "greenmole/guacd:rollback-greenmole.2-before-greenmole.3",
+      "greenmole/web:rollback-greenmole.2-before-greenmole.3"
+    ]
+  },
+  "post_deployment_health": {
+    "guacd_healthy": true,
+    "web_http_ready": true,
+    "restart_counts": [
+      0,
+      0
+    ],
+    "oom_killed": false,
+    "critical_startup_log_lines": 0,
+    "matched_tested_images": {
+      "greenmole/guacd:1.6.1-greenmole.3": "sha256:7077d27d976d6aa9d2e64b22b7169e778d691771fd04765dfde5855cf708c9db",
+      "greenmole/web:1.6.1-greenmole.3": "sha256:78f245e745aee7901ed5fe40c64300bad5a3311598c1319e505dcd531d9aaed1"
+    }
+  },
+  "live_browser_smoke": {
+    "status": "passed",
+    "authenticated": false,
+    "title": "Greenmole",
+    "version": "1.6.1-greenmole.3",
+    "loginLogoSize": 96,
+    "loginFields": true,
+    "icons": [
+      "images/greenmole-64.png",
+      "images/greenmole-144.png"
+    ],
+    "iconReset": true,
+    "mascotAssets": [
+      {
+        "url": "images/greenmole-64.png",
+        "width": 64,
+        "height": 64,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "opaqueRatio": 0.4052734375
+      },
+      {
+        "url": "images/greenmole-144.png",
+        "width": 144,
+        "height": 144,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "opaqueRatio": 0.4253472222222222
+      },
+      {
+        "url": "images/greenmole-256.png",
+        "width": 256,
+        "height": 256,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "opaqueRatio": 0.4330902099609375
+      }
+    ],
+    "mobileFormVisible": true,
+    "noHorizontalOverflow": true,
+    "pageErrors": [],
+    "visualReview": {
+      "desktop": "passed",
+      "mobile": "passed"
+    }
+  }
 }
