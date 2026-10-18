@@ -47,6 +47,10 @@
 
 /**
  * Display size update module.
+ *
+ * After initialization, mutable state is protected by the RDP client's
+ * recursive message_lock, shared by browser size requests and channel events.
+ * The owning client joins its RDP worker before freeing this module.
  */
 typedef struct guac_rdp_disp {
 

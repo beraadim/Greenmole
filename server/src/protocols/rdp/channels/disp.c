@@ -36,6 +36,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+/** The caller holds the RDP client's recursive message lock. */
+static void guac_rdp_disp_update_size_locked(guac_rdp_disp* disp,
+        guac_rdp_settings* settings, freerdp* rdp_inst);
+
 guac_rdp_disp* guac_rdp_disp_alloc(guac_client* client) {
 
     guac_rdp_disp* disp = guac_mem_alloc(sizeof(guac_rdp_disp));
@@ -65,12 +69,16 @@ static UINT guac_rdp_disp_caps(DispClientContext* disp, UINT32 max_monitors,
         UINT32 area_factor_a, UINT32 area_factor_b) {
     guac_rdp_disp* guac_disp = (guac_rdp_disp*) disp->custom;
     guac_rdp_client* rdp_client = (guac_rdp_client*) guac_disp->client->data;
-    guac_disp->caps_ready = 1;
-    guac_client_log(guac_disp->client, GUAC_LOG_DEBUG,
-            "Display update capabilities ready; pending viewport is %ix%i.",
-            guac_disp->requested_width, guac_disp->requested_height);
-    guac_rdp_disp_update_size(guac_disp, rdp_client->settings,
-            guac_disp->rdp_inst);
+    pthread_mutex_lock(&rdp_client->message_lock);
+    if (guac_disp->disp == disp) {
+        guac_disp->caps_ready = 1;
+        guac_client_log(guac_disp->client, GUAC_LOG_DEBUG,
+                "Display update capabilities ready; pending viewport is %ix%i.",
+                guac_disp->requested_width, guac_disp->requested_height);
+        guac_rdp_disp_update_size_locked(guac_disp, rdp_client->settings,
+                guac_disp->rdp_inst);
+    }
+    pthread_mutex_unlock(&rdp_client->message_lock);
     return CHANNEL_RC_OK;
 }
 
@@ -105,13 +113,16 @@ static void guac_rdp_disp_channel_connected(rdpContext* context,
 
     /* Store reference to the display update plugin once it's connected */
     DispClientContext* disp = (DispClientContext*) args->pInterface;
+    pthread_mutex_lock(&rdp_client->message_lock);
     guac_disp->disp = disp;
     /* FreeRDP owns the instance and channel until ChannelDisconnected, which
      * clears this borrow before the instance can be released. */
     guac_disp->rdp_inst = disp != NULL ? context->instance : NULL;
     guac_disp->caps_ready = 0;
-    if (disp == NULL)
+    if (disp == NULL) {
+        pthread_mutex_unlock(&rdp_client->message_lock);
         return;
+    }
     disp->custom = guac_disp;
     disp->DisplayControlCaps = guac_rdp_disp_caps;
 
@@ -122,6 +133,7 @@ static void guac_rdp_disp_channel_connected(rdpContext* context,
         guac_rdp_disp_set_size(guac_disp, rdp_client->settings,
                 context->instance, guac_rdp_get_width(context->instance),
                 guac_rdp_get_height(context->instance));
+    pthread_mutex_unlock(&rdp_client->message_lock);
 
     guac_client_log(client, GUAC_LOG_DEBUG, "Display update channel "
             "will be used for display size changes.");
@@ -157,9 +169,11 @@ static void guac_rdp_disp_channel_disconnected(rdpContext* context,
         return;
 
     /* Channel is no longer connected */
+    pthread_mutex_lock(&rdp_client->message_lock);
     guac_disp->disp = NULL;
     guac_disp->rdp_inst = NULL;
     guac_disp->caps_ready = 0;
+    pthread_mutex_unlock(&rdp_client->message_lock);
 
     guac_client_log(client, GUAC_LOG_DEBUG, "Display update channel "
             "disconnected.");
@@ -209,15 +223,28 @@ void guac_rdp_disp_set_size(guac_rdp_disp* disp, guac_rdp_settings* settings,
         width -= 1;
 
     /* Store deferred size */
+    guac_rdp_client* rdp_client = (guac_rdp_client*) disp->client->data;
+    pthread_mutex_lock(&rdp_client->message_lock);
     disp->requested_width = width;
     disp->requested_height = height;
 
     /* Send display update notification if possible */
-    guac_rdp_disp_update_size(disp, settings, rdp_inst);
+    guac_rdp_disp_update_size_locked(disp, settings, rdp_inst);
+    pthread_mutex_unlock(&rdp_client->message_lock);
 
 }
 
 void guac_rdp_disp_update_size(guac_rdp_disp* disp,
+        guac_rdp_settings* settings, freerdp* rdp_inst) {
+
+    guac_rdp_client* rdp_client = (guac_rdp_client*) disp->client->data;
+    pthread_mutex_lock(&rdp_client->message_lock);
+    guac_rdp_disp_update_size_locked(disp, settings, rdp_inst);
+    pthread_mutex_unlock(&rdp_client->message_lock);
+
+}
+
+static void guac_rdp_disp_update_size_locked(guac_rdp_disp* disp,
         guac_rdp_settings* settings, freerdp* rdp_inst) {
 
     int width = disp->requested_width;
@@ -234,6 +261,8 @@ void guac_rdp_disp_update_size(guac_rdp_disp* disp,
         return;
 
     /* Do NOT send requests unless the size will change */
+    if (rdp_inst == NULL)
+        rdp_inst = disp->rdp_inst;
     if (rdp_inst != NULL
             && width == guac_rdp_get_width(rdp_inst)
             && height == guac_rdp_get_height(rdp_inst))
@@ -270,16 +299,11 @@ void guac_rdp_disp_update_size(guac_rdp_disp* disp,
          * the viewport until both stages of negotiation are complete. */
         if (disp->disp != NULL && disp->caps_ready) {
 
-            guac_client* client = disp->client;
-            guac_rdp_client* rdp_client = (guac_rdp_client*) client->data;
-
             /* A viewport deferred while the channel is opening must not use
              * up the send interval. Failed sends retain the requested size
              * and retry through the normal, rate-limited update loop. */
             disp->last_request = now;
-            pthread_mutex_lock(&(rdp_client->message_lock));
             disp->disp->SendMonitorLayout(disp->disp, 1, monitors);
-            pthread_mutex_unlock(&(rdp_client->message_lock));
 
         }
 
@@ -289,6 +313,9 @@ void guac_rdp_disp_update_size(guac_rdp_disp* disp,
 
 int guac_rdp_disp_reconnect_needed(guac_rdp_disp* disp) {
     guac_rdp_client* rdp_client = (guac_rdp_client*) disp->client->data;
+    pthread_mutex_lock(&rdp_client->message_lock);
+    int reconnect_needed = disp->reconnect_needed;
+    pthread_mutex_unlock(&rdp_client->message_lock);
 
     /* Do not reconnect if files are open. */
     if (rdp_client->filesystem != NULL
@@ -300,11 +327,14 @@ int guac_rdp_disp_reconnect_needed(guac_rdp_disp* disp) {
         return 0;
     
     
-    return disp->reconnect_needed;
+    return reconnect_needed;
 }
 
 void guac_rdp_disp_reconnect_complete(guac_rdp_disp* disp) {
+    guac_rdp_client* rdp_client = (guac_rdp_client*) disp->client->data;
+    pthread_mutex_lock(&rdp_client->message_lock);
     disp->reconnect_needed = 0;
     disp->last_request = guac_timestamp_current();
+    pthread_mutex_unlock(&rdp_client->message_lock);
 }
 

@@ -54,6 +54,7 @@ typedef struct disp_fixture {
     DispClientContext channel;
     guac_rdp_disp* disp;
     int sends;
+    int invalid_layouts;
     UINT status;
     DISPLAY_CONTROL_MONITOR_LAYOUT sent;
 } disp_fixture;
@@ -62,7 +63,14 @@ static UINT capture_layout(DispClientContext* context, UINT32 count,
         DISPLAY_CONTROL_MONITOR_LAYOUT* monitors) {
     /* The production callback owns custom; the fake plugin owns handle. */
     disp_fixture* f = context->handle;
-    CU_ASSERT_EQUAL(count, 1);
+    if (count != 1) {
+        f->invalid_layouts++;
+        return 1;
+    }
+    if (monitors[0].Width * 9 != monitors[0].Height * 16)
+        f->invalid_layouts++;
+    if (!f->disp->caps_ready || f->disp->disp != context)
+        f->invalid_layouts++;
     f->sends++;
     f->sent = monitors[0];
     return f->status;
@@ -203,11 +211,110 @@ void test_disp__negotiated_size_does_not_send_or_delay_a_new_viewport() {
     clock_now = 1600;
     channel_connected(&f, DISP_DVC_CHANNEL_NAME);
     capabilities_ready(&f);
-    disp_test_set_size(f.disp, &f.settings, &f.instance, 1280, 720);
+    /* The channel's borrowed instance is already available even when the
+     * user-facing client instance has not yet been published. */
+    disp_test_set_size(f.disp, &f.settings, NULL, 1280, 720);
     CU_ASSERT_EQUAL(f.sends, 0);
     disp_test_set_size(f.disp, &f.settings, &f.instance, 1600, 900);
     CU_ASSERT_EQUAL(f.sends, 1);
     CU_ASSERT_EQUAL(f.sent.Width, 1600);
+    free_fixture(&f);
+}
+
+typedef struct concurrent_disp_fixture {
+    disp_fixture* f;
+    pthread_mutex_t start_lock;
+    pthread_cond_t start_condition;
+    int threads_ready;
+    int start;
+} concurrent_disp_fixture;
+
+static void wait_for_concurrent_start(concurrent_disp_fixture* concurrent) {
+    pthread_mutex_lock(&concurrent->start_lock);
+    concurrent->threads_ready++;
+    pthread_cond_broadcast(&concurrent->start_condition);
+    while (!concurrent->start)
+        pthread_cond_wait(&concurrent->start_condition, &concurrent->start_lock);
+    pthread_mutex_unlock(&concurrent->start_lock);
+}
+
+static void advance_concurrent_clock(disp_fixture* f) {
+    pthread_mutex_lock(&f->rdp_client.message_lock);
+    clock_now += GUAC_RDP_DISP_UPDATE_INTERVAL + 1;
+    pthread_mutex_unlock(&f->rdp_client.message_lock);
+}
+
+static void* request_concurrent_viewports(void* data) {
+    concurrent_disp_fixture* concurrent = data;
+    disp_fixture* f = concurrent->f;
+    wait_for_concurrent_start(concurrent);
+    for (int i = 0; i < 1000; i++) {
+        advance_concurrent_clock(f);
+        disp_test_set_size(f->disp, &f->settings, NULL, 1600, 900);
+        advance_concurrent_clock(f);
+        disp_test_set_size(f->disp, &f->settings, NULL, 1920, 1080);
+    }
+    return NULL;
+}
+
+static void* reopen_concurrent_channel(void* data) {
+    concurrent_disp_fixture* concurrent = data;
+    disp_fixture* f = concurrent->f;
+    wait_for_concurrent_start(concurrent);
+    for (int i = 0; i < 1000; i++) {
+        channel_connected(f, DISP_DVC_CHANNEL_NAME);
+        pthread_mutex_lock(&f->rdp_client.message_lock);
+        clock_now += GUAC_RDP_DISP_UPDATE_INTERVAL + 1;
+        f->channel.DisplayControlCaps(&f->channel, 1, 8192, 8192);
+        pthread_mutex_unlock(&f->rdp_client.message_lock);
+        disp_test_update_size(f->disp, &f->settings, NULL);
+        disp_test_reconnect_needed(f->disp);
+        disp_test_reconnect_complete(f->disp);
+        ChannelDisconnectedEventArgs args = {0};
+        args.name = DISP_DVC_CHANNEL_NAME;
+        guac_rdp_disp_channel_disconnected(&f->context._p, &args);
+    }
+    return NULL;
+}
+
+void test_disp__concurrent_viewports_and_channel_reopen_keep_atomic_state() {
+    disp_fixture f;
+    init_fixture(&f);
+    concurrent_disp_fixture concurrent = { .f = &f };
+    pthread_mutex_init(&concurrent.start_lock, NULL);
+    pthread_cond_init(&concurrent.start_condition, NULL);
+    pthread_t browser;
+    pthread_t channel;
+    int browser_created = pthread_create(&browser, NULL,
+            request_concurrent_viewports, &concurrent);
+    int channel_created = pthread_create(&channel, NULL,
+            reopen_concurrent_channel, &concurrent);
+    CU_ASSERT_EQUAL(browser_created, 0);
+    CU_ASSERT_EQUAL(channel_created, 0);
+    pthread_mutex_lock(&concurrent.start_lock);
+    while (concurrent.threads_ready < (browser_created == 0) + (channel_created == 0))
+        pthread_cond_wait(&concurrent.start_condition, &concurrent.start_lock);
+    concurrent.start = 1;
+    pthread_cond_broadcast(&concurrent.start_condition);
+    pthread_mutex_unlock(&concurrent.start_lock);
+    if (browser_created == 0)
+        pthread_join(browser, NULL);
+    if (channel_created == 0)
+        pthread_join(channel, NULL);
+
+    /* The final request is deterministic regardless of thread scheduling. No
+     * observed layout may mix dimensions from two independent requests. */
+    CU_ASSERT_EQUAL(f.invalid_layouts, 0);
+    channel_connected(&f, DISP_DVC_CHANNEL_NAME);
+    advance_concurrent_clock(&f);
+    disp_test_set_size(f.disp, &f.settings, NULL, 2560, 1440);
+    capabilities_ready(&f);
+    CU_ASSERT_EQUAL(f.disp->requested_width, 2560);
+    CU_ASSERT_EQUAL(f.disp->requested_height, 1440);
+    CU_ASSERT_EQUAL(f.sent.Width, 2560);
+    CU_ASSERT_EQUAL(f.sent.Height, 1440);
+    pthread_cond_destroy(&concurrent.start_condition);
+    pthread_mutex_destroy(&concurrent.start_lock);
     free_fixture(&f);
 }
 

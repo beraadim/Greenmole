@@ -1,4 +1,6 @@
 /*
+ * Modified for Greenmole by its maintainers.
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -103,6 +105,10 @@ int guac_rdp_user_size_handler(guac_user* user, int width, int height) {
 
     guac_client* client = user->client;
     guac_rdp_client* rdp_client = (guac_rdp_client*) client->data;
+    /* Keep the published instance alive through the size request. The display
+     * module then serializes its queue and channel state with message_lock,
+     * in the same client-lock-before-message-lock order as RDP teardown. */
+    guac_rwlock_acquire_read_lock(&rdp_client->lock);
     guac_rdp_settings* settings = rdp_client->settings;
     freerdp* rdp_inst = rdp_client->rdp_inst;
 
@@ -112,6 +118,7 @@ int guac_rdp_user_size_handler(guac_user* user, int width, int height) {
 
     /* Send display update */
     guac_rdp_disp_set_size(rdp_client->disp, settings, rdp_inst, width, height);
+    guac_rwlock_release_lock(&rdp_client->lock);
 
     return 0;
 

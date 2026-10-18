@@ -94,6 +94,7 @@
         "server/src/protocols/rdp/client.c",
         "server/src/protocols/rdp/gdi.c",
         "server/src/protocols/rdp/gdi.h",
+        "server/src/protocols/rdp/input.c",
         "server/src/protocols/rdp/rdp.c",
         "server/src/protocols/rdp/rdp.h",
         "server/src/protocols/rdp/settings.c",
