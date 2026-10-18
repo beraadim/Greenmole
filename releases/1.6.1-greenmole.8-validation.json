@@ -1,0 +1,352 @@
+{
+  "schema": "greenmole-release-validation-v1",
+  "release": "1.6.1-greenmole.8",
+  "status": "built, tested and deployed",
+  "source_revision": "d5271151b01596902f3a3ef8eed3685713118b1c",
+  "verified_at_utc": "2026-10-18T12:41:04.416194+00:00",
+  "platform": "linux/amd64",
+  "dependency_pins_unchanged_from": "1.6.1-greenmole.7",
+  "release_inputs_sha256": "cedf90841745345e2ffca75e50d15a3c45337ede30f7c24b01d387ebd1907b99",
+  "container_images_published": false,
+  "build": {
+    "source_revision": "d5271151b01596902f3a3ef8eed3685713118b1c",
+    "pinned_image_builds_passed": true,
+    "maven_reactor_success": true,
+    "maven_tests_explicitly_enabled": true,
+    "java_unit_tests_passed": 64,
+    "java_unit_failures": 0,
+    "java_unit_errors": 0,
+    "firefox_jasmine": {
+      "passed": 256,
+      "total": 259,
+      "capability_skipped": 3
+    },
+    "native": {
+      "exit_code": 0,
+      "tests": 296,
+      "nonzero_failures": [],
+      "image": "greenmole/native-benchmark:1.6.1-greenmole.8",
+      "revision": "d5271151b01596902f3a3ef8eed3685713118b1c",
+      "diagnostics": 0
+    },
+    "images": [
+      {
+        "image": "greenmole/guacd:1.6.1-greenmole.8",
+        "image_id": "sha256:214a9af689e8b73da08fd403393601ea5fcf764dd41bff42dec1630518463404",
+        "revision": "d5271151b01596902f3a3ef8eed3685713118b1c"
+      },
+      {
+        "image": "greenmole/web:1.6.1-greenmole.8",
+        "image_id": "sha256:2349c15adec272be8e10d3e7825fbffb376632367f1bf9d0889a80b757b39223",
+        "revision": "d5271151b01596902f3a3ef8eed3685713118b1c"
+      },
+      {
+        "image": "greenmole/native-benchmark:1.6.1-greenmole.8",
+        "image_id": "sha256:1e31b457cc871120fc19d73cfbbdeb04926b5ece6a1055bd0c6a305f16c31072",
+        "revision": "d5271151b01596902f3a3ef8eed3685713118b1c"
+      }
+    ]
+  },
+  "frontend_node_tests": {
+    "passed": 129,
+    "failed": 0,
+    "skipped": 0,
+    "source_revision": "d5271151b01596902f3a3ef8eed3685713118b1c"
+  },
+  "production_webpack_passed": true,
+  "production_webpack_existing_bundle_size_warnings": 3,
+  "new_frontend_regressions": {
+    "total": 7,
+    "viewport_lifecycle_cases": 7,
+    "coverage": [
+      "Show's initial zero-inset focus and small browser chrome changes do not dismiss Pan",
+      "An observed software keyboard can dismiss without blurring its editor; Pan clears after settled restoration with 0, 28 or 80 CSS pixels of browser chrome",
+      "Viewport animation resets the finite dismissal debounce and synchronous subscribers receive coherent Pan state",
+      "Turning Pan off consumes a pending dismissal so a subsequent manual selection is preserved",
+      "Browser pinch and layout rotation discard stale keyboard observations instead of falsely dismissing Pan",
+      "Destroy cancels pending dismissal without modifying detached input state or polling while idle",
+      "Actual client remote dimensions and manual 1.25 zoom remain unchanged when retained-focus dismissal clears Pan"
+    ],
+    "existing_native_and_smart_pan_cases_revised": [
+      "Ordinary blur and explicit Hide both disable Pan without reopening the software keyboard",
+      "Explicit Show rearms Pan after its forced blur but before trusted synchronous focus, preserving IME composition guards",
+      "Same-geometry Show blur/refocus still rearms smart assistance after manual adjustment"
+    ]
+  },
+  "keyboard_dismissal_detection": {
+    "minimum_observed_occlusion_css_pixels": 120,
+    "maximum_remaining_browser_chrome_css_pixels": 80,
+    "quiet_restoration_milliseconds": 150,
+    "idle_polling": false
+  },
+  "packaged_runtime_smoke": {
+    "source_revision": "d5271151b01596902f3a3ef8eed3685713118b1c",
+    "version": "1.6.1-greenmole.8",
+    "image_ids": {
+      "greenmole/guacd:1.6.1-greenmole.8": "sha256:214a9af689e8b73da08fd403393601ea5fcf764dd41bff42dec1630518463404",
+      "greenmole/web:1.6.1-greenmole.8": "sha256:2349c15adec272be8e10d3e7825fbffb376632367f1bf9d0889a80b757b39223"
+    },
+    "synthetic_configuration_only": true,
+    "production_configuration_mounted": false,
+    "isolated_internal_network": true,
+    "languages": 16,
+    "greenmole_name_and_version_served": true,
+    "translation_metadata_valid": true,
+    "branding_assets_byte_identical": [
+      {
+        "path": "images/greenmole.png",
+        "sha256": "5c1cb410e7f474ad971f29cfd09895d1413a58abbe9cb038c1afd1e38a6729a7",
+        "bytes": 970059,
+        "dimensions": [
+          1254,
+          1254
+        ]
+      },
+      {
+        "path": "images/greenmole-64.png",
+        "sha256": "057f7d79653146b28275b8611a5d212c031cc8a3b3de1cedb3ddd7f8c837891d",
+        "bytes": 5843,
+        "dimensions": [
+          64,
+          64
+        ]
+      },
+      {
+        "path": "images/greenmole-144.png",
+        "sha256": "673509e1684cf7f6348c521c084e4fd9ec972d6b59ffed2d3500ce1ee8057e9a",
+        "bytes": 22634,
+        "dimensions": [
+          144,
+          144
+        ]
+      },
+      {
+        "path": "images/greenmole-256.png",
+        "sha256": "97d2c5adee44099733133d87d4c6e6d504c752f40c56b7097a357d61b7ba34e1",
+        "bytes": 59414,
+        "dimensions": [
+          256,
+          256
+        ]
+      }
+    ],
+    "login_uses_mascot_png": true,
+    "browser_video_and_fallback_apis_served": true,
+    "rdp_plugin_handshake": true,
+    "web_to_guacd_tcp": true,
+    "common_js_sha256": "f6be587aca8e4c8b65438c302e4ab302df48e54860c6eba961a9fb21d3fd86d6",
+    "production_unchanged": true,
+    "temporary_containers_and_network_removed": true,
+    "deployment_changed": false
+  },
+  "packaged_pan_dismissal_browser_smoke": [
+    {
+      "actualClientControllerAndFullTemplate": true,
+      "trustedShowArmsPan": true,
+      "zeroInsetAndChromePreservePan": true,
+      "pinchDoesNotDismissPan": true,
+      "osDismissWithoutBlurDisablesPan": true,
+      "textareaFocusRetainedAfterOSDismiss": true,
+      "relativeMouseResumes": true,
+      "manualPanAllowedAfterDismissal": true,
+      "retainedFocusShowRearmsPan": true,
+      "blurDisablesPan": true,
+      "repeatedDismissalWorks": true,
+      "remoteGeometryAndManualZoomUnchanged": true,
+      "viewportListenersCleaned": true,
+      "noLateResizeAfterDestroy": true,
+      "status": "passed",
+      "version": "1.6.1-greenmole.8",
+      "engine": "chromium",
+      "source_revision": "d5271151b01596902f3a3ef8eed3685713118b1c",
+      "authenticated": false,
+      "rdpConnected": false,
+      "packaged_image": true,
+      "manualZoom": 1.25,
+      "pageErrors": [],
+      "tunnelRequests": [],
+      "limitations": [
+        "Headless Chrome/WebKit emulate OS keyboard viewport changes; real iPadOS keyboard controls still require device testing."
+      ],
+      "remoteSize": {
+        "width": 768,
+        "height": 974
+      },
+      "image_id": "sha256:2349c15adec272be8e10d3e7825fbffb376632367f1bf9d0889a80b757b39223",
+      "device_navigator_emulated": true,
+      "visual_viewport_geometry_emulated": true,
+      "isolated_internal_network": true,
+      "synthetic_empty_user_mapping": true,
+      "host_ports_published": false,
+      "production_unchanged": true,
+      "temporary_containers_and_networks_removed": true
+    },
+    {
+      "actualClientControllerAndFullTemplate": true,
+      "trustedShowArmsPan": true,
+      "zeroInsetAndChromePreservePan": true,
+      "pinchDoesNotDismissPan": true,
+      "osDismissWithoutBlurDisablesPan": true,
+      "textareaFocusRetainedAfterOSDismiss": true,
+      "relativeMouseResumes": true,
+      "manualPanAllowedAfterDismissal": true,
+      "retainedFocusShowRearmsPan": true,
+      "blurDisablesPan": true,
+      "repeatedDismissalWorks": true,
+      "remoteGeometryAndManualZoomUnchanged": true,
+      "viewportListenersCleaned": true,
+      "noLateResizeAfterDestroy": true,
+      "status": "passed",
+      "version": "1.6.1-greenmole.8",
+      "engine": "webkit",
+      "source_revision": "d5271151b01596902f3a3ef8eed3685713118b1c",
+      "authenticated": false,
+      "rdpConnected": false,
+      "packaged_image": true,
+      "manualZoom": 1.25,
+      "pageErrors": [],
+      "tunnelRequests": [],
+      "limitations": [
+        "Headless Chrome/WebKit emulate OS keyboard viewport changes; real iPadOS keyboard controls still require device testing."
+      ],
+      "remoteSize": {
+        "width": 768,
+        "height": 974
+      },
+      "image_id": "sha256:2349c15adec272be8e10d3e7825fbffb376632367f1bf9d0889a80b757b39223",
+      "device_navigator_emulated": true,
+      "visual_viewport_geometry_emulated": true,
+      "isolated_internal_network": true,
+      "synthetic_empty_user_mapping": true,
+      "host_ports_published": false,
+      "production_unchanged": true,
+      "temporary_containers_and_networks_removed": true
+    }
+  ],
+  "fixture_cleanup": {
+    "owned_temporary_containers_removed": true,
+    "owned_temporary_networks_removed": true,
+    "owned_ssh_forward_removed": true,
+    "production_unchanged_during_isolated_checks": true
+  },
+  "attribution": {
+    "modified_upstream_files_with_file_local_notices": 92,
+    "unchanged_upstream_license_and_notice_files": 213,
+    "both_upstream_histories_reachable": true
+  },
+  "video_transport_behavior_baseline": "1.6.1-private.16-validation.json",
+  "new_video_transport_matrix_run": false,
+  "video_common_js_unchanged": true,
+  "production_deployed": true,
+  "private_runtime_material_included": false,
+  "deployment": {
+    "version": "1.6.1-greenmole.8",
+    "revision": "d5271151b01596902f3a3ef8eed3685713118b1c",
+    "deployed_at_utc": "2026-10-18T12:38:28Z",
+    "images": {
+      "greenmole/guacd:1.6.1-greenmole.8": "sha256:214a9af689e8b73da08fd403393601ea5fcf764dd41bff42dec1630518463404",
+      "greenmole/web:1.6.1-greenmole.8": "sha256:2349c15adec272be8e10d3e7825fbffb376632367f1bf9d0889a80b757b39223"
+    },
+    "configuration_preserved": true,
+    "runtime_settings_preserved": true,
+    "unrelated_containers_unchanged": true,
+    "languages": 16,
+    "branding_assets": [
+      {
+        "path": "images/greenmole.png",
+        "sha256": "5c1cb410e7f474ad971f29cfd09895d1413a58abbe9cb038c1afd1e38a6729a7"
+      },
+      {
+        "path": "images/greenmole-64.png",
+        "sha256": "057f7d79653146b28275b8611a5d212c031cc8a3b3de1cedb3ddd7f8c837891d"
+      },
+      {
+        "path": "images/greenmole-144.png",
+        "sha256": "673509e1684cf7f6348c521c084e4fd9ec972d6b59ffed2d3500ce1ee8057e9a"
+      },
+      {
+        "path": "images/greenmole-256.png",
+        "sha256": "97d2c5adee44099733133d87d4c6e6d504c752f40c56b7097a357d61b7ba34e1"
+      }
+    ],
+    "rdp_plugin_handshake": true,
+    "web_to_guacd_tcp": true,
+    "video_apis_served": true,
+    "rollback_images": [
+      "greenmole/guacd:rollback-greenmole.7-before-greenmole.8",
+      "greenmole/web:rollback-greenmole.7-before-greenmole.8"
+    ]
+  },
+  "post_deployment_health": {
+    "guacd_healthy": true,
+    "web_http_ready": true,
+    "restart_counts": [
+      0,
+      0
+    ],
+    "oom_killed": false,
+    "critical_startup_log_lines": 0,
+    "matched_tested_images": {
+      "greenmole/guacd:1.6.1-greenmole.8": "sha256:214a9af689e8b73da08fd403393601ea5fcf764dd41bff42dec1630518463404",
+      "greenmole/web:1.6.1-greenmole.8": "sha256:2349c15adec272be8e10d3e7825fbffb376632367f1bf9d0889a80b757b39223"
+    }
+  },
+  "live_browser_smoke": {
+    "status": "passed",
+    "authenticated": false,
+    "title": "Greenmole",
+    "version": "1.6.1-greenmole.8",
+    "loginLogoSize": 96,
+    "loginFields": true,
+    "icons": [
+      "images/greenmole-64.png",
+      "images/greenmole-144.png"
+    ],
+    "iconReset": true,
+    "mascotAssets": [
+      {
+        "url": "images/greenmole-64.png",
+        "width": 64,
+        "height": 64,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "opaqueRatio": 0.4052734375
+      },
+      {
+        "url": "images/greenmole-144.png",
+        "width": 144,
+        "height": 144,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "opaqueRatio": 0.4253472222222222
+      },
+      {
+        "url": "images/greenmole-256.png",
+        "width": 256,
+        "height": 256,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "opaqueRatio": 0.4330902099609375
+      }
+    ],
+    "mobileFormVisible": true,
+    "noHorizontalOverflow": true,
+    "pageErrors": [],
+    "visualReview": {
+      "desktop": "passed",
+      "mobile": "passed"
+    }
+  }
+}
