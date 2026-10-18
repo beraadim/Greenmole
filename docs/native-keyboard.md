@@ -14,10 +14,12 @@ the built-in Guacamole keyboard layout.
 
 New iOS browser preferences default to **Native keyboard** and **Touchpad** mouse
 mode, where dragging moves the remote pointer. Detection includes iPhone, iPod
-touch and iPad using mobile or desktop browsing mode. Saved input and mouse
-preferences take precedence independently, so an existing browser may retain
-its previous settings. Change them under the browser's default input preferences
-if needed. The native keyboard option remains available manually on other devices.
+touch and iPad using mobile or desktop browsing mode. Upgrading an existing iOS
+browser initializes Touchpad mode once, replacing the old automatically saved
+Touchscreen default. Later explicit mouse choices are saved immediately from
+the connection menu and survive reload. Saved keyboard and unrelated preferences
+remain unchanged. The native keyboard option remains available manually on
+other devices.
 
 The control bar remains available after the device keyboard is dismissed. Use
 **Show keyboard** to reopen it, including after using the keyboard's own dismiss
@@ -26,7 +28,9 @@ An attached hardware keyboard remains usable.
 
 The control bar reserves its measured height in the layout. The remote desktop
 is sized to the usable area above it, including when the bar wraps on a narrow
-screen. Opening the device's software keyboard then clips this desktop locally
+screen. Every input mode, including None, uses the browser's visible viewport
+so browser controls do not hide the bottom of the desktop. Opening the device's
+software keyboard then clips this desktop locally
 without changing its resolution or zoom. You can pan to its bottom in the space
 above the keyboard. Changing input mode, permanent control-bar height, rotation,
 multitasking width or tiled connection layout can resize the remote desktop.

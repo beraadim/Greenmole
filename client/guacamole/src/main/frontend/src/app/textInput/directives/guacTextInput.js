@@ -216,8 +216,9 @@ angular.module('textInput').directive('guacTextInput', [function guacTextInput()
                 }
             };
 
-            // Actual overlay height includes wrapping, safe-area padding and
-            // user font scaling. It affects only local scrolling clearance.
+            // Measure this control strip itself, including wrapping, safe-area
+            // padding and user font scaling. The enclosing flex layout
+            // reserves it once above the remote desktop.
             if ($window.ResizeObserver) {
                 toolbarObserver = new $window.ResizeObserver(measureToolbar);
                 toolbarObserver.observe(toolbar);

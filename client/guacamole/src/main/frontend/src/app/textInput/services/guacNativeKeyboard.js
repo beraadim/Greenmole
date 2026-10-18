@@ -73,7 +73,7 @@ angular.module('textInput').factory('guacNativeKeyboard', ['$window', function g
         }
     };
 
-    /** Actual overlay height; never subtract this from the remote desktop. */
+    /** Actual permanent control-strip height, reserved once by the flex layout. */
     service.setToolbarHeight = function setToolbarHeight(height) {
         height = service.enabled && typeof height === 'number' && isFinite(height)
             ? Math.max(0, Math.ceil(height)) : 0;

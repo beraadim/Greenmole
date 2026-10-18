@@ -151,6 +151,16 @@ angular.module('client').controller('clientController', ['$scope', '$routeParams
         $scope.menu.shown = false;
     };
 
+    /** Persist explicit mouse choices, including changes after iOS migration. */
+    $scope.setMouseMode = function setMouseMode() {
+        const absolute = $scope.menu.emulateAbsoluteMouse;
+        if (typeof absolute === 'boolean') {
+            preferenceService.preferences.emulateAbsoluteMouse = absolute;
+            preferenceService.save();
+        }
+        $scope.closeMenu();
+    };
+
     /**
      * Applies any changes to connection parameters made by the user within the
      * Guacamole menu to the given ManagedClient. If no client is supplied,

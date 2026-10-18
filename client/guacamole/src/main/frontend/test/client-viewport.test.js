@@ -88,6 +88,7 @@ test('viewport initializes synchronously and uses events without idle polling', 
     assert.equal(f.element.style.height, '768px');
     assert.equal(f.clock.timers.size, 0);
     f.window.innerHeight = 900;
+    f.window.visualViewport.height = 900;
     f.clock.emit('resize');
     f.clock.emit('resize');
     assert.equal(f.clock.timers.size, 1);
@@ -95,6 +96,56 @@ test('viewport initializes synchronously and uses events without idle polling', 
     assert.equal(f.element.style.height, '900px');
     assert.equal(f.clock.timers.size, 0);
     assert.equal(f.keyboardCallbacks.size, 1);
+});
+
+test('physical and native input both size the desktop to the visible browser area above Safari chrome', () => {
+    const f = fixture({ visualState: { height: 680, pageTop: 70 } });
+    assert.equal(f.element.style.height, '680px');
+    assert.equal(f.element.style.top, '70px');
+    const client = directiveFixture({ viewportService: f.service });
+    client.main.offsetWidth = 1024;
+    Object.defineProperty(client.main, 'offsetHeight', {
+        get: () => Math.round(parseFloat(f.element.style.height)
+            - (f.native.enabled ? f.native.toolbarHeight : 0))
+    });
+    client.scope.mainElementResized();
+    client.clock.advance(150);
+    let remoteHeight = 680;
+    client.displays.at(-1).getWidth = () => 1024;
+    client.displays.at(-1).getHeight = () => remoteHeight;
+    client.watches.get('client.managedDisplay.size')();
+    f.keyboard({ enabled: true });
+    client.clock.advance(150);
+    remoteHeight = 636;
+    client.watches.get('client.managedDisplay.size')();
+    f.keyboard({ focused: true });
+    f.visible({ height: 400, pageTop: 100 });
+    client.clock.advance(500);
+    f.keyboard({ focused: false });
+    f.visible({ height: 680, pageTop: 70 });
+    f.clock.advance(16);
+    client.clock.advance(500);
+    f.keyboard({ enabled: false });
+    client.clock.advance(150);
+    assert.equal(f.element.style.height, '680px');
+    assert.deepEqual(client.connections, [['first', 1024, 680]]);
+    assert.deepEqual(client.sent, [['first', 'size', 1024, 680],
+        ['first', 'size', 1024, 636], ['first', 'size', 1024, 680]]);
+    client.scope.$broadcast('$destroy');
+    f.scope.$broadcast('$destroy');
+});
+
+test('physical input preserves the last visible layout during browser pinch and panning', () => {
+    const f = fixture({ visualState: { height: 680, pageTop: 70 } });
+    const style = { ...f.element.style };
+    f.visible({ width: 512, height: 340, pageTop: 150, pageLeft: 100, scale: 2 });
+    assert.deepEqual(f.element.style, style);
+    f.visible({ pageTop: 200, pageLeft: 150 }, 'scroll');
+    assert.deepEqual(f.element.style, style);
+    assert.deepEqual(f.scrolls, []);
+    f.visible({ width: 1024, height: 680, pageTop: 70, pageLeft: 0, scale: 1 });
+    assert.deepEqual(f.element.style, style);
+    f.scope.$broadcast('$destroy');
 });
 
 test('native keyboard limits the visible area while remote height remains stable through blur and dismissal', () => {
@@ -130,9 +181,9 @@ test('disabling native mode holds the inset until the keyboard finishes closing'
     assert.equal(f.service.getRemoteSize(1024, 400).height, 768);
     f.visible({ height: 768, pageTop: 0 });
     assert.equal(f.service.getRemoteSize(1024, 768).height, 768);
-    assert.equal(f.element.style.left, '');
-    assert.equal(f.element.style.top, '');
-    assert.equal(f.element.style.right, '');
+    assert.equal(f.element.style.left, '0px');
+    assert.equal(f.element.style.top, '0px');
+    assert.equal(f.element.style.right, 'auto');
     f.clock.advance(16);
     assert.equal(f.clock.timers.size, 0);
 });

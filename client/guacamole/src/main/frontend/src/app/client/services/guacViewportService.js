@@ -71,7 +71,6 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
 
         var nativeEnabled = guacNativeKeyboard.enabled;
         var intent = nativeEnabled && guacNativeKeyboard.focused;
-        var nativeLayout = nativeEnabled || holdingKeyboard;
         var zoomed = visual && Math.abs((visual.scale || 1) - 1) > 0.01;
         var widthChanged = lastWidth && Math.abs(width - lastWidth) > 1;
 
@@ -79,12 +78,12 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
         // available desktop. Keep its last geometry, but still publish native
         // input controls/toolbar state. An already-pinched first subscription
         // has no prior geometry, so initialize from the full layout viewport.
-        var zoomGeometry = nativeLayout && zoomed && !widthChanged ? state : null;
+        var zoomGeometry = zoomed && !widthChanged ? state : null;
 
         var visibleHeight = zoomGeometry ? zoomGeometry.height
-            : (nativeLayout && visual && !zoomed && visual.height > 0 ? visual.height : height);
+            : (visual && !zoomed && visual.height > 0 ? visual.height : height);
         var visibleWidth = zoomGeometry ? zoomGeometry.width
-            : (nativeLayout && visual && !zoomed && visual.width > 0 ? visual.width : width);
+            : (visual && !zoomed && visual.width > 0 ? visual.width : width);
 
         if (!holdingKeyboard || widthChanged) {
             // Width changes indicate rotation or multitasking, rather than a
@@ -116,7 +115,6 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
             }
         }
 
-        nativeLayout = nativeEnabled || holdingKeyboard;
         var preserveLayout = holdingKeyboard;
         if (!preserveLayout && state && state.preserveLayout && !allowLayoutRelease) {
             // Let keyboard dismissal and native-mode toolbar teardown finish
@@ -126,12 +124,15 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
         }
         lastWidth = width;
         publish({
-            width: nativeLayout ? visibleWidth : width,
-            height: nativeLayout ? visibleHeight : height,
-            left: nativeLayout && zoomGeometry ? zoomGeometry.left
-                : (nativeLayout && visual && !zoomed ? (visual.pageLeft || 0) : null),
-            top: nativeLayout && zoomGeometry ? zoomGeometry.top
-                : (nativeLayout && visual && !zoomed ? (visual.pageTop || 0) : null),
+            // Browser chrome can reduce the visible area in every input mode,
+            // including None. Using innerHeight there would size the remote
+            // desktop behind Safari's toolbar and put its dock out of reach.
+            width: visibleWidth,
+            height: visibleHeight,
+            left: zoomGeometry ? zoomGeometry.left
+                : (visual && !zoomed ? (visual.pageLeft || 0) : null),
+            top: zoomGeometry ? zoomGeometry.top
+                : (visual && !zoomed ? (visual.pageTop || 0) : null),
             keyboardInset: holdingKeyboard ? Math.max(0, fullHeight - visibleHeight) : 0,
             // The permanent toolbar occupies layout space. The software
             // keyboard only clips that bar-adjusted desktop. Publish focus

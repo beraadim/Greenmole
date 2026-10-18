@@ -117,10 +117,8 @@ angular.module('settings').provider('preferenceService', ['$injector',
     };
 
     // iPadOS can use a desktop Mac user agent. Touch points distinguish that
-    // mode from a Mac. These are device defaults only: stored preferences are
-    // merged below, independently preserving each saved input/mouse choice.
-    // Older versions auto-saved their defaults, which cannot safely be
-    // distinguished from explicit choices and must not be migrated here.
+    // mode from a Mac. Keyboard preferences remain independent of the
+    // versioned iOS mouse-default migration applied after stored values merge.
     var isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent || '')
         || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
@@ -188,6 +186,18 @@ angular.module('settings').provider('preferenceService', ['$injector',
     if (storedPreferences)
         angular.extend(provider.preferences, storedPreferences);
 
+    // Older releases automatically saved the desktop's absolute mouse
+    // default, even when the user never chose it. Apply the requested iOS
+    // trackpad default once, then preserve every later explicit mouse choice.
+    // Keep future markers intact if an older build is used for rollback.
+    var migrateIOSMouse = isIOS && !(storedPreferences
+        && typeof storedPreferences.iosTouchpadDefaultVersion === 'number'
+        && storedPreferences.iosTouchpadDefaultVersion >= 1);
+    if (migrateIOSMouse) {
+        provider.preferences.emulateAbsoluteMouse = false;
+        provider.preferences.iosTouchpadDefaultVersion = 1;
+    }
+
     // Factory method required by provider
     this.$get = ['$injector', function preferenceServiceFactory($injector) {
 
@@ -219,6 +229,11 @@ angular.module('settings').provider('preferenceService', ['$injector',
         service.save = function save() {
             localStorageService.setItem(GUAC_PREFERENCES_STORAGE_KEY, service.preferences);
         };
+
+        // Commit the migration before any menu choice or navigation can occur.
+        // Otherwise a reload could reset an intentional absolute selection.
+        if (migrateIOSMouse)
+            service.save();
 
         // Persist settings when window is unloaded
         $window.addEventListener('unload', service.save);

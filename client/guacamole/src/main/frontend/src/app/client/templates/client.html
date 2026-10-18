@@ -171,7 +171,7 @@
 
                         <!-- Touchscreen -->
                         <div class="choice">
-                            <input name="mouse-mode" ng-change="closeMenu()" ng-model="menu.emulateAbsoluteMouse" type="radio" ng-value="true" checked="checked" id="absolute">
+                            <input name="mouse-mode" ng-change="setMouseMode()" ng-model="menu.emulateAbsoluteMouse" type="radio" ng-value="true" id="absolute">
                             <div class="figure">
                                 <label for="absolute"><img src="images/settings/touchscreen.svg" alt="{{'CLIENT.NAME_MOUSE_MODE_ABSOLUTE' | translate}}"></label>
                                 <p class="caption"><label for="absolute">{{'CLIENT.HELP_MOUSE_MODE_ABSOLUTE' | translate}}</label></p>
@@ -180,7 +180,7 @@
 
                         <!-- Touchpad -->
                         <div class="choice">
-                            <input name="mouse-mode" ng-change="closeMenu()" ng-model="menu.emulateAbsoluteMouse" type="radio" ng-value="false" id="relative">
+                            <input name="mouse-mode" ng-change="setMouseMode()" ng-model="menu.emulateAbsoluteMouse" type="radio" ng-value="false" id="relative">
                             <div class="figure">
                                 <label for="relative"><img src="images/settings/touchpad.svg" alt="{{'CLIENT.NAME_MOUSE_MODE_RELATIVE' | translate}}"></label>
                                 <p class="caption"><label for="relative">{{'CLIENT.HELP_MOUSE_MODE_RELATIVE' | translate}}</label></p>

@@ -43,8 +43,9 @@ angular.module('client').directive('guacViewport', [function guacViewport() {
                 element.style.right = state.left === null ? '' : 'auto';
                 element.style.bottom = state.top === null ? '' : 'auto';
 
-                // Preserve the original scroll correction outside native
-                // keyboard mode. Native mode follows VisualViewport directly.
+                // Browsers with VisualViewport follow its visible origin in
+                // every input mode. Preserve the legacy scroll correction
+                // only when that geometry API is unavailable.
                 if (state.left === null && (element.scrollLeft || element.scrollTop))
                     $window.scrollTo($window.pageXOffset + element.scrollLeft,
                         $window.pageYOffset + element.scrollTop);

@@ -16,59 +16,8 @@
 'use strict';
 
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
 const test = require('node:test');
-const { eventBus } = require('./helpers/client-fixtures');
-
-const source = fs.readFileSync(path.join(__dirname,
-    '../src/app/settings/services/preferenceService.js'), 'utf8');
-
-function fixture(storedPreferences) {
-    let stored = storedPreferences;
-    const saves = [];
-    return {
-        saves,
-        get stored() { return stored; },
-        load(navigator = {}) {
-            const provider = {};
-            vm.runInNewContext(source, {
-                navigator,
-                jstz: { determine: () => ({ name: () => 'Europe/Oslo' }) },
-                angular: {
-                    extend: Object.assign,
-                    module: () => ({ provider(name, definition) {
-                        assert.equal(name, 'preferenceService');
-                        definition.at(-1).call(provider, { get: name => {
-                            assert.equal(name, 'localStorageServiceProvider');
-                            return { getItem(key) {
-                                assert.equal(key, 'GUAC_PREFERENCES');
-                                return stored === undefined ? null : JSON.parse(JSON.stringify(stored));
-                            } };
-                        } });
-                    } })
-                }
-            });
-            const root = eventBus();
-            let unload;
-            const services = {
-                $rootScope: root,
-                $window: { addEventListener(name, listener) {
-                    assert.equal(name, 'unload');
-                    unload = listener;
-                } },
-                localStorageService: { setItem(key, value) {
-                    assert.equal(key, 'GUAC_PREFERENCES');
-                    stored = JSON.parse(JSON.stringify(value));
-                    saves.push(stored);
-                } }
-            };
-            return { service: provider.$get.at(-1)({ get: name => services[name] }),
-                root, unload: () => unload() };
-        }
-    };
-}
+const { preferenceFixture: fixture } = require('./helpers/preference-fixtures');
 
 const devices = [
     { name: 'iPad', userAgent: 'Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X)' },
@@ -84,7 +33,8 @@ test('fresh iOS browsers default to native keyboard and relative mouse before a 
         const { service } = storage.load(device);
         assert.equal(service.preferences.inputMethod, 'native', device.name);
         assert.equal(service.preferences.emulateAbsoluteMouse, false, device.name);
-        assert.equal(storage.stored, undefined, 'loading defaults must not write storage');
+        assert.equal(storage.stored.iosTouchpadDefaultVersion, 1);
+        assert.equal(storage.saves.length, 1, 'migration must be committed before the first navigation');
     }
 });
 
@@ -102,31 +52,35 @@ test('non-iOS browsers retain physical keyboard and absolute touch defaults', ()
     }
 });
 
-test('saved input and mouse choices override iOS defaults independently', () => {
+test('versioned saved input and mouse choices override iOS defaults independently', () => {
     for (const device of devices) {
         for (const inputMethod of ['none', 'text', 'osk', 'native']) {
-            const { service } = fixture({ inputMethod }).load(device);
+            const { service } = fixture({ inputMethod, iosTouchpadDefaultVersion: 1 }).load(device);
             assert.equal(service.preferences.inputMethod, inputMethod);
             assert.equal(service.preferences.emulateAbsoluteMouse, false);
         }
         for (const emulateAbsoluteMouse of [true, false]) {
-            const { service } = fixture({ emulateAbsoluteMouse }).load(device);
+            const { service } = fixture({ emulateAbsoluteMouse, iosTouchpadDefaultVersion: 1 }).load(device);
             assert.equal(service.preferences.inputMethod, 'native');
             assert.equal(service.preferences.emulateAbsoluteMouse, emulateAbsoluteMouse);
         }
     }
 });
 
-test('existing complete legacy defaults remain saved choices because their provenance is ambiguous', () => {
+test('legacy iOS absolute defaults migrate once without changing keyboard or unrelated settings', () => {
     const stored = { inputMethod: 'none', emulateAbsoluteMouse: true,
         language: 'nb', timezone: 'Europe/Oslo', numberOfRecentConnections: 9 };
     const storage = fixture(stored);
     const { service } = storage.load(devices[0]);
     assert.equal(service.preferences.inputMethod, 'none');
-    assert.equal(service.preferences.emulateAbsoluteMouse, true);
+    assert.equal(service.preferences.emulateAbsoluteMouse, false);
     assert.equal(service.preferences.language, 'nb');
-    assert.equal(storage.saves.length, 0);
-    assert.equal(storage.stored, stored);
+    assert.equal(service.preferences.timezone, stored.timezone);
+    assert.equal(service.preferences.numberOfRecentConnections, stored.numberOfRecentConnections);
+    assert.equal(storage.saves.length, 1);
+    assert.equal(storage.stored.iosTouchpadDefaultVersion, 1);
+    assert.equal(storage.load(devices[0]).service.preferences.emulateAbsoluteMouse, false);
+    assert.equal(storage.saves.length, 1, 'reload must not run the migration again');
 });
 
 test('unrelated saved preferences do not suppress missing iOS defaults or change video/language settings', () => {
@@ -155,7 +109,7 @@ test('explicit iOS choices persist across save/reload and are not reset by fresh
     const next = storage.load(devices[3]).service;
     assert.equal(next.preferences.inputMethod, 'text');
     assert.equal(next.preferences.emulateAbsoluteMouse, true);
-    assert.equal(storage.saves.length, 1);
+    assert.equal(storage.saves.length, 2);
 });
 
 test('automatic navigation/logout/unload persistence retains generated iOS defaults without overriding explicit changes', () => {
@@ -171,5 +125,19 @@ test('automatic navigation/logout/unload persistence retains generated iOS defau
     const restored = storage.load(devices[1]).service;
     assert.equal(restored.preferences.inputMethod, 'none');
     assert.equal(restored.preferences.emulateAbsoluteMouse, true);
-    assert.equal(storage.saves.length, 3);
+    assert.equal(storage.saves.length, 4);
+});
+
+test('existing relative mouse settings acquire the marker once and future markers are never downgraded', () => {
+    const storage = fixture({ inputMethod: 'native', emulateAbsoluteMouse: false });
+    assert.equal(storage.load(devices[0]).service.preferences.emulateAbsoluteMouse, false);
+    assert.equal(storage.stored.iosTouchpadDefaultVersion, 1);
+    storage.load(devices[1]);
+    assert.equal(storage.saves.length, 1);
+
+    const future = fixture({ emulateAbsoluteMouse: true, iosTouchpadDefaultVersion: 2 });
+    const current = future.load(devices[0]).service;
+    assert.equal(current.preferences.emulateAbsoluteMouse, true);
+    assert.equal(current.preferences.iosTouchpadDefaultVersion, 2);
+    assert.equal(future.saves.length, 0);
 });
