@@ -117,11 +117,10 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
         }
 
         nativeLayout = nativeEnabled || holdingKeyboard;
-        var preserveLayout = nativeLayout;
+        var preserveLayout = holdingKeyboard;
         if (!preserveLayout && state && state.preserveLayout && !allowLayoutRelease) {
-            // Disabling native mode removes its Angular toolbar in the next
-            // digest. Keep the baseline until the resulting styles have been
-            // applied, rather than resizing once to the departing toolbar.
+            // Let keyboard dismissal and native-mode toolbar teardown finish
+            // applying their styles before accepting an unoccluded layout.
             preserveLayout = true;
             frame = requestFrame(function() { update(false, true); });
         }
@@ -134,12 +133,14 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
             top: nativeLayout && zoomGeometry ? zoomGeometry.top
                 : (nativeLayout && visual && !zoomed ? (visual.pageTop || 0) : null),
             keyboardInset: holdingKeyboard ? Math.max(0, fullHeight - visibleHeight) : 0,
-            // Native text input and its toolbar reduce only the local view.
-            // Publish intent before keyboard animation has reported an inset.
+            // The permanent toolbar occupies layout space. The software
+            // keyboard only clips that bar-adjusted desktop. Publish focus
+            // intent before the keyboard animation has reported an inset.
             preserveLayout: preserveLayout,
             keyboardActive: holdingKeyboard,
             keyboardFocused: intent,
             layoutWidth: width,
+            layoutReady: !nativeEnabled || guacNativeKeyboard.toolbarHeight > 0,
             panning: nativeEnabled && !!guacNativeKeyboard.panning,
             toolbarHeight: nativeEnabled ? (guacNativeKeyboard.toolbarHeight || 0) : 0
         });
@@ -208,14 +209,19 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
             };
         },
 
-        /** Exclude native input UI and keyboard occlusion from remote size. */
+        /** Restore only software-keyboard occlusion; the toolbar is in flow. */
         getRemoteSize: function(width, height, rows, previous) {
+            // A remembered native preference can render the client before its
+            // toolbar. Wait for the actual measured row instead of connecting
+            // once at full browser height and resizing immediately afterwards.
+            if (state && !state.layoutReady)
+                return null;
             var inset = state ? state.keyboardInset : 0;
             if (state && state.preserveLayout && previous) {
-                // Reuse both dimensions from before native mode. Its input
-                // bar, Safari's focus scrolling, and asynchronous viewport
-                // events must never change the remote desktop. The client
-                // invalidates this baseline for real layout width/row changes.
+                // Reuse the unoccluded dimensions above the toolbar. Safari's
+                // focus scrolling and asynchronous viewport events must not
+                // resize this desktop. The client invalidates the baseline
+                // when the permanent toolbar or tiled layout really changes.
                 return { width: previous.width, height: previous.height };
             }
             return {

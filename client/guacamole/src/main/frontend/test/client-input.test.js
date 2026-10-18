@@ -135,6 +135,7 @@ test('emulated mouse input uses the same clipboard gate and immediate cursor fee
 test('native touch and keyboard input remain ordered across clipboard synchronization', () => {
     const fixture = directiveFixture({ blocked: true });
     fixture.scope.client.multiTouchSupport = 2;
+    fixture.scope.emulateAbsoluteMouse = true;
     fixture.configureTouch();
     fixture.touch.emit({ type: 'touchstart', state: { x: 40, y: 20, force: 1 }, preventDefault() {} });
     fixture.scope.$broadcast('guacKeydown', 0x61);

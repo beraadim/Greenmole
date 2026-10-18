@@ -12,24 +12,26 @@ the built-in Guacamole keyboard layout.
    the remote application while keeping the keyboard open. Hide keyboard also
    turns panning off.
 
-The selection is remembered in the current browser and can also be changed in
-its default input preferences. An iPad recommendation recognizes both mobile
-and desktop browsing modes. The option remains available manually on other
-devices; detection does not force a different input method on existing users.
+New iOS browser preferences default to **Native keyboard** and **Touchpad** mouse
+mode, where dragging moves the remote pointer. Detection includes iPhone, iPod
+touch and iPad using mobile or desktop browsing mode. Saved input and mouse
+preferences take precedence independently, so an existing browser may retain
+its previous settings. Change them under the browser's default input preferences
+if needed. The native keyboard option remains available manually on other devices.
 
 The control bar remains available after the device keyboard is dismissed. Use
 **Show keyboard** to reopen it, including after using the keyboard's own dismiss
 button. Ctrl, Alt, Esc and Tab remain available for remote keyboard commands.
 An attached hardware keyboard remains usable.
 
-The keyboard and its control bar cover part of the local view. They preserve
-the remote desktop's resolution and its current zoom instead of fitting the
-desktop into the smaller space. You can scroll all the way to its bottom above
-the control bar, including when the bar wraps on a narrow screen. Genuine
-rotation, multitasking width changes and changes to the tiled connection layout
-can still resize the remote desktop. Browser pinch zoom remains under user
-control. Floating keyboards and attached hardware keyboards may leave the
-visible area unchanged.
+The control bar reserves its measured height in the layout. The remote desktop
+is sized to the usable area above it, including when the bar wraps on a narrow
+screen. Opening the device's software keyboard then clips this desktop locally
+without changing its resolution or zoom. You can pan to its bottom in the space
+above the keyboard. Changing input mode, permanent control-bar height, rotation,
+multitasking width or tiled connection layout can resize the remote desktop.
+Browser pinch zoom remains under user control. Floating keyboards and attached
+hardware keyboards may leave the visible area unchanged.
 
 While Pan desktop is enabled, opening the keyboard scrolls just enough to reveal
 the last remote click, or a known pointer position if there has been no click.

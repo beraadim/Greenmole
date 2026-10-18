@@ -116,6 +116,14 @@ angular.module('settings').provider('preferenceService', ['$injector',
         return jstz.determine().name();
     };
 
+    // iPadOS can use a desktop Mac user agent. Touch points distinguish that
+    // mode from a Mac. These are device defaults only: stored preferences are
+    // merged below, independently preserving each saved input/mouse choice.
+    // Older versions auto-saved their defaults, which cannot safely be
+    // distinguished from explicit choices and must not be migrated here.
+    var isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent || '')
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
     /**
      * All currently-set preferences, as name/value pairs. Each property name
      * corresponds to the name of a preference.
@@ -134,7 +142,7 @@ angular.module('settings').provider('preferenceService', ['$injector',
          * 
          * @type Boolean
          */
-        emulateAbsoluteMouse : true,
+        emulateAbsoluteMouse : !isIOS,
 
         /**
          * The default input method. This may be any of the values defined
@@ -142,7 +150,7 @@ angular.module('settings').provider('preferenceService', ['$injector',
          *
          * @type String
          */
-        inputMethod : inputMethods.NONE,
+        inputMethod : isIOS ? inputMethods.NATIVE : inputMethods.NONE,
         
         /**
          * The key of the desired display language.

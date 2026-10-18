@@ -95,6 +95,7 @@ body.client {
     -webkit-flex: 1 1 auto;
     flex: 1 1 auto;
     position: relative;
+    min-height: 0;
 }
 
 .client-view .client-bottom {
@@ -138,12 +139,9 @@ body.client {
     opacity: 0.5;
 }
 
-/* Native controls cover the local desktop rather than changing its measured
-   viewport. This also preserves full resolution on a fresh native-mode page. */
-.client-view .client-bottom.native-keyboard-overlay {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
+/* Reserve the controls' actual height once, including wrapped rows. The
+   software keyboard may clip the remaining desktop without rescaling it. */
+.client-view .client-bottom.native-keyboard-controls {
+    position: relative;
     z-index: 40;
 }

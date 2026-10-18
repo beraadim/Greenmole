@@ -182,6 +182,7 @@ angular.module('client').directive('guacClient', [function guacClient() {
         let lastRemoteRows = 0;
         let lastRemoteColumns = 0;
         let lastLayoutWidth = null;
+        let lastToolbarHeight = 0;
         let viewportState = null;
         let primaryButtonDown = false;
 
@@ -196,24 +197,12 @@ angular.module('client').directive('guacClient', [function guacClient() {
             if (!client || !display)
                 return;
 
-            let bottomInset = viewportState ? viewportState.toolbarHeight || 0 : 0;
-            const view = main.closest ? main.closest('.client-view') : null;
-            const toolbar = view && view.querySelector
-                ? view.querySelector('.client-bottom.native-keyboard-overlay') : null;
-            // A shared toolbar covers only the bottom tiles. Its actual local
-            // overlap, rather than its full height, bounds each visible view.
-            if (main.getBoundingClientRect && toolbar && toolbar.getBoundingClientRect) {
-                const bounds = main.getBoundingClientRect();
-                const overlay = toolbar.getBoundingClientRect();
-                bottomInset = overlay.bottom > bounds.top && overlay.right > bounds.left
-                        && overlay.left < bounds.right
-                    ? Math.max(0, Math.min(main.clientHeight, bounds.bottom - overlay.top)) : 0;
-            }
-
             smartPan.update({
                 width: main.clientWidth,
                 height: main.clientHeight,
-                bottomInset,
+                // The permanent controls are outside this view in the flex
+                // layout. Its measured height already excludes them.
+                bottomInset: 0,
                 scale: display.getScale(),
                 left: displayContainer.offsetLeft,
                 top: displayContainer.offsetTop
@@ -232,11 +221,11 @@ angular.module('client').directive('guacClient', [function guacClient() {
          */
         const updateDisplayScale = function updateDisplayScale() {
 
-            if (!display) return;
+            if (!display || (viewportState && viewportState.layoutReady === false)) return;
 
-            // Native keyboard UI changes the visible window onto the desktop,
-            // not the desktop's scale. Preserve the pre-input fitting area so
-            // auto-fit and manual zoom remain unchanged while it is occluded.
+            // The software keyboard changes the visible window onto the
+            // desktop, not its scale. The baseline already excludes the
+            // permanent controls, including a wrapped toolbar.
             const fittingSize = viewportState && viewportState.preserveLayout && lastRemoteSize
                 ? lastRemoteSize : { width: main.offsetWidth, height: main.offsetHeight };
 
@@ -451,6 +440,7 @@ angular.module('client').directive('guacClient', [function guacClient() {
             lastRemoteRows = 0;
             lastRemoteColumns = 0;
             lastLayoutWidth = null;
+            lastToolbarHeight = 0;
             client = null;
             display = null;
             displayElement = null;
@@ -543,8 +533,10 @@ angular.module('client').directive('guacClient', [function guacClient() {
             touchScreen.offEach(['mousedown', 'mousemove', 'mouseup'], handleEmulatedMouseEvent);
             touchPad.offEach(['mousedown', 'mousemove', 'mouseup'], handleEmulatedMouseEvent);
 
-            // Directly forward local touch events
-            if ($scope.client.multiTouchSupport)
+            // Direct touch belongs to absolute mode. An explicit relative
+            // preference must remain a trackpad even if the server supports
+            // touch contacts (including the iOS device default).
+            if ($scope.client.multiTouchSupport && $scope.emulateAbsoluteMouse)
                 touch.onEach(['touchstart', 'touchmove', 'touchend'], handleTouchEvent);
 
             // Switch to touchscreen if mouse emulation is required and
@@ -609,25 +601,29 @@ angular.module('client').directive('guacClient', [function guacClient() {
                 const row = main.closest ? main.closest('.tiled-client-row') : null;
                 const columns = row ? row.children.length : 1;
                 const layoutWidth = viewportState ? viewportState.layoutWidth : null;
+                const toolbarHeight = viewportState ? viewportState.toolbarHeight || 0 : 0;
                 const remoteSize = viewportService.getRemoteSize(main.offsetWidth, main.offsetHeight, rows,
                     rows === lastRemoteRows && columns === lastRemoteColumns && layoutWidth === lastLayoutWidth
+                            && toolbarHeight === lastToolbarHeight
                         ? lastRemoteSize : null);
-                lastRemoteSize = remoteSize;
-                lastRemoteRows = rows;
-                lastRemoteColumns = columns;
-                lastLayoutWidth = layoutWidth;
+                if (remoteSize) {
+                    lastRemoteSize = remoteSize;
+                    lastRemoteRows = rows;
+                    lastRemoteColumns = columns;
+                    lastLayoutWidth = layoutWidth;
+                    lastToolbarHeight = toolbarHeight;
 
-                // Preserve the first known viewport for the initial handshake.
-                // Further notifications join the pending resize instead of
-                // starting additional asynchronous connection attempts.
-                if (!connectionRequested) {
-                    connectionRequested = true;
-                    ManagedClient.connect($scope.client, remoteSize.width, remoteSize.height);
+                    // Preserve the first known usable viewport for the initial
+                    // handshake. Wait for native controls to finish measuring.
+                    if (!connectionRequested) {
+                        connectionRequested = true;
+                        ManagedClient.connect($scope.client, remoteSize.width, remoteSize.height);
+                    }
+
+                    const size = ClientResizeQueue.normalize(remoteSize.width, remoteSize.height,
+                        $window.devicePixelRatio || 1, $scope.client.protocol === 'rdp');
+                    resizeQueue.request(size.width, size.height);
                 }
-
-                const size = ClientResizeQueue.normalize(remoteSize.width, remoteSize.height,
-                    $window.devicePixelRatio || 1, $scope.client.protocol === 'rdp');
-                resizeQueue.request(size.width, size.height);
 
             }
 
@@ -652,10 +648,6 @@ angular.module('client').directive('guacClient', [function guacClient() {
             // Observe focus transitions synchronously, including a Show action
             // which briefly blurs/refocuses during the same Angular turn.
             updateSmartPanState();
-            // The native input toolbar overlays the desktop. Extend only its
-            // local scrollable content so even the bottommost pixels can be
-            // moved above the toolbar without changing the remote geometry.
-            displayContainer.style.paddingBottom = (state && state.toolbarHeight || 0) + 'px';
             if (client)
                 updateDisplayOverflow($scope.client.clientProperties.scale);
             if (viewportListenerActive && !viewportResizeScheduled) {

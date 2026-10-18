@@ -252,3 +252,24 @@ test('Pan preserves hardware mouse and synthetic typing while disabled native mo
     for (const name of ['touchstart', 'touchmove', 'touchend', 'touchcancel'])
         assert.equal(client.mainEvents.get(name).size, 0);
 });
+
+test('relative mouse preference remains a trackpad when the remote server advertises native touch', () => {
+    const client = directiveFixture();
+    client.scope.client.multiTouchSupport = 10;
+    client.scope.emulateAbsoluteMouse = false;
+    client.configureTouch();
+    client.touch.emit({ type: 'touchstart', state: { x: 100, y: 100, force: 1 }, preventDefault() {} });
+    client.touchscreen.emit(mouseEvent('mousedown', 100, { left: true }));
+    assert.deepEqual(client.sent, []);
+    client.touchpad.emit(mouseEvent('mousedown', 100, { left: true }));
+    assert.deepEqual(client.sent.map(row => row.slice(0, 5)), [['first', 'mouse', 50, 10, true]]);
+
+    // Switching to absolute mode restores native contacts and removes the
+    // relative emulator, rather than forwarding the same touch twice.
+    client.scope.emulateAbsoluteMouse = true;
+    client.configureTouch();
+    client.touchpad.emit(mouseEvent('mousedown', 200, { left: true }));
+    assert.equal(client.sent.length, 1);
+    client.touch.emit({ type: 'touchstart', state: { x: 100, y: 100, force: 1 }, preventDefault() {} });
+    assert.deepEqual(client.sent[1], ['first', 'touch', 50, 50, 1]);
+});

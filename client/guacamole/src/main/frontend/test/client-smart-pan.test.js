@@ -151,12 +151,12 @@ function clientFixture({ keyboard = { enabled: true, panning: false, focused: fa
     };
     const client = directiveFixture({ nativeKeyboard: keyboard, viewportService, density: 2 });
     Object.assign(client.main, {
-        offsetWidth: 1024, offsetHeight: 768,
-        clientWidth: 1024, clientHeight: 768,
-        scrollWidth: 1024, scrollHeight: 812
+        offsetWidth: 1024, offsetHeight: 724,
+        clientWidth: 1024, clientHeight: 724,
+        scrollWidth: 1024, scrollHeight: 724
     });
     client.displays[0].getWidth = () => 2048;
-    client.displays[0].getHeight = () => 1536;
+    client.displays[0].getHeight = () => 1448;
     client.displays[0].scale(0.5);
     client.scope.mainElementResized();
     return Object.assign(client, { keyboard,
@@ -176,14 +176,14 @@ test('actual directive records remote click coordinates once at DPR 2 and reveal
     f.mouse.emit({ ...mouseEvent('mouseup', 500), state: { x: 500, y: 700, left: false } });
     f.mouse.emit({ ...mouseEvent('mousemove', 200), state: { x: 200, y: 100 } });
     f.open();
-    assert.equal(f.main.scrollTop, 376);
-    assert.equal(f.scope.client.clientProperties.scrollTop, 376);
+    assert.equal(f.main.scrollTop, 324);
+    assert.equal(f.scope.client.clientProperties.scrollTop, 324);
     assert.equal(f.displays[0].getScale(), 0.5);
     assert.deepEqual(f.sent[0].slice(2, 4), [1000, 1400]);
-    assert.deepEqual(f.connections, [['first', 1024, 768]]);
+    assert.deepEqual(f.connections, [['first', 1024, 724]]);
 });
 
-test('actual directive only assists the focused tile and uses actual shared-toolbar overlap', () => {
+test('actual directive only assists the focused tile and does not subtract the in-flow controls twice', () => {
     const f = clientFixture();
     f.mouse.emit({ ...mouseEvent('mousedown', 500, { left: true }), state: { x: 500, y: 350, left: true } });
     f.scope.client.clientProperties.focused = false;
@@ -191,15 +191,9 @@ test('actual directive only assists the focused tile and uses actual shared-tool
     assert.equal(f.main.scrollTop, 0);
 
     f.scope.client.clientProperties.focused = true;
-    f.main.getBoundingClientRect = () => ({ top: 0, bottom: 400, left: 0, right: 1024 });
-    f.main.closest = selector => selector === '.client-view' ? {
-        querySelector: () => ({ getBoundingClientRect: () => ({ top: 600, bottom: 644, left: 0, right: 1024 }) })
-    } : null;
     f.watches.get('client.clientProperties.focused')();
-    assert.equal(f.main.scrollTop, 0, 'top tile is not covered by the bottom toolbar');
-    f.main.closest = selector => selector === '.client-view' ? {
-        querySelector: () => ({ getBoundingClientRect: () => ({ top: 350, bottom: 394, left: 0, right: 1024 }) })
-    } : null;
+    assert.equal(f.main.scrollTop, 0, '350px anchor already fits the 400px unobstructed client');
+    Object.assign(f.main, { offsetHeight: 350, clientHeight: 350 });
     f.scope.mainElementResized();
     assert.equal(f.main.scrollTop, 32);
 });
@@ -207,11 +201,12 @@ test('actual directive only assists the focused tile and uses actual shared-tool
 test('actual primary touch input supplies an anchor and replacing the managed client clears it', () => {
     const f = clientFixture();
     f.scope.client.multiTouchSupport = 2;
+    f.scope.emulateAbsoluteMouse = true;
     f.configureTouch();
     f.touch.emit({ type: 'touchmove', state: { id: 0, x: 500, y: 700, force: 1 }, preventDefault() {} });
     f.touch.emit({ type: 'touchmove', state: { id: 1, x: 100, y: 100, force: 1 }, preventDefault() {} });
     f.open();
-    assert.equal(f.main.scrollTop, 376);
+    assert.equal(f.main.scrollTop, 324);
     f.main.scrollTop = 0;
     f.attach(f.managed('second'));
     f.publish({ toolbarHeight: 45 });
@@ -221,7 +216,7 @@ test('actual primary touch input supplies an anchor and replacing the managed cl
 test('beginning a manual Pan gesture at an edge still prevents the remaining keyboard animation from moving the view', () => {
     const f = clientFixture();
     f.mouse.emit({ ...mouseEvent('mousedown', 500, { left: true }), state: { x: 500, y: 600, left: true } });
-    f.open(768);
+    f.open(724);
     assert.equal(f.main.scrollTop, 0);
     const touch = { touches: [{ identifier: 0, clientX: 100, clientY: 200 }],
         preventDefault() {}, stopImmediatePropagation() {} };
@@ -239,7 +234,7 @@ test('actual viewport service publishes a same-geometry Show blur/refocus and re
     const visualClock = fakeClock();
     const window = Object.assign(clock.window, {
         innerWidth: 1024, innerHeight: 768,
-        visualViewport: Object.assign(visualClock.window, { width: 1024, height: 400, scale: 1 })
+        visualViewport: Object.assign(visualClock.window, { width: 1024, height: 444, scale: 1 })
     });
     const native = loaded.factories.guacNativeKeyboard(window);
     native.setEnabled(true);
@@ -251,7 +246,7 @@ test('actual viewport service publishes a same-geometry Show blur/refocus and re
     const stop = viewport.subscribe(state => f.publish(state));
     native.setPanning(true);
     native.setFocused(true);
-    assert.equal(f.main.scrollTop, 376);
+    assert.equal(f.main.scrollTop, 324);
 
     f.main.scrollTop = 120;
     for (const [callback] of f.mainEvents.get('scroll')) callback();
@@ -262,7 +257,7 @@ test('actual viewport service publishes a same-geometry Show blur/refocus and re
     // it focused after hiding the software keyboard. Geometry is unchanged.
     native.setFocused(false);
     native.setFocused(true);
-    assert.equal(f.main.scrollTop, 376);
+    assert.equal(f.main.scrollTop, 324);
     stop();
     f.scope.$broadcast('$destroy');
 });
