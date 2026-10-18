@@ -88,6 +88,8 @@
         "server/src/libguac/user-handlers.h",
         "server/src/libguac/user.c",
         "server/src/protocols/rdp/Makefile.am",
+        "server/src/protocols/rdp/channels/disp.c",
+        "server/src/protocols/rdp/channels/disp.h",
         "server/src/protocols/rdp/channels/rdpgfx.c",
         "server/src/protocols/rdp/client.c",
         "server/src/protocols/rdp/gdi.c",

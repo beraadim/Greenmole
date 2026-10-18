@@ -1,0 +1,28 @@
+{
+  "version": "1.6.1-greenmole.3",
+  "baseline": "unreleased Apache Guacamole staging/1.6.1; see UPSTREAM.json",
+  "platform": "linux/amd64",
+  "images": {
+    "server": {
+      "tag": "greenmole/guacd:1.6.1-greenmole.3",
+      "build_args": {
+        "ALPINE_BASE_IMAGE": "3.18@sha256:de0eb0b3f2a47ba1eb89389859a9bd88b28e82f5826b6969ad604979713c2d4f",
+        "WITH_FREERDP": "9b678b6d5a40ce01607d8c3b1b1416437c8416c4",
+        "WITH_LIBSSH2": "a312b43325e3383c865a87bb1d26cb52e3292641",
+        "WITH_LIBTELNET": "c979e8a9d23cfec82dec81be82c3c8f9139fa04a",
+        "WITH_LIBVNCCLIENT": "9b54b1ec32731bd23158ca014dc18014db4194c3",
+        "WITH_LIBWEBSOCKETS": "fbb0baf6af9c4324f0f1591734c78b0089b599d4",
+        "WITH_OPENH264": "652bdb7719f30b52b08e506645a7322ff1b2cc6f"
+      }
+    },
+    "client": {
+      "tag": "greenmole/web:1.6.1-greenmole.3",
+      "build_args": {
+        "MAVEN_BASE_IMAGE": "maven:3-eclipse-temurin-21-noble@sha256:5496bf5b90ea4ad5af01d63be191f946f15ef5c375a6dd48fc21482a43108ca5",
+        "TOMCAT_BASE_IMAGE": "tomcat:9-jdk21-temurin-noble@sha256:76ecacb60a5e9bbbce96e58606706196d94abd168ba7b91c9156415fe40f6461",
+        "MAVEN_ARGUMENTS": "-DskipTests=false"
+      }
+    }
+  },
+  "source": "https://github.com/beraadim/Greenmole"
+}

@@ -1,4 +1,6 @@
 /*
+ * Modified for Greenmole by its maintainers.
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -57,6 +59,18 @@ typedef struct guac_rdp_disp {
      * Display control interface.
      */
     DispClientContext* disp;
+
+    /**
+     * The FreeRDP instance borrowed while the display channel is connected.
+     * The RDP client's published instance may still be NULL during connection.
+     */
+    freerdp* rdp_inst;
+
+    /**
+     * Whether server Display Control capabilities have been received. Layouts
+     * must not be sent before that exchange, even after the channel opens.
+     */
+    int caps_ready;
 
     /**
      * The timestamp of the last display update request, or 0 if no request

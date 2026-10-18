@@ -1,4 +1,6 @@
 /*
+ * Modified for Greenmole by its maintainers.
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -41,6 +43,8 @@ guac_rdp_disp* guac_rdp_disp_alloc(guac_client* client) {
 
     /* Not yet connected */
     disp->disp = NULL;
+    disp->rdp_inst = NULL;
+    disp->caps_ready = 0;
 
     /* No requests have been made */
     disp->last_request = guac_timestamp_current();
@@ -54,6 +58,20 @@ guac_rdp_disp* guac_rdp_disp_alloc(guac_client* client) {
 
 void guac_rdp_disp_free(guac_rdp_disp* disp) {
     guac_mem_free(disp);
+}
+
+/** Flush the latest queued viewport once the server permits layout updates. */
+static UINT guac_rdp_disp_caps(DispClientContext* disp, UINT32 max_monitors,
+        UINT32 area_factor_a, UINT32 area_factor_b) {
+    guac_rdp_disp* guac_disp = (guac_rdp_disp*) disp->custom;
+    guac_rdp_client* rdp_client = (guac_rdp_client*) guac_disp->client->data;
+    guac_disp->caps_ready = 1;
+    guac_client_log(guac_disp->client, GUAC_LOG_DEBUG,
+            "Display update capabilities ready; pending viewport is %ix%i.",
+            guac_disp->requested_width, guac_disp->requested_height);
+    guac_rdp_disp_update_size(guac_disp, rdp_client->settings,
+            guac_disp->rdp_inst);
+    return CHANNEL_RC_OK;
 }
 
 /**
@@ -85,14 +103,25 @@ static void guac_rdp_disp_channel_connected(rdpContext* context,
     if (strcmp(args->name, DISP_DVC_CHANNEL_NAME) != 0)
         return;
 
-    /* Init module with current display size */
-    guac_rdp_disp_set_size(guac_disp, rdp_client->settings,
-            context->instance, guac_rdp_get_width(context->instance),
-            guac_rdp_get_height(context->instance));
-
     /* Store reference to the display update plugin once it's connected */
     DispClientContext* disp = (DispClientContext*) args->pInterface;
     guac_disp->disp = disp;
+    /* FreeRDP owns the instance and channel until ChannelDisconnected, which
+     * clears this borrow before the instance can be released. */
+    guac_disp->rdp_inst = disp != NULL ? context->instance : NULL;
+    guac_disp->caps_ready = 0;
+    if (disp == NULL)
+        return;
+    disp->custom = guac_disp;
+    disp->DisplayControlCaps = guac_rdp_disp_caps;
+
+    /* The browser may have queued a newer viewport while RDP was connecting.
+     * Seed from the negotiated size only if no request exists; otherwise keep
+     * that latest viewport for the server capabilities callback. */
+    if (guac_disp->requested_width == 0 || guac_disp->requested_height == 0)
+        guac_rdp_disp_set_size(guac_disp, rdp_client->settings,
+                context->instance, guac_rdp_get_width(context->instance),
+                guac_rdp_get_height(context->instance));
 
     guac_client_log(client, GUAC_LOG_DEBUG, "Display update channel "
             "will be used for display size changes.");
@@ -129,6 +158,8 @@ static void guac_rdp_disp_channel_disconnected(rdpContext* context,
 
     /* Channel is no longer connected */
     guac_disp->disp = NULL;
+    guac_disp->rdp_inst = NULL;
+    guac_disp->caps_ready = 0;
 
     guac_client_log(client, GUAC_LOG_DEBUG, "Display update channel "
             "disconnected.");
@@ -208,9 +239,9 @@ void guac_rdp_disp_update_size(guac_rdp_disp* disp,
             && height == guac_rdp_get_height(rdp_inst))
         return;
 
-    disp->last_request = now;
-
     if (settings->resize_method == GUAC_RESIZE_RECONNECT) {
+
+        disp->last_request = now;
 
         /* Update settings with new dimensions */
         settings->width = width;
@@ -235,12 +266,17 @@ void guac_rdp_disp_update_size(guac_rdp_disp* disp,
             .DeviceScaleFactor = 0
         }};
 
-        /* Send display update notification if display channel is connected */
-        if (disp->disp != NULL) {
+        /* The channel can open before server capabilities arrive. Preserve
+         * the viewport until both stages of negotiation are complete. */
+        if (disp->disp != NULL && disp->caps_ready) {
 
             guac_client* client = disp->client;
             guac_rdp_client* rdp_client = (guac_rdp_client*) client->data;
 
+            /* A viewport deferred while the channel is opening must not use
+             * up the send interval. Failed sends retain the requested size
+             * and retry through the normal, rate-limited update loop. */
+            disp->last_request = now;
             pthread_mutex_lock(&(rdp_client->message_lock));
             disp->disp->SendMonitorLayout(disp->disp, 1, monitors);
             pthread_mutex_unlock(&(rdp_client->message_lock));

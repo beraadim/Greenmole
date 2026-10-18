@@ -413,11 +413,15 @@ angular.module('client').directive('guacClient', [function guacClient() {
             $scope.$evalAsync(updateDisplayScale);
         });
 
-        // The viewport can change while the connection handshake is in flight.
-        // Apply its latest size only once the client accepts size instructions.
+        // Layout can settle while the handshake is in flight, before the
+        // element's resize sensor is ready. Remeasure before enabling the
+        // queue so it cannot flush a stale initial viewport.
         $scope.$watch('client.clientState.connectionState', function connectionStateChanged(state) {
             const states = ManagedClientState.ConnectionState;
-            resizeQueue.setConnected(state === states.WAITING || state === states.CONNECTED);
+            const active = state === states.WAITING || state === states.CONNECTED;
+            if (active)
+                $scope.mainElementResized();
+            resizeQueue.setConnected(active);
         });
 
         $scope.$watch('client.protocol', function protocolChanged() {

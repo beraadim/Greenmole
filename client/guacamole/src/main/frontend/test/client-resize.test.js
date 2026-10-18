@@ -181,6 +181,55 @@ test('initial connection happens once with known CSS dimensions and applies the 
     assert.deepEqual(fixture.sent, [['first', 'size', 2000, 1123]]);
 });
 
+test('entering WAITING remeasures a viewport that grew during the handshake without a resize notification', () => {
+    const fixture = directiveFixture({ state: 'IDLE' });
+    viewport(fixture, 1280, 720);
+    fixture.main.offsetWidth = 1600;
+    fixture.main.offsetHeight = 900;
+    fixture.clock.advance(300);
+    fixture.watches.get('client.clientState.connectionState')('WAITING');
+    fixture.clock.advance(150);
+    assert.deepEqual(fixture.connections, [['first', 1280, 720]]);
+    assert.deepEqual(fixture.sent, [['first', 'size', 1600, 900]]);
+    acknowledge(fixture, 1600, 900);
+    fixture.clock.advance(10000);
+    assert.equal(fixture.sent.length, 1);
+    assert.equal(fixture.clock.timers.size, 0);
+});
+
+test('entering CONNECTED remeasures final layout without reconnecting or repeating acknowledged sizes', () => {
+    const fixture = directiveFixture({ state: 'IDLE' });
+    viewport(fixture, 1280, 720);
+    fixture.watches.get('client.clientState.connectionState')('WAITING');
+    fixture.clock.advance(150);
+    acknowledge(fixture, 1280, 720);
+    fixture.main.offsetWidth = 1920;
+    fixture.main.offsetHeight = 1080;
+    fixture.watches.get('client.clientState.connectionState')('CONNECTED');
+    fixture.clock.advance(150);
+    assert.deepEqual(fixture.connections, [['first', 1280, 720]]);
+    assert.deepEqual(fixture.sent, [['first', 'size', 1280, 720], ['first', 'size', 1920, 1080]]);
+    acknowledge(fixture, 1920, 1080);
+    fixture.clock.advance(10000);
+    assert.equal(fixture.sent.length, 2);
+    assert.equal(fixture.clock.timers.size, 0);
+});
+
+test('connection transitions keep unknown dimensions deferred and teardown cancels their later request', () => {
+    const fixture = directiveFixture({ state: 'IDLE' });
+    fixture.watches.get('client.clientState.connectionState')('WAITING');
+    fixture.clock.advance(5000);
+    assert.deepEqual(fixture.connections, []);
+    assert.deepEqual(fixture.sent, []);
+    viewport(fixture, 1600, 900);
+    assert.deepEqual(fixture.connections, [['first', 1600, 900]]);
+    fixture.scope.$broadcast('$destroy');
+    fixture.clock.advance(10000);
+    assert.deepEqual(fixture.sent, []);
+    assert.equal(fixture.clock.timers.size, 0);
+    assert.equal(fixture.clock.events.get('resize').size, 0);
+});
+
 test('fractional DPR does not repeatedly request a size the RDP server already normalized', () => {
     const fixture = directiveFixture({ density: 1.25 });
     acknowledge(fixture, 1590, 1118);

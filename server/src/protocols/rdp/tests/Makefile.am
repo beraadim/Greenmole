@@ -39,6 +39,7 @@ TESTS = $(check_PROGRAMS)
 
 test_rdp_SOURCES =      \
     channels/avc420.c \
+    channels/disp.c \
     fs/basename.c       \
     fs/normalize_path.c \
     gdi/avc444-primitives.c \
