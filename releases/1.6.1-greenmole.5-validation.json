@@ -1,0 +1,364 @@
+{
+  "schema": "greenmole-release-validation-v1",
+  "release": "1.6.1-greenmole.5",
+  "status": "built, tested and deployed",
+  "source_revision": "9a3eb619d34e1e28d66d03ecbf6f6de430ae5bc9",
+  "verified_at_utc": "2026-10-18T10:54:31.242425+00:00",
+  "platform": "linux/amd64",
+  "dependency_pins_unchanged_from": "1.6.1-greenmole.4",
+  "release_inputs_sha256": "86dd23bc327a71bf4229f38d3d534da7873e71de6b6c95e15e569c639ad66121",
+  "container_images_published": false,
+  "build": {
+    "source_revision": "9a3eb619d34e1e28d66d03ecbf6f6de430ae5bc9",
+    "pinned_image_builds_passed": true,
+    "maven_reactor_success": true,
+    "maven_tests_explicitly_enabled": true,
+    "java_unit_tests_passed": 64,
+    "java_unit_failures": 0,
+    "java_unit_errors": 0,
+    "firefox_jasmine": {
+      "passed": 256,
+      "total": 259,
+      "capability_skipped": 3
+    },
+    "native": {
+      "exit_code": 0,
+      "tests": 296,
+      "nonzero_failures": [],
+      "image": "greenmole/native-benchmark:1.6.1-greenmole.5",
+      "revision": "9a3eb619d34e1e28d66d03ecbf6f6de430ae5bc9",
+      "diagnostics": 0
+    },
+    "images": [
+      {
+        "image": "greenmole/guacd:1.6.1-greenmole.5",
+        "image_id": "sha256:6a2c6d4a6670d5c34388991b5e8f413e13f17836b7219afe0d63ccbe4b1446c8",
+        "revision": "9a3eb619d34e1e28d66d03ecbf6f6de430ae5bc9"
+      },
+      {
+        "image": "greenmole/web:1.6.1-greenmole.5",
+        "image_id": "sha256:ac94c483b1619d71d4ac65ee276d31920c4f05945b0bbe65aef7cf63b2ad7c29",
+        "revision": "9a3eb619d34e1e28d66d03ecbf6f6de430ae5bc9"
+      },
+      {
+        "image": "greenmole/native-benchmark:1.6.1-greenmole.5",
+        "image_id": "sha256:b38656fe0965e9ed5deca9c41de08ee0c138dbd4fd81cd4f990c142faee34f2a",
+        "revision": "9a3eb619d34e1e28d66d03ecbf6f6de430ae5bc9"
+      }
+    ]
+  },
+  "frontend_node_tests": {
+    "passed": 105,
+    "failed": 0,
+    "skipped": 0,
+    "source_revision": "9a3eb619d34e1e28d66d03ecbf6f6de430ae5bc9"
+  },
+  "production_webpack_passed": true,
+  "production_webpack_existing_bundle_size_warnings": 3,
+  "new_frontend_regressions": {
+    "total": 37,
+    "native_keyboard_cases": 6,
+    "viewport_cases": 9,
+    "local_pan_cases": 10,
+    "smart_pan_cases": 12,
+    "coverage": [
+      "Native keyboard toolbar overlays the existing full desktop without changing remote size or scale",
+      "Keyboard animation, dismissal, pinch geometry, rotation and tile layout preserve or rebase the correct baseline",
+      "Actual toolbar height creates enough local scroll clearance for bottommost pixels, including wrapped narrow layouts",
+      "Local Pan owns entire gestures safely across mode changes and multiple contacts; remote input resumes when disabled",
+      "Smart assistance uses a known last primary click or pointer hint, never inferred text-caret metadata",
+      "Click anchors use remote pixels once across DPR, zoom, offsets and tile-specific toolbar overlap",
+      "Manual local panning or scrollbar movement stops assistance until a new keyboard focus opening",
+      "Same-geometry explicit Show blur/refocus rearms assistance through the actual services and directive",
+      "Hardware mouse, text input, client replacement and teardown preserve input ordering and clean up listeners"
+    ]
+  },
+  "packaged_runtime_smoke": {
+    "source_revision": "9a3eb619d34e1e28d66d03ecbf6f6de430ae5bc9",
+    "version": "1.6.1-greenmole.5",
+    "image_ids": {
+      "greenmole/guacd:1.6.1-greenmole.5": "sha256:6a2c6d4a6670d5c34388991b5e8f413e13f17836b7219afe0d63ccbe4b1446c8",
+      "greenmole/web:1.6.1-greenmole.5": "sha256:ac94c483b1619d71d4ac65ee276d31920c4f05945b0bbe65aef7cf63b2ad7c29"
+    },
+    "synthetic_configuration_only": true,
+    "production_configuration_mounted": false,
+    "isolated_internal_network": true,
+    "languages": 16,
+    "greenmole_name_and_version_served": true,
+    "translation_metadata_valid": true,
+    "branding_assets_byte_identical": [
+      {
+        "path": "images/greenmole.png",
+        "sha256": "5c1cb410e7f474ad971f29cfd09895d1413a58abbe9cb038c1afd1e38a6729a7",
+        "bytes": 970059,
+        "dimensions": [
+          1254,
+          1254
+        ]
+      },
+      {
+        "path": "images/greenmole-64.png",
+        "sha256": "057f7d79653146b28275b8611a5d212c031cc8a3b3de1cedb3ddd7f8c837891d",
+        "bytes": 5843,
+        "dimensions": [
+          64,
+          64
+        ]
+      },
+      {
+        "path": "images/greenmole-144.png",
+        "sha256": "673509e1684cf7f6348c521c084e4fd9ec972d6b59ffed2d3500ce1ee8057e9a",
+        "bytes": 22634,
+        "dimensions": [
+          144,
+          144
+        ]
+      },
+      {
+        "path": "images/greenmole-256.png",
+        "sha256": "97d2c5adee44099733133d87d4c6e6d504c752f40c56b7097a357d61b7ba34e1",
+        "bytes": 59414,
+        "dimensions": [
+          256,
+          256
+        ]
+      }
+    ],
+    "login_uses_mascot_png": true,
+    "browser_video_and_fallback_apis_served": true,
+    "rdp_plugin_handshake": true,
+    "web_to_guacd_tcp": true,
+    "common_js_sha256": "f6be587aca8e4c8b65438c302e4ab302df48e54860c6eba961a9fb21d3fd86d6",
+    "production_unchanged": true,
+    "temporary_containers_and_network_removed": true,
+    "deployment_changed": false
+  },
+  "packaged_ipad_input_smoke": {
+    "widths": [
+      {
+        "width": 768,
+        "editor": 256.890625,
+        "buttons": 7
+      },
+      {
+        "width": 360,
+        "editor": 360,
+        "buttons": 7
+      }
+    ],
+    "nativeControls": true,
+    "trustedGestureSynchronousFocus": true,
+    "hideReopen": true,
+    "unicodeInput": true,
+    "compositionCommitExactlyOnce": true,
+    "noNativeTextHistory": true,
+    "hardwareShortcutKeyup": true,
+    "destroyReleasesHeldShortcut": true,
+    "keyboardRemoteSizeStable": true,
+    "dismissalDoesNotAutoFocus": true,
+    "pinchPreservesGeometry": true,
+    "rotationRebasesGeometry": true,
+    "viewportListenersCleaned": true,
+    "status": "passed",
+    "version": "1.6.1-greenmole.5",
+    "authenticated": false,
+    "rdpConnected": false,
+    "pageErrors": [],
+    "limitations": [
+      "Headless desktop Chrome emulates iPad navigator and VisualViewport geometry; this does not verify iPadOS Safari software-keyboard presentation."
+    ],
+    "source_revision": "9a3eb619d34e1e28d66d03ecbf6f6de430ae5bc9",
+    "image_id": "sha256:ac94c483b1619d71d4ac65ee276d31920c4f05945b0bbe65aef7cf63b2ad7c29",
+    "browser": "headless desktop Chromium",
+    "ipad_navigator_emulated": true,
+    "visual_viewport_geometry_emulated": true,
+    "actual_compiled_angular_application": true,
+    "isolated_internal_network": true,
+    "synthetic_empty_user_mapping": true,
+    "host_ports_published": false,
+    "production_unchanged": true,
+    "temporary_containers_and_networks_removed": true
+  },
+  "packaged_client_pan_smoke": {
+    "manualScale": 1.25,
+    "toolbarBottomClearance": [
+      {
+        "barHeight": 50.375,
+        "reportedHeight": 51,
+        "desktopBottom": 973,
+        "barTop": 973.625,
+        "scrollTop": 307
+      },
+      {
+        "barHeight": 96,
+        "reportedHeight": 96,
+        "desktopBottom": 928,
+        "barTop": 928,
+        "scrollTop": 352
+      }
+    ],
+    "narrowToolbar": {
+      "width": 360,
+      "height": 94.375,
+      "editorWidth": 360,
+      "buttons": 7
+    },
+    "tunnelRequests": [],
+    "actualPackagedGuacClientAndCSS": true,
+    "syntheticClientOnly": true,
+    "nativeOverlayPreservesRemoteSizeAndScale": true,
+    "lastClickRevealedAboveToolbar": true,
+    "manualPanOverridesAssistance": true,
+    "showRestartsAssistance": true,
+    "panOnTouchIsLocal": true,
+    "panOffTouchReachesSyntheticClient": true,
+    "hideStopsPan": true,
+    "narrowDesktopBottomReachable": true,
+    "viewportListenersCleaned": true,
+    "status": "passed",
+    "version": "1.6.1-greenmole.5",
+    "authenticated": false,
+    "rdpConnected": false,
+    "pageErrors": [],
+    "limitations": [
+      "Headless Chrome emulates iPad desktop heuristics and viewport geometry; actual iPadOS software keyboard remains unverified."
+    ],
+    "source_revision": "9a3eb619d34e1e28d66d03ecbf6f6de430ae5bc9",
+    "image_id": "sha256:ac94c483b1619d71d4ac65ee276d31920c4f05945b0bbe65aef7cf63b2ad7c29",
+    "browser": "headless desktop Chromium",
+    "ipad_navigator_emulated": true,
+    "visual_viewport_geometry_emulated": true,
+    "actual_compiled_angular_application": true,
+    "isolated_internal_network": true,
+    "synthetic_empty_user_mapping": true,
+    "host_ports_published": false,
+    "production_unchanged": true,
+    "temporary_containers_and_networks_removed": true
+  },
+  "fixture_cleanup": {
+    "owned_temporary_containers_removed": true,
+    "owned_temporary_networks_removed": true,
+    "owned_ssh_forward_removed": true,
+    "production_unchanged_during_isolated_checks": true
+  },
+  "attribution": {
+    "modified_upstream_files_with_file_local_notices": 92,
+    "unchanged_upstream_license_and_notice_files": 213,
+    "both_upstream_histories_reachable": true
+  },
+  "video_transport_behavior_baseline": "1.6.1-private.16-validation.json",
+  "new_video_transport_matrix_run": false,
+  "video_common_js_unchanged": true,
+  "production_deployed": true,
+  "private_runtime_material_included": false,
+  "deployment": {
+    "version": "1.6.1-greenmole.5",
+    "revision": "9a3eb619d34e1e28d66d03ecbf6f6de430ae5bc9",
+    "deployed_at_utc": "2026-10-18T10:53:36Z",
+    "images": {
+      "greenmole/guacd:1.6.1-greenmole.5": "sha256:6a2c6d4a6670d5c34388991b5e8f413e13f17836b7219afe0d63ccbe4b1446c8",
+      "greenmole/web:1.6.1-greenmole.5": "sha256:ac94c483b1619d71d4ac65ee276d31920c4f05945b0bbe65aef7cf63b2ad7c29"
+    },
+    "configuration_preserved": true,
+    "runtime_settings_preserved": true,
+    "unrelated_containers_unchanged": true,
+    "languages": 16,
+    "branding_assets": [
+      {
+        "path": "images/greenmole.png",
+        "sha256": "5c1cb410e7f474ad971f29cfd09895d1413a58abbe9cb038c1afd1e38a6729a7"
+      },
+      {
+        "path": "images/greenmole-64.png",
+        "sha256": "057f7d79653146b28275b8611a5d212c031cc8a3b3de1cedb3ddd7f8c837891d"
+      },
+      {
+        "path": "images/greenmole-144.png",
+        "sha256": "673509e1684cf7f6348c521c084e4fd9ec972d6b59ffed2d3500ce1ee8057e9a"
+      },
+      {
+        "path": "images/greenmole-256.png",
+        "sha256": "97d2c5adee44099733133d87d4c6e6d504c752f40c56b7097a357d61b7ba34e1"
+      }
+    ],
+    "rdp_plugin_handshake": true,
+    "web_to_guacd_tcp": true,
+    "video_apis_served": true,
+    "rollback_images": [
+      "greenmole/guacd:rollback-greenmole.4-before-greenmole.5",
+      "greenmole/web:rollback-greenmole.4-before-greenmole.5"
+    ]
+  },
+  "post_deployment_health": {
+    "guacd_healthy": true,
+    "web_http_ready": true,
+    "restart_counts": [
+      0,
+      0
+    ],
+    "oom_killed": false,
+    "critical_startup_log_lines": 0,
+    "matched_tested_images": {
+      "greenmole/guacd:1.6.1-greenmole.5": "sha256:6a2c6d4a6670d5c34388991b5e8f413e13f17836b7219afe0d63ccbe4b1446c8",
+      "greenmole/web:1.6.1-greenmole.5": "sha256:ac94c483b1619d71d4ac65ee276d31920c4f05945b0bbe65aef7cf63b2ad7c29"
+    }
+  },
+  "live_browser_smoke": {
+    "status": "passed",
+    "authenticated": false,
+    "title": "Greenmole",
+    "version": "1.6.1-greenmole.5",
+    "loginLogoSize": 96,
+    "loginFields": true,
+    "icons": [
+      "images/greenmole-64.png",
+      "images/greenmole-144.png"
+    ],
+    "iconReset": true,
+    "mascotAssets": [
+      {
+        "url": "images/greenmole-64.png",
+        "width": 64,
+        "height": 64,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "opaqueRatio": 0.4052734375
+      },
+      {
+        "url": "images/greenmole-144.png",
+        "width": 144,
+        "height": 144,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "opaqueRatio": 0.4253472222222222
+      },
+      {
+        "url": "images/greenmole-256.png",
+        "width": 256,
+        "height": 256,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "opaqueRatio": 0.4330902099609375
+      }
+    ],
+    "mobileFormVisible": true,
+    "noHorizontalOverflow": true,
+    "pageErrors": [],
+    "visualReview": {
+      "desktop": "passed",
+      "mobile": "passed"
+    }
+  }
+}
