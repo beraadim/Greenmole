@@ -23,7 +23,7 @@
 
                 <!-- Text input -->
                 <div class="text-input-container" ng-if="showTextInput">
-                    <guac-text-input></guac-text-input>
+                    <guac-text-input native-keyboard="useNativeKeyboard"></guac-text-input>
                 </div>
 
                 <!-- On-screen keyboard -->
@@ -145,6 +145,13 @@
                             <div class="figure"><label for="ime-text"><img src="images/settings/tablet-keys.svg" alt=""></label></div>
                             <label><input id="ime-text" name="input-method" ng-change="closeMenu()" ng-model="menu.inputMethod" type="radio" value="text"> {{'CLIENT.NAME_INPUT_METHOD_TEXT' | translate}}</label>
                             <p class="caption"><label for="ime-text">{{'CLIENT.HELP_INPUT_METHOD_TEXT' | translate}} </label></p>
+                        </div>
+
+                        <!-- Native device keyboard, including desktop-mode iPadOS -->
+                        <div class="choice">
+                            <label><input id="ime-native" name="input-method" ng-change="closeMenu()" ng-model="menu.inputMethod" type="radio" value="native"> {{'CLIENT.NAME_INPUT_METHOD_NATIVE' | translate}}</label>
+                            <p class="caption"><label for="ime-native">{{'CLIENT.HELP_INPUT_METHOD_NATIVE' | translate}}</label></p>
+                            <p class="caption" ng-if="nativeKeyboard.isIPad">{{'CLIENT.HELP_IPAD_KEYBOARD' | translate}}</p>
                         </div>
 
                         <!-- Guac OSK -->

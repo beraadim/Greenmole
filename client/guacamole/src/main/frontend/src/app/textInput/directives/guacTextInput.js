@@ -1,4 +1,6 @@
 /*
+ * Modified for Greenmole by its maintainers.
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -25,11 +27,13 @@ angular.module('textInput').directive('guacTextInput', [function guacTextInput()
     return {
         restrict: 'E',
         replace: true,
-        scope: {},
+        scope: {
+            nativeKeyboard: '=?'
+        },
 
         templateUrl: 'app/textInput/templates/guacTextInput.html',
-        controller: ['$scope', '$rootScope', '$element', '$timeout',
-            function guacTextInput($scope, $rootScope, $element, $timeout) {
+        controller: ['$scope', '$rootScope', '$element', '$timeout', 'guacNativeKeyboard',
+            function guacTextInput($scope, $rootScope, $element, $timeout, guacNativeKeyboard) {
 
             /**
              * The number of characters to include on either side of text input
@@ -85,6 +89,10 @@ angular.module('textInput').directive('guacTextInput', [function guacTextInput()
                 0xFFE4: true, /* Right ctrl */
                 0xFFE9: true, /* Left alt */
                 0xFFEA: true, /* Right alt */
+                0xFFE7: true, /* Left meta */
+                0xFFE8: true, /* Right meta */
+                0xFFEB: true, /* Left super/command */
+                0xFFEC: true, /* Right super/command */
                 0xFFED: true, /* Left option (Mac) */
                 0xFFEE: true, /* Right option (Mac) */
                 0xFFFF: true  /* Delete */
@@ -129,14 +137,55 @@ angular.module('textInput').directive('guacTextInput', [function guacTextInput()
              */
             var hasFocus = false;
 
+            var updateFocus = function updateFocus(focused) {
+                hasFocus = focused;
+                if ($scope.nativeKeyboard)
+                    guacNativeKeyboard.setFocused(focused);
+            };
+
             target.onfocus = function targetFocusGained() {
-                hasFocus = true;
+                updateFocus(true);
                 resetTextInputTarget(TEXT_INPUT_PADDING);
             };
 
             target.onblur = function targetFocusLost() {
-                hasFocus = false;
+                updateFocus(false);
+                composingText = false;
             };
+
+            /**
+             * Focus must remain inside the original click/tap call stack. iOS
+             * deliberately refuses delayed focus requests from timers/digests.
+             * The target is already mounted, including while the keyboard is
+             * hidden, so no render or automatic refocus is necessary.
+             */
+            $scope.showNativeKeyboard = function showNativeKeyboard(event) {
+                event.preventDefault();
+                // Explicit Show also handles iOS hiding its software keyboard
+                // while leaving this editor focused. Never interrupt an IME.
+                if (composingText)
+                    return;
+                if (hasFocus)
+                    target.blur();
+                try {
+                    target.focus({ preventScroll: true });
+                }
+                catch (unsupportedFocusOptions) {
+                    target.focus();
+                }
+            };
+
+            $scope.hideNativeKeyboard = function hideNativeKeyboard(event) {
+                event.preventDefault();
+                target.blur();
+            };
+
+            $scope.$watch('nativeKeyboard', function nativeKeyboardChanged(enabled) {
+                if (!enabled)
+                    guacNativeKeyboard.setFocused(false);
+                else
+                    guacNativeKeyboard.setFocused(hasFocus);
+            });
 
             /**
              * Whether composition is currently active within the text input
@@ -146,13 +195,20 @@ angular.module('textInput').directive('guacTextInput', [function guacTextInput()
              */
             var composingText = false;
 
-            target.addEventListener("compositionstart", function targetComposeStart(e) {
+            var targetComposeStart = function targetComposeStart() {
                 composingText = true;
-            }, false);
+            };
 
-            target.addEventListener("compositionend", function targetComposeEnd(e) {
+            var targetComposeEnd = function targetComposeEnd(e) {
                 composingText = false;
-            }, false);
+                // Some iOS/IME versions deliver the final input before
+                // compositionend. Flush it here as well; reset padding makes a
+                // following final input event harmless.
+                handleTextInput(e);
+            };
+
+            target.addEventListener('compositionstart', targetComposeStart, false);
+            target.addEventListener('compositionend', targetComposeEnd, false);
 
             /**
              * Translates a given Unicode codepoint into the corresponding X11
@@ -242,15 +298,18 @@ angular.module('textInput').directive('guacTextInput', [function guacTextInput()
                     }
                 }
 
-                // Display the text that was sent
-                $scope.$apply(function addSentText() {
-                    $scope.sentText.push(sentText);
-                });
+                // The native keyboard is a control surface, not an echo of
+                // remote text (which may include passwords). Keep the legacy
+                // text-input history only for its existing input method.
+                if (sentText && !$scope.nativeKeyboard) {
+                    $scope.$apply(function addSentText() {
+                        $scope.sentText.push(sentText);
+                    });
 
-                // Remove text after one second
-                $timeout(function removeSentText() {
-                    $scope.sentText.shift();
-                }, 1000);
+                    $timeout(function removeSentText() {
+                        $scope.sentText.shift();
+                    }, 1000);
+                }
 
             };
 
@@ -288,10 +347,10 @@ angular.module('textInput').directive('guacTextInput', [function guacTextInput()
 
             };
 
-            target.addEventListener("input", function(e) {
+            function handleTextInput(e) {
 
                 // Ignore input events during text composition
-                if (composingText)
+                if (composingText || !hasFocus)
                     return;
 
                 var i;
@@ -320,27 +379,63 @@ angular.module('textInput').directive('guacTextInput', [function guacTextInput()
                 resetTextInputTarget(TEXT_INPUT_PADDING);
                 e.preventDefault();
 
-            }, false);
+            }
 
-            // Do not allow event target contents to be selected during input
-            target.addEventListener("selectstart", function(e) {
+            target.addEventListener('input', handleTextInput, false);
+
+            // Do not allow event target contents to be selected during input.
+            var preventSelection = function preventSelection(e) {
                 e.preventDefault();
-            }, false);
+            };
+            target.addEventListener('selectstart', preventSelection, false);
 
-            // If the text input UI has focus, prevent keydown events
-            $scope.$on('guacBeforeKeydown', function filterKeydown(event, keysym) {
-                if (hasFocus && !ALLOWED_KEYS[keysym])
-                    event.preventDefault();
+            // Native mode must also work with an attached hardware keyboard.
+            // Ordinary text still uses the IME; Ctrl/Command shortcuts use the
+            // physical key path and must have their corresponding keyup sent.
+            var shortcutKeys = {};
+            $scope.$on('guacBeforeKeydown', function filterKeydown(event, keysym, keyboard) {
+                var modifiers = keyboard && keyboard.modifiers || {};
+                var shortcut = $scope.nativeKeyboard && (modifiers.super
+                    || modifiers.command || (modifiers.ctrl && !modifiers.alt));
+                if (hasFocus && !ALLOWED_KEYS[keysym]) {
+                    if (shortcut)
+                        shortcutKeys[keysym] = true;
+                    else
+                        event.preventDefault();
+                }
             });
 
-            // If the text input UI has focus, prevent keyup events
             $scope.$on('guacBeforeKeyup', function filterKeyup(event, keysym) {
-                if (hasFocus && !ALLOWED_KEYS[keysym])
+                if (shortcutKeys[keysym])
+                    delete shortcutKeys[keysym];
+                else if (hasFocus && !ALLOWED_KEYS[keysym])
                     event.preventDefault();
             });
 
-            // Attempt to focus initially
-            target.focus();
+            $scope.$on('$destroy', function destroyTextInput() {
+                if ($scope.nativeKeyboard)
+                    guacNativeKeyboard.setFocused(false);
+                target.onfocus = target.onblur = null;
+                target.removeEventListener('input', handleTextInput, false);
+                target.removeEventListener('compositionstart', targetComposeStart, false);
+                target.removeEventListener('compositionend', targetComposeEnd, false);
+                target.removeEventListener('selectstart', preventSelection, false);
+                // Do not leave remote shortcut keys held when changing modes.
+                Object.keys(shortcutKeys).forEach(function releaseShortcut(keysym) {
+                    $rootScope.$broadcast('guacSyntheticKeyup', Number(keysym));
+                });
+                // guacKey's pressed-state watcher does not run as its scope is
+                // destroyed. Release modifiers selected through the toolbar.
+                if ($scope.ctrlPressed)
+                    $rootScope.$broadcast('guacSyntheticKeyup', 0xFFE3);
+                if ($scope.altPressed)
+                    $rootScope.$broadcast('guacSyntheticKeyup', 0xFFE9);
+            });
+
+            // Native mode only focuses following a deliberate local gesture.
+            // In particular, reconnects and keyboard dismissal must not reopen it.
+            if (!$scope.nativeKeyboard)
+                target.focus();
 
         }]
 

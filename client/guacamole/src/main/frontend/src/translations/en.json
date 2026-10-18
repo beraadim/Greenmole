@@ -6,7 +6,7 @@
     "APP" : {
 
         "NAME"    : "Greenmole",
-        "VERSION" : "${project.version}-greenmole.3",
+        "VERSION" : "${project.version}-greenmole.4",
 
         "ACTION_ACKNOWLEDGE"        : "OK",
         "ACTION_CANCEL"             : "Cancel",
@@ -63,6 +63,13 @@
     },
 
     "CLIENT" : {
+
+        "NAME_INPUT_METHOD_NATIVE" : "Native keyboard",
+        "HELP_INPUT_METHOD_NATIVE" : "Use your device keyboard with a persistent show/hide button. Tap Show keyboard after connecting. This choice is saved in this browser.",
+        "HELP_IPAD_KEYBOARD" : "iPad detected, including desktop browsing mode. Native keyboard mode is recommended for typing.",
+        "ACTION_SHOW_NATIVE_KEYBOARD" : "Show keyboard",
+        "ACTION_HIDE_NATIVE_KEYBOARD" : "Hide keyboard",
+        "FIELD_NATIVE_TEXT_INPUT" : "Type on the remote desktop",
 
         "ACTION_SHOW_PERFORMANCE" : "Show performance statistics",
         "ACTION_EXPERIMENTAL_AVC420" : "Experimental AVC420 browser decoding",
@@ -1126,6 +1133,9 @@
     },
 
     "SETTINGS_PREFERENCES" : {
+
+        "NAME_INPUT_METHOD_NATIVE" : "@:CLIENT.NAME_INPUT_METHOD_NATIVE",
+        "HELP_INPUT_METHOD_NATIVE" : "@:CLIENT.HELP_INPUT_METHOD_NATIVE",
 
         "ACTION_ACKNOWLEDGE"        : "@:APP.ACTION_ACKNOWLEDGE",
         "ACTION_CANCEL"             : "@:APP.ACTION_CANCEL",

@@ -42,6 +42,7 @@ angular.module('client').controller('clientController', ['$scope', '$routeParams
     const dataSourceService      = $injector.get('dataSourceService');
     const guacClientManager      = $injector.get('guacClientManager');
     const guacFullscreen         = $injector.get('guacFullscreen');
+    const guacNativeKeyboard     = $injector.get('guacNativeKeyboard');
     const iconService            = $injector.get('iconService');
     const preferenceService      = $injector.get('preferenceService');
     const requestService         = $injector.get('requestService');
@@ -143,6 +144,7 @@ angular.module('client').controller('clientController', ['$scope', '$routeParams
     };
 
     $scope.video = $injector.get('guacVideo');
+    $scope.nativeKeyboard = guacNativeKeyboard;
 
     // Convenience method for closing the menu
     $scope.closeMenu = function closeMenu() {
@@ -455,7 +457,18 @@ angular.module('client').controller('clientController', ['$scope', '$routeParams
 
         // Show input methods only if selected
         $scope.showOSK       = (inputMethod === 'osk');
-        $scope.showTextInput = (inputMethod === 'text');
+        $scope.showTextInput = (inputMethod === 'text' || inputMethod === 'native');
+        $scope.useNativeKeyboard = (inputMethod === 'native');
+        guacNativeKeyboard.setEnabled($scope.useNativeKeyboard);
+
+        // Remember opting in/out of native mode, while preserving the legacy
+        // per-session behavior of the other input-method menu choices.
+        if (preferenceService.preferences.inputMethod !== inputMethod
+                && (inputMethod === 'native'
+                    || preferenceService.preferences.inputMethod === 'native')) {
+            preferenceService.preferences.inputMethod = inputMethod;
+            preferenceService.save();
+        }
 
     });
 
@@ -876,6 +889,7 @@ angular.module('client').controller('clientController', ['$scope', '$routeParams
     // Clean up when view destroyed
     $scope.$on('$destroy', function clientViewDestroyed() {
         setAttachedGroup(null);
+        guacNativeKeyboard.setEnabled(false);
 
         // always unset fullscreen mode to not confuse user 
         guacFullscreen.setFullscreenMode(false);

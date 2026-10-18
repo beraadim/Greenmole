@@ -1,4 +1,6 @@
 /*
+ * Modified for Greenmole by its maintainers.
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -125,4 +127,62 @@
 .text-input .text-input-buttons button.pressed {
     background: #882;
     border-color: #DD4;
+}
+
+/* Keep the native keyboard control mounted when dismissed. A 16px editor
+   prevents iOS focus zoom; touch controls meet a 44px minimum target size. */
+.text-input.native-keyboard {
+    box-sizing: border-box;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.text-input.native-keyboard .text-input-field {
+    min-width: 0;
+}
+
+.text-input.native-keyboard .target {
+    box-sizing: border-box;
+    font-size: 16px;
+    min-height: 44px;
+    padding: 0.65em 0.25em;
+}
+
+.text-input.native-keyboard .native-keyboard-controls button,
+.text-input.native-keyboard .text-input-buttons button {
+    min-height: 44px;
+    min-width: 44px;
+    font-size: 16px;
+}
+
+.text-input.native-keyboard .native-keyboard-controls button {
+    flex: 0 0 auto;
+    margin: 0.2em;
+    padding: 0.4em 0.6em;
+    color: white;
+    background: #444;
+    border: 2px solid #777;
+    border-radius: 0.25em;
+}
+
+.text-input.native-keyboard .native-keyboard-controls button:focus-visible {
+    outline: 2px solid #9fd378;
+    outline-offset: 1px;
+}
+
+.text-input.native-keyboard .text-input-buttons {
+    display: flex;
+    flex: 0 0 auto;
+}
+
+.text-input.native-keyboard .native-keyboard-controls {
+    display: flex;
+    flex: 0 0 auto;
+}
+
+/* Split View leaves little width: retain labelled 44px controls without
+   squeezing the real textarea out of the available touch area. */
+@media (max-width: 600px) {
+    .text-input.native-keyboard .native-keyboard-label {
+        display: none;
+    }
 }

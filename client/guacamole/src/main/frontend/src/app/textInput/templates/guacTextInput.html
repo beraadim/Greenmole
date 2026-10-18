@@ -1,6 +1,29 @@
-<div class="text-input">
+<!-- Modified for Greenmole by its maintainers. -->
+<div class="text-input" ng-class="{'native-keyboard': nativeKeyboard}">
 
-    <!-- Text input target -->
-    <div class="text-input-field"><div class="sent-history"><div class="sent-text" ng-repeat="text in sentText track by $index">{{text}}</div></div><textarea rows="1" class="target" autocorrect="off" autocapitalize="off" autofocus></textarea></div><div class="text-input-buttons"><guac-key keysym="65507" sticky="true" text="'CLIENT.NAME_KEY_CTRL'" pressed="ctrlPressed"></guac-key><guac-key keysym="65513" sticky="true" text="'CLIENT.NAME_KEY_ALT'" pressed="altPressed"></guac-key><guac-key keysym="65307" text="'CLIENT.NAME_KEY_ESC'"></guac-key><guac-key keysym="65289" text="'CLIENT.NAME_KEY_TAB'"></guac-key></div>
+    <div class="native-keyboard-controls" ng-if="nativeKeyboard">
+        <button type="button" class="native-keyboard-show"
+                ng-mousedown="$event.preventDefault()" ng-click="showNativeKeyboard($event)"
+                aria-label="{{'CLIENT.ACTION_SHOW_NATIVE_KEYBOARD' | translate}}"
+                title="{{'CLIENT.ACTION_SHOW_NATIVE_KEYBOARD' | translate}}">
+            <span aria-hidden="true">⌨</span>
+            <span class="native-keyboard-label">{{'CLIENT.ACTION_SHOW_NATIVE_KEYBOARD' | translate}}</span>
+        </button>
+        <button type="button" class="native-keyboard-hide"
+                ng-mousedown="$event.preventDefault()" ng-click="hideNativeKeyboard($event)"
+                aria-label="{{'CLIENT.ACTION_HIDE_NATIVE_KEYBOARD' | translate}}"
+                title="{{'CLIENT.ACTION_HIDE_NATIVE_KEYBOARD' | translate}}">
+            <span aria-hidden="true">⌄</span>
+        </button>
+    </div>
+
+    <!-- A mounted, visible real editor allows iOS keyboard opening within the
+         show button's trusted gesture without waiting for Angular rendering. -->
+    <div class="text-input-field">
+        <div class="sent-history" ng-if="!nativeKeyboard"><div class="sent-text" ng-repeat="text in sentText track by $index">{{text}}</div></div><textarea rows="1" class="target" autocorrect="off" autocapitalize="off" autocomplete="off" spellcheck="false" inputmode="text" aria-label="{{'CLIENT.FIELD_NATIVE_TEXT_INPUT' | translate}}"></textarea>
+    </div>
+    <div class="text-input-buttons">
+        <guac-key keysym="65507" sticky="true" text="'CLIENT.NAME_KEY_CTRL'" pressed="ctrlPressed"></guac-key><guac-key keysym="65513" sticky="true" text="'CLIENT.NAME_KEY_ALT'" pressed="altPressed"></guac-key><guac-key keysym="65307" text="'CLIENT.NAME_KEY_ESC'"></guac-key><guac-key keysym="65289" text="'CLIENT.NAME_KEY_TAB'"></guac-key>
+    </div>
 
 </div>

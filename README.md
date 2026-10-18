@@ -47,6 +47,11 @@ See the [AVC444 activation guide](docs/experimental-avc444.md),
 [performance review](docs/performance-review-2026-10.md). Published measurements
 describe the tested workloads and are not a guarantee for every client or network.
 
+On iPad, select **Input method → Native keyboard** in the connection menu.
+The keyboard controls and visible-area layout adapt to the device keyboard;
+the selection is remembered in that browser. See the
+[native keyboard guide](docs/native-keyboard.md).
+
 ## Build
 
 Each Dockerfile expects its own component directory as the build context:
@@ -59,7 +64,7 @@ docker build -t greenmole/web:dev client/
 For reviewed downstream releases, use the pinned build inputs:
 
 ```sh
-python3 scripts/build-images.py releases/1.6.1-greenmole.3.json --jobs 4
+python3 scripts/build-images.py releases/1.6.1-greenmole.4.json --jobs 4
 ```
 
 The driver builds local images; it does not publish or deploy them. It pins base

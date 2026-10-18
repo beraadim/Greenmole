@@ -81,13 +81,15 @@ class InputDevice {
 }
 
 function directiveFixture({ blocked = false, root = eventBus(), clipboardService,
-        clock = fakeClock(), state = 'CONNECTED', protocol = 'rdp', density = 1 } = {}) {
+        clock = fakeClock(), state = 'CONNECTED', protocol = 'rdp', density = 1, evalAsync,
+        viewportService = { getRemoteSize: (width, height) => ({ width, height }),
+            subscribe: () => () => {} } } = {}) {
     const scope = eventBus();
     const watches = new Map();
     let touchBehaviorChanged;
     scope.$watch = (expression, callback) => watches.set(expression, callback);
     scope.$watchGroup = (expressions, callback) => { touchBehaviorChanged = callback; };
-    scope.$evalAsync = callback => callback();
+    scope.$evalAsync = evalAsync || (callback => callback());
     const sent = [];
     const cursor = [];
     const displays = [];
@@ -143,7 +145,8 @@ function directiveFixture({ blocked = false, root = eventBus(), clipboardService
         ClientInputQueue: loaded.factories.ClientInputQueue(),
         ClientResizeQueue: loaded.factories.ClientResizeQueue(clock.window),
         $rootScope: root, $window: Object.assign(clock.window, { devicePixelRatio: density }),
-        clipboardService: clipboardService || { isSyncInProgress: () => blocked }
+        clipboardService: clipboardService || { isSyncInProgress: () => blocked },
+        guacViewportService: viewportService
     };
     scope.client = managed('first');
     const definition = loaded.directives.guacClient.controller;

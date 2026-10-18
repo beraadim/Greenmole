@@ -76,7 +76,10 @@ angular.module('settings').provider('preferenceService', ['$injector',
          * @constant
          * @type String
          */
-        TEXT : 'text'
+        TEXT : 'text',
+
+        /** Native keyboard with an explicit show/hide control. */
+        NATIVE : 'native'
 
     };
 

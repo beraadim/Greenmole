@@ -62,6 +62,7 @@ angular.module('client').directive('guacClient', [function guacClient() {
         const $rootScope = $injector.get('$rootScope');
         const $window = $injector.get('$window');
         const clipboardService = $injector.get('clipboardService');
+        const viewportService = $injector.get('guacViewportService');
             
         /**
          * Whether the local, hardware mouse cursor is in use.
@@ -152,6 +153,8 @@ angular.module('client').directive('guacClient', [function guacClient() {
                 client.sendSize(width, height);
         });
         let connectionRequested = false;
+        let lastRemoteSize = null;
+        let lastRemoteRows = 0;
 
         /**
          * Updates the scale of the attached Guacamole.Client based on current window
@@ -354,6 +357,8 @@ angular.module('client').directive('guacClient', [function guacClient() {
             inputQueue.clear();
             resizeQueue.clear();
             connectionRequested = false;
+            lastRemoteSize = null;
+            lastRemoteRows = 0;
             client = null;
             display = null;
             displayElement = null;
@@ -506,15 +511,24 @@ angular.module('client').directive('guacClient', [function guacClient() {
             // Send new display size, if changed
             if (client && display && main.offsetWidth && main.offsetHeight) {
 
+                // Fit the desktop locally above the native keyboard while
+                // keeping the remote desktop's pre-keyboard resolution.
+                const grid = main.closest ? main.closest('.tiled-client-grid') : null;
+                const rows = grid ? grid.children.length : 1;
+                const remoteSize = viewportService.getRemoteSize(main.offsetWidth, main.offsetHeight, rows,
+                    rows === lastRemoteRows ? lastRemoteSize : null);
+                lastRemoteSize = remoteSize;
+                lastRemoteRows = rows;
+
                 // Preserve the first known viewport for the initial handshake.
                 // Further notifications join the pending resize instead of
                 // starting additional asynchronous connection attempts.
                 if (!connectionRequested) {
                     connectionRequested = true;
-                    ManagedClient.connect($scope.client, main.offsetWidth, main.offsetHeight);
+                    ManagedClient.connect($scope.client, remoteSize.width, remoteSize.height);
                 }
 
-                const size = ClientResizeQueue.normalize(main.offsetWidth, main.offsetHeight,
+                const size = ClientResizeQueue.normalize(remoteSize.width, remoteSize.height,
                     $window.devicePixelRatio || 1, $scope.client.protocol === 'rdp');
                 resizeQueue.request(size.width, size.height);
 
@@ -527,6 +541,22 @@ angular.module('client').directive('guacClient', [function guacClient() {
         // A monitor/DPI transition can change devicePixelRatio while CSS
         // dimensions stay unchanged, which the element sensor cannot detect.
         $window.addEventListener('resize', $scope.mainElementResized);
+
+        // Inset changes can occur without a DOM size change (for example when
+        // browser chrome settles after dismissal). Wait for viewport styles to
+        // apply, coalescing notifications within the same Angular turn.
+        let viewportResizeScheduled = false;
+        let viewportListenerActive = true;
+        const stopViewportListener = viewportService.subscribe(function() {
+            if (viewportListenerActive && !viewportResizeScheduled) {
+                viewportResizeScheduled = true;
+                $scope.$evalAsync(function() {
+                    viewportResizeScheduled = false;
+                    if (viewportListenerActive)
+                        $scope.mainElementResized();
+                });
+            }
+        });
 
         // Scroll client display if absolute mouse is in use (the same drag
         // gesture is needed for moving the mouse pointer with relative mouse)
@@ -675,6 +705,8 @@ angular.module('client').directive('guacClient', [function guacClient() {
 
         $scope.$on('$destroy', function destroyClientInput() {
             stopClipboardSyncListener();
+            viewportListenerActive = false;
+            stopViewportListener();
             inputQueue.dispose();
             resizeQueue.dispose();
             $window.removeEventListener('resize', $scope.mainElementResized);

@@ -1,3 +1,4 @@
+<!-- Modified for Greenmole by its maintainers. -->
 <div class="preferences" ng-class="{loading: !isLoaded()}">
 
     <!-- Locale settings -->
@@ -69,6 +70,12 @@
             <div class="choice">
                 <label><input id="ime-text" name="input-method" ng-model="preferences.inputMethod" type="radio" value="text"> {{'SETTINGS_PREFERENCES.NAME_INPUT_METHOD_TEXT' | translate}}</label>
                 <p class="caption"><label for="ime-text">{{'SETTINGS_PREFERENCES.HELP_INPUT_METHOD_TEXT' | translate}} </label></p>
+            </div>
+
+            <!-- Native device keyboard -->
+            <div class="choice">
+                <label><input id="ime-native" name="input-method" ng-model="preferences.inputMethod" type="radio" value="native"> {{'SETTINGS_PREFERENCES.NAME_INPUT_METHOD_NATIVE' | translate}}</label>
+                <p class="caption"><label for="ime-native">{{'SETTINGS_PREFERENCES.HELP_INPUT_METHOD_NATIVE' | translate}}</label></p>
             </div>
 
             <!-- Guac OSK -->
