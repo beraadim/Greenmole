@@ -1,0 +1,167 @@
+{
+  "schema": "greenmole-release-validation-v1",
+  "release": "1.6.1-greenmole.3",
+  "status": "built and tested; deployment awaiting user approval",
+  "source_revision": "670279dd43a3cb92e7335cc56844b46caf364cc7",
+  "verified_at_utc": "2026-10-18T08:55:27.626881+00:00",
+  "platform": "linux/amd64",
+  "dependency_pins_unchanged_from": "1.6.1-greenmole.2",
+  "release_inputs_sha256": "e540ab3111a86cb57c6c84791d26e7765a00989788d04decea49d490bc97781e",
+  "container_images_published": false,
+  "build": {
+    "source_revision": "670279dd43a3cb92e7335cc56844b46caf364cc7",
+    "pinned_image_builds_passed": true,
+    "maven_reactor_success": true,
+    "maven_tests_explicitly_enabled": true,
+    "java_unit_tests_passed": 64,
+    "java_unit_failures": 0,
+    "java_unit_errors": 0,
+    "firefox_jasmine": {
+      "passed": 256,
+      "total": 259,
+      "capability_skipped": 3
+    },
+    "native": {
+      "exit_code": 0,
+      "tests": 296,
+      "nonzero_failures": [],
+      "image": "greenmole/native-benchmark:1.6.1-greenmole.3",
+      "revision": "670279dd43a3cb92e7335cc56844b46caf364cc7",
+      "diagnostics": 0
+    },
+    "images": [
+      {
+        "image": "greenmole/guacd:1.6.1-greenmole.3",
+        "image_id": "sha256:7077d27d976d6aa9d2e64b22b7169e778d691771fd04765dfde5855cf708c9db",
+        "revision": "670279dd43a3cb92e7335cc56844b46caf364cc7"
+      },
+      {
+        "image": "greenmole/web:1.6.1-greenmole.3",
+        "image_id": "sha256:78f245e745aee7901ed5fe40c64300bad5a3311598c1319e505dcd531d9aaed1",
+        "revision": "670279dd43a3cb92e7335cc56844b46caf364cc7"
+      },
+      {
+        "image": "greenmole/native-benchmark:1.6.1-greenmole.3",
+        "image_id": "sha256:b990d5b4b08e9a18a2f9a8c33c3c7675029ce33de80425cf9dd1ba2ec6b2d9c1",
+        "revision": "670279dd43a3cb92e7335cc56844b46caf364cc7"
+      }
+    ]
+  },
+  "client_validation_provenance": {
+    "client_validation_source_revision": "1a5ca3e8fe8fd5369abe6e1d281b057ac92ccc20",
+    "final_source_revision": "670279dd43a3cb92e7335cc56844b46caf364cc7",
+    "runtime_filesystem_layers_identical": true,
+    "client_tree": "cc45c3c5a948243afdfb82f438adf1920a824a59",
+    "client_tree_byte_identical": true,
+    "maven_test_results_reused_from_client_validation_revision": true,
+    "final_image_build_reused_validated_client_build_cache": true,
+    "explanation": "Only native RDP display state synchronization changed after the client validation revision; the client Git tree and runtime filesystem layers are identical. Maven Java, Firefox and frontend test results apply to this identical client source and reused build output, not to a second independent test run."
+  },
+  "frontend_node_tests": {
+    "passed": 43,
+    "failed": 0,
+    "skipped": 0,
+    "source_revision": "1a5ca3e8fe8fd5369abe6e1d281b057ac92ccc20"
+  },
+  "production_webpack_passed": true,
+  "production_webpack_existing_bundle_size_warnings": 3,
+  "resize_regressions": {
+    "new_browser_directive_cases": 3,
+    "browser_cases_failing_against_original_code": 2,
+    "browser_coverage": [
+      "WAITING transition remeasures a changed viewport without a resize notification",
+      "CONNECTED transition remeasures final layout without reconnecting or repeating acknowledged sizes",
+      "Unknown dimensions remain deferred and teardown cancels a later request"
+    ],
+    "new_native_cases": 10,
+    "native_coverage": [
+      "Display Control capabilities preserve and send a deferred viewport",
+      "Channel open seeds the negotiated size only without a pending request",
+      "Only the latest viewport survives channel startup",
+      "Newer viewport requests preserve the existing send throttle",
+      "An unchanged negotiated size neither sends nor delays a new viewport",
+      "Concurrent viewport requests and channel reopen preserve atomic state",
+      "Failed layout sends retain the viewport for rate-limited retry",
+      "Disconnect requires new capabilities and preserves a pending viewport",
+      "Null channel interfaces preserve pending requests without sending",
+      "Reconnect resize mode still updates settings and signals reconnect"
+    ],
+    "concurrency_regression": {
+      "browser_viewport_updates": 2000,
+      "channel_capability_disconnect_cycles": 1000,
+      "consistent_width_height_pairs": true,
+      "layouts_sent_only_on_ready_channel": true,
+      "final_latest_viewport_preserved": true
+    }
+  },
+  "packaged_runtime_smoke": {
+    "source_revision": "670279dd43a3cb92e7335cc56844b46caf364cc7",
+    "version": "1.6.1-greenmole.3",
+    "image_ids": {
+      "greenmole/guacd:1.6.1-greenmole.3": "sha256:7077d27d976d6aa9d2e64b22b7169e778d691771fd04765dfde5855cf708c9db",
+      "greenmole/web:1.6.1-greenmole.3": "sha256:78f245e745aee7901ed5fe40c64300bad5a3311598c1319e505dcd531d9aaed1"
+    },
+    "synthetic_configuration_only": true,
+    "production_configuration_mounted": false,
+    "isolated_internal_network": true,
+    "languages": 16,
+    "greenmole_name_and_version_served": true,
+    "translation_metadata_valid": true,
+    "branding_assets_byte_identical": [
+      {
+        "path": "images/greenmole.png",
+        "sha256": "5c1cb410e7f474ad971f29cfd09895d1413a58abbe9cb038c1afd1e38a6729a7",
+        "bytes": 970059,
+        "dimensions": [
+          1254,
+          1254
+        ]
+      },
+      {
+        "path": "images/greenmole-64.png",
+        "sha256": "057f7d79653146b28275b8611a5d212c031cc8a3b3de1cedb3ddd7f8c837891d",
+        "bytes": 5843,
+        "dimensions": [
+          64,
+          64
+        ]
+      },
+      {
+        "path": "images/greenmole-144.png",
+        "sha256": "673509e1684cf7f6348c521c084e4fd9ec972d6b59ffed2d3500ce1ee8057e9a",
+        "bytes": 22634,
+        "dimensions": [
+          144,
+          144
+        ]
+      },
+      {
+        "path": "images/greenmole-256.png",
+        "sha256": "97d2c5adee44099733133d87d4c6e6d504c752f40c56b7097a357d61b7ba34e1",
+        "bytes": 59414,
+        "dimensions": [
+          256,
+          256
+        ]
+      }
+    ],
+    "login_uses_mascot_png": true,
+    "browser_video_and_fallback_apis_served": true,
+    "rdp_plugin_handshake": true,
+    "web_to_guacd_tcp": true,
+    "common_js_sha256": "f6be587aca8e4c8b65438c302e4ab302df48e54860c6eba961a9fb21d3fd86d6",
+    "production_unchanged": true,
+    "temporary_containers_and_network_removed": true,
+    "deployment_changed": false
+  },
+  "attribution": {
+    "modified_upstream_files_with_file_local_notices": 86,
+    "unchanged_upstream_license_and_notice_files": 213,
+    "both_upstream_histories_reachable": true
+  },
+  "video_transport_behavior_baseline": "1.6.1-private.16-validation.json",
+  "new_video_transport_matrix_run": false,
+  "production_deployed": false,
+  "production_release_unchanged": "1.6.1-greenmole.2",
+  "private_runtime_material_included": false
+}
