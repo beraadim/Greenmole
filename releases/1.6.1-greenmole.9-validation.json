@@ -1,8 +1,8 @@
 {
   "schema": "greenmole-release-validation-v1",
   "release": "1.6.1-greenmole.9",
-  "status": "frontend validated; runtime image preparation pending; not deployed",
-  "verified_at_utc": "2026-10-19T13:16:03.391152+00:00",
+  "status": "web image built and tested; not deployed",
+  "verified_at_utc": "2026-10-19T13:23:05.139630+00:00",
   "dependency_pins_unchanged_from": "1.6.1-greenmole.8",
   "release_inputs_sha256": "590f5e80eb25cd6680ba5347c72bc66c9a9454e6e9d85a5fdf8e434b94c94ac4",
   "frontend_node_tests": {
@@ -25,7 +25,49 @@
       "engine": "webkit",
       "browserVersion": "26.0",
       "version": "1.6.1-greenmole.9",
-      "source_revision": null,
+      "source_revision": "0360ea14e25d80c2f6a04e08d4a37f3c2eac1739",
+      "sourceFrontendBuild": true,
+      "packagedImage": false,
+      "realClientControllerAndTemplate": true,
+      "syntheticTransportOnly": true,
+      "authenticated": false,
+      "rdpConnected": false,
+      "iphoneNativeKeyboardDefaultsMigrated": true,
+      "iphoneTouchpadDefaultMigrated": true,
+      "pinchScale": [
+        1.25,
+        1.875
+      ],
+      "pinchAnchorPreserved": true,
+      "twoAxisPinchTranslation": true,
+      "oneFingerTwoAxisPan": true,
+      "noRemoteInputDuringPanAndZoom": true,
+      "noRemoteResizeOrReconnect": true,
+      "panOffPointerClampedWithoutScroll": true,
+      "viewportListenersCleaned": true,
+      "pageErrors": [],
+      "forbiddenRequests": [],
+      "requestCount": 31,
+      "limitations": [
+        "Headless browser touch/viewport emulation does not verify physical iPadOS keyboard presentation or real finger gestures."
+      ],
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      }
+    },
+    {
+      "status": "passed",
+      "engine": "webkit",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "toolbarControlsVisible": true,
+      "nativeEditorUsable": true,
+      "browserVersion": "26.0",
+      "version": "1.6.1-greenmole.9",
+      "source_revision": "0360ea14e25d80c2f6a04e08d4a37f3c2eac1739",
       "sourceFrontendBuild": true,
       "packagedImage": false,
       "realClientControllerAndTemplate": true,
@@ -57,7 +99,49 @@
       "engine": "chromium",
       "browserVersion": "155.0.8059.80",
       "version": "1.6.1-greenmole.9",
-      "source_revision": null,
+      "source_revision": "0360ea14e25d80c2f6a04e08d4a37f3c2eac1739",
+      "sourceFrontendBuild": true,
+      "packagedImage": false,
+      "realClientControllerAndTemplate": true,
+      "syntheticTransportOnly": true,
+      "authenticated": false,
+      "rdpConnected": false,
+      "iphoneNativeKeyboardDefaultsMigrated": true,
+      "iphoneTouchpadDefaultMigrated": true,
+      "pinchScale": [
+        1.25,
+        1.875
+      ],
+      "pinchAnchorPreserved": true,
+      "twoAxisPinchTranslation": true,
+      "oneFingerTwoAxisPan": true,
+      "noRemoteInputDuringPanAndZoom": true,
+      "noRemoteResizeOrReconnect": true,
+      "panOffPointerClampedWithoutScroll": true,
+      "viewportListenersCleaned": true,
+      "pageErrors": [],
+      "forbiddenRequests": [],
+      "requestCount": 33,
+      "limitations": [
+        "Headless browser touch/viewport emulation does not verify physical iPadOS keyboard presentation or real finger gestures."
+      ],
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      }
+    },
+    {
+      "status": "passed",
+      "engine": "chromium",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "toolbarControlsVisible": true,
+      "nativeEditorUsable": true,
+      "browserVersion": "155.0.8059.80",
+      "version": "1.6.1-greenmole.9",
+      "source_revision": "0360ea14e25d80c2f6a04e08d4a37f3c2eac1739",
       "sourceFrontendBuild": true,
       "packagedImage": false,
       "realClientControllerAndTemplate": true,
@@ -99,5 +183,178 @@
   "limitations": [
     "Physical iPhone/iPad Safari keyboard presentation and finger gestures require device testing.",
     "Frontend browser checks use emulated touch and viewport events with a synthetic transport; no authenticated RDP session is opened."
-  ]
+  ],
+  "source_revision": "0360ea14e25d80c2f6a04e08d4a37f3c2eac1739",
+  "platform": "linux/amd64",
+  "build": {
+    "source_revision": "0360ea14e25d80c2f6a04e08d4a37f3c2eac1739",
+    "maven_reactor_success": true,
+    "maven_tests_explicitly_enabled": true,
+    "java_unit_tests_passed": 64,
+    "java_unit_failures": 0,
+    "java_unit_errors": 0,
+    "firefox_jasmine": {
+      "passed": 256,
+      "total": 259,
+      "capability_skipped": 3
+    },
+    "web_image": {
+      "tag": "greenmole/web:1.6.1-greenmole.9",
+      "id": "sha256:2f3438b1214a2414c49b06acc3330ab84c8070cf946353cb33933bae9672a949",
+      "architecture": "amd64",
+      "revision": "0360ea14e25d80c2f6a04e08d4a37f3c2eac1739",
+      "version": "1.6.1-greenmole.9"
+    },
+    "source_archive_sha256": "49f0c4ee5e5c9c3c3ecafa6645af351494cfb01c82436caf118604a0ddc3b227",
+    "native_server_rebuilt": false,
+    "native_tests_repeated": false
+  },
+  "packaged_ui_browser_checks": [
+    {
+      "status": "passed",
+      "engine": "webkit",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "toolbarControlsVisible": true,
+      "nativeEditorUsable": true,
+      "browserVersion": "26.0",
+      "version": "1.6.1-greenmole.9",
+      "source_revision": "0360ea14e25d80c2f6a04e08d4a37f3c2eac1739",
+      "sourceFrontendBuild": false,
+      "packagedImage": true,
+      "realClientControllerAndTemplate": true,
+      "syntheticTransportOnly": true,
+      "authenticated": false,
+      "rdpConnected": false,
+      "iphoneNativeKeyboardDefaultsMigrated": true,
+      "iphoneTouchpadDefaultMigrated": true,
+      "pinchScale": [
+        1.25,
+        1.875
+      ],
+      "pinchAnchorPreserved": true,
+      "twoAxisPinchTranslation": true,
+      "oneFingerTwoAxisPan": true,
+      "noRemoteInputDuringPanAndZoom": true,
+      "noRemoteResizeOrReconnect": true,
+      "panOffPointerClampedWithoutScroll": true,
+      "viewportListenersCleaned": true,
+      "pageErrors": [],
+      "forbiddenRequests": [],
+      "requestCount": 31,
+      "limitations": [
+        "Headless browser touch/viewport emulation does not verify physical iPadOS keyboard presentation or real finger gestures."
+      ],
+      "production_unchanged": true,
+      "temporary_container_and_network_removed": true,
+      "temporary_synthetic_mapping_removed": true,
+      "owned_ssh_forward_removed": true,
+      "image_id": "sha256:2f3438b1214a2414c49b06acc3330ab84c8070cf946353cb33933bae9672a949"
+    },
+    {
+      "status": "passed",
+      "engine": "chromium",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "toolbarControlsVisible": true,
+      "nativeEditorUsable": true,
+      "browserVersion": "155.0.8059.80",
+      "version": "1.6.1-greenmole.9",
+      "source_revision": "0360ea14e25d80c2f6a04e08d4a37f3c2eac1739",
+      "sourceFrontendBuild": false,
+      "packagedImage": true,
+      "realClientControllerAndTemplate": true,
+      "syntheticTransportOnly": true,
+      "authenticated": false,
+      "rdpConnected": false,
+      "iphoneNativeKeyboardDefaultsMigrated": true,
+      "iphoneTouchpadDefaultMigrated": true,
+      "pinchScale": [
+        1.25,
+        1.875
+      ],
+      "pinchAnchorPreserved": true,
+      "twoAxisPinchTranslation": true,
+      "oneFingerTwoAxisPan": true,
+      "noRemoteInputDuringPanAndZoom": true,
+      "noRemoteResizeOrReconnect": true,
+      "panOffPointerClampedWithoutScroll": true,
+      "viewportListenersCleaned": true,
+      "pageErrors": [],
+      "forbiddenRequests": [],
+      "requestCount": 33,
+      "limitations": [
+        "Headless browser touch/viewport emulation does not verify physical iPadOS keyboard presentation or real finger gestures."
+      ],
+      "production_unchanged": true,
+      "temporary_container_and_network_removed": true,
+      "temporary_synthetic_mapping_removed": true,
+      "owned_ssh_forward_removed": true,
+      "image_id": "sha256:2f3438b1214a2414c49b06acc3330ab84c8070cf946353cb33933bae9672a949"
+    }
+  ],
+  "packaged_runtime_smoke": {
+    "source_revision": "0360ea14e25d80c2f6a04e08d4a37f3c2eac1739",
+    "version": "1.6.1-greenmole.9",
+    "image_id": "sha256:2f3438b1214a2414c49b06acc3330ab84c8070cf946353cb33933bae9672a949",
+    "architecture": "amd64",
+    "isolated_internal_network": true,
+    "synthetic_empty_user_mapping": true,
+    "production_configuration_mounted": false,
+    "host_ports_published": false,
+    "production_unchanged": true,
+    "languages": 16,
+    "translation_metadata_valid": true,
+    "greenmole_name_and_version_served": true,
+    "branding_assets_byte_identical": [
+      {
+        "path": "images/greenmole-64.png",
+        "sha256": "057f7d79653146b28275b8611a5d212c031cc8a3b3de1cedb3ddd7f8c837891d",
+        "dimensions": [
+          64,
+          64
+        ]
+      },
+      {
+        "path": "images/greenmole.png",
+        "sha256": "5c1cb410e7f474ad971f29cfd09895d1413a58abbe9cb038c1afd1e38a6729a7",
+        "dimensions": [
+          1254,
+          1254
+        ]
+      },
+      {
+        "path": "images/greenmole-256.png",
+        "sha256": "97d2c5adee44099733133d87d4c6e6d504c752f40c56b7097a357d61b7ba34e1",
+        "dimensions": [
+          256,
+          256
+        ]
+      },
+      {
+        "path": "images/greenmole-144.png",
+        "sha256": "673509e1684cf7f6348c521c084e4fd9ec972d6b59ffed2d3500ce1ee8057e9a",
+        "dimensions": [
+          144,
+          144
+        ]
+      }
+    ],
+    "common_js_sha256": "f6be587aca8e4c8b65438c302e4ab302df48e54860c6eba961a9fb21d3fd86d6",
+    "common_js_unchanged_from_greenmole8": true
+  },
+  "fixture_cleanup": {
+    "production_unchanged": true,
+    "temporary_container_and_network_removed": true,
+    "temporary_synthetic_mapping_removed": true,
+    "owned_ssh_forward_removed": true
+  },
+  "source_secret_scan": {
+    "staged_findings": 0,
+    "redacted": true
+  }
 }
