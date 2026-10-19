@@ -1,0 +1,103 @@
+{
+  "schema": "greenmole-release-validation-v1",
+  "release": "1.6.1-greenmole.9",
+  "status": "frontend validated; runtime image preparation pending; not deployed",
+  "verified_at_utc": "2026-10-19T13:16:03.391152+00:00",
+  "dependency_pins_unchanged_from": "1.6.1-greenmole.8",
+  "release_inputs_sha256": "590f5e80eb25cd6680ba5347c72bc66c9a9454e6e9d85a5fdf8e434b94c94ac4",
+  "frontend_node_tests": {
+    "passed": 159,
+    "failed": 0,
+    "skipped": 0
+  },
+  "production_webpack_passed": true,
+  "production_webpack_existing_bundle_size_warnings": 3,
+  "new_frontend_regressions": {
+    "total": 30,
+    "ios_preference_migration": 4,
+    "local_pinch_gestures": 7,
+    "visible_desktop_bounds": 9,
+    "zoom_pan_input_integration": 10
+  },
+  "compiled_ui_browser_checks": [
+    {
+      "status": "passed",
+      "engine": "webkit",
+      "browserVersion": "26.0",
+      "version": "1.6.1-greenmole.9",
+      "source_revision": null,
+      "sourceFrontendBuild": true,
+      "packagedImage": false,
+      "realClientControllerAndTemplate": true,
+      "syntheticTransportOnly": true,
+      "authenticated": false,
+      "rdpConnected": false,
+      "iphoneNativeKeyboardDefaultsMigrated": true,
+      "iphoneTouchpadDefaultMigrated": true,
+      "pinchScale": [
+        1.25,
+        1.875
+      ],
+      "pinchAnchorPreserved": true,
+      "twoAxisPinchTranslation": true,
+      "oneFingerTwoAxisPan": true,
+      "noRemoteInputDuringPanAndZoom": true,
+      "noRemoteResizeOrReconnect": true,
+      "panOffPointerClampedWithoutScroll": true,
+      "viewportListenersCleaned": true,
+      "pageErrors": [],
+      "forbiddenRequests": [],
+      "requestCount": 31,
+      "limitations": [
+        "Headless browser touch/viewport emulation does not verify physical iPadOS keyboard presentation or real finger gestures."
+      ]
+    },
+    {
+      "status": "passed",
+      "engine": "chromium",
+      "browserVersion": "155.0.8059.80",
+      "version": "1.6.1-greenmole.9",
+      "source_revision": null,
+      "sourceFrontendBuild": true,
+      "packagedImage": false,
+      "realClientControllerAndTemplate": true,
+      "syntheticTransportOnly": true,
+      "authenticated": false,
+      "rdpConnected": false,
+      "iphoneNativeKeyboardDefaultsMigrated": true,
+      "iphoneTouchpadDefaultMigrated": true,
+      "pinchScale": [
+        1.25,
+        1.875
+      ],
+      "pinchAnchorPreserved": true,
+      "twoAxisPinchTranslation": true,
+      "oneFingerTwoAxisPan": true,
+      "noRemoteInputDuringPanAndZoom": true,
+      "noRemoteResizeOrReconnect": true,
+      "panOffPointerClampedWithoutScroll": true,
+      "viewportListenersCleaned": true,
+      "pageErrors": [],
+      "forbiddenRequests": [],
+      "requestCount": 33,
+      "limitations": [
+        "Headless browser touch/viewport emulation does not verify physical iPadOS keyboard presentation or real finger gestures."
+      ]
+    }
+  ],
+  "attribution": {
+    "modified_upstream_files_with_file_local_notices": 92,
+    "unchanged_upstream_license_and_notice_files": 213,
+    "both_upstream_histories_reachable": true
+  },
+  "video_common_js_unchanged": true,
+  "native_server_unchanged": true,
+  "new_video_transport_matrix_run": false,
+  "production_deployed": false,
+  "container_images_published": false,
+  "private_runtime_material_included": false,
+  "limitations": [
+    "Physical iPhone/iPad Safari keyboard presentation and finger gestures require device testing.",
+    "Frontend browser checks use emulated touch and viewport events with a synthetic transport; no authenticated RDP session is opened."
+  ]
+}

@@ -19,6 +19,8 @@
 
 'use strict';
 
+// Modified for Greenmole by its maintainers.
+
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
@@ -66,6 +68,7 @@ function eventBus() {
 
 class InputDevice {
     active = new Map();
+    currentState = { x: 0, y: 0 };
     on(name, callback) {
         if (!this.active.has(name)) this.active.set(name, new Set());
         this.active.get(name).add(callback);
@@ -101,7 +104,11 @@ function directiveFixture({ blocked = false, root = eventBus(), clipboardService
             getWidth: () => 1920, getHeight: () => 1080,
             getElement: () => ({}),
             showCursor: visible => cursor.push(['visible', visible]),
-            moveCursor: (x, y) => cursor.push([x, y])
+            moveCursor: (x, y) => {
+                display.cursorX = x;
+                display.cursorY = y;
+                cursor.push([x, y]);
+            }
         };
         displays.push(display);
         return {
@@ -137,6 +144,7 @@ function directiveFixture({ blocked = false, root = eventBus(), clipboardService
     const container = { appendChild() {}, offsetLeft: 0, offsetTop: 0, style: {} };
     const element = { 0: main, find: () => [container] };
     const loaded = sources(['client/types/ClientInputQueue.js', 'client/types/ClientLocalPan.js',
+        'client/types/ClientLocalZoom.js', 'client/types/ClientViewBounds.js',
         'client/types/ClientSmartPan.js', 'client/types/ClientResizeQueue.js',
         'client/types/ManagedClientState.js', 'client/directives/guacClient.js'], {
         document: { body: { focus() {} } },
@@ -155,6 +163,8 @@ function directiveFixture({ blocked = false, root = eventBus(), clipboardService
         ManagedClientState: loaded.factories.ManagedClientState(),
         ClientInputQueue: loaded.factories.ClientInputQueue(),
         ClientLocalPan: loaded.factories.ClientLocalPan(),
+        ClientLocalZoom: loaded.factories.ClientLocalZoom(),
+        ClientViewBounds: loaded.factories.ClientViewBounds(),
         ClientSmartPan: loaded.factories.ClientSmartPan(),
         ClientResizeQueue: loaded.factories.ClientResizeQueue(clock.window),
         $rootScope: root, $window: Object.assign(clock.window, { devicePixelRatio: density }),

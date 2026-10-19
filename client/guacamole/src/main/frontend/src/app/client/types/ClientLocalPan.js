@@ -20,13 +20,18 @@
 // Modified for Greenmole by its maintainers.
 
 /**
- * Pans a local desktop view without creating remote mouse/touch input or
- * dismissing its native text editor. Capture listeners decide ownership at
- * touchstart, before any mouse emulation can create a remote button press.
+ * Pans a local desktop without creating remote input or dismissing its native
+ * text editor. Capture listeners fix gesture ownership at touchstart, before
+ * any touchscreen or trackpad emulation can create a remote button press.
+ *
+ * The optional onPinch callback receives an incremental scaleFactor and current
+ * and previous midpoint client coordinates. It owns scaling and anchored scroll
+ * together, allowing the caller to enforce zoom limits. Without this callback,
+ * multi-touch remains blocked for compatibility with pan-only callers.
  */
 angular.module('client').factory('ClientLocalPan', [function ClientLocalPanFactory() {
 
-    return function ClientLocalPan(element, enabled, onScroll, onStart) {
+    return function ClientLocalPan(element, enabled, onScroll, onStart, onPinch) {
 
         const options = { capture: true, passive: false };
         let gesture = null;
@@ -36,40 +41,53 @@ angular.module('client').factory('ClientLocalPan', [function ClientLocalPanFacto
             event.stopImmediatePropagation();
         };
 
+        const point = function point(finger) {
+            if (!Number.isFinite(finger.clientX) || !Number.isFinite(finger.clientY))
+                return null;
+            return { identifier: finger.identifier, x: finger.clientX, y: finger.clientY };
+        };
+
+        // Each contact-count transition establishes a new baseline. Movement
+        // across the transition must never become an unintended drag or zoom.
+        const rebase = function rebase(touches) {
+            gesture.contacts = null;
+            if (gesture.cancelled || gesture.blocked)
+                return;
+
+            if (touches.length === 1)
+                gesture.contacts = [point(touches[0])];
+            else if (touches.length === 2 && onPinch)
+                gesture.contacts = [point(touches[0]), point(touches[1])];
+            else if (!onPinch)
+                gesture.blocked = true;
+
+            if (gesture.contacts && gesture.contacts.some(finger => !finger))
+                gesture.contacts = null;
+        };
+
         const start = function start(event) {
-            // A single newly-started contact cannot belong to an older
-            // gesture. Its last contact may have ended outside this view (for
-            // example on a toolbar), where our listener did not see the end.
+            // Recover when a previous contact's final event happened outside
+            // this view (for example over a toolbar).
             if (event.touches.length === 1)
                 gesture = null;
 
-            if (!gesture)
-                gesture = { local: !!enabled(), identifier: null };
+            if (!gesture) {
+                gesture = { local: !!enabled(), contacts: null };
+                if (gesture.local && onStart)
+                    onStart();
+            }
 
-            // An already-started remote gesture keeps its complete event
-            // stream if Pan is enabled before another finger is added.
+            // A remote gesture keeps its entire stream even if Pan is enabled
+            // before another finger is added. An owned local gesture likewise
+            // stays local until its final contact ends after Pan is disabled,
+            // but cancelled movement cannot resume on the remaining contacts.
             if (!gesture.local)
                 return;
 
             capture(event);
-
-            // Own the entire gesture, even if the mode changes before the last
-            // finger lifts. A gesture that has used multiple fingers stays
-            // blocked instead of unexpectedly becoming a drag or pinch.
-            if (gesture.started) {
-                gesture.identifier = null;
-                return;
-            }
-
-            const finger = event.touches.length === 1 ? event.touches[0] : null;
-            gesture.started = true;
-            if (onStart)
-                onStart();
-            if (finger) {
-                gesture.identifier = finger.identifier;
-                gesture.x = finger.clientX;
-                gesture.y = finger.clientY;
-            }
+            if (!enabled())
+                gesture.cancelled = true;
+            rebase(event.touches);
         };
 
         const move = function move(event) {
@@ -77,29 +95,66 @@ angular.module('client').factory('ClientLocalPan', [function ClientLocalPanFacto
                 return;
 
             capture(event);
-            const finger = event.touches.length === 1 ? event.touches[0] : null;
-            if (!finger || finger.identifier !== gesture.identifier) {
-                gesture.identifier = null;
+            if (!enabled())
+                gesture.cancelled = true;
+            if (gesture.cancelled || gesture.blocked)
+                return;
+
+            const previous = gesture.contacts;
+            if (!previous || previous.length !== event.touches.length) {
+                rebase(event.touches);
                 return;
             }
 
-            const deltaX = finger.clientX - gesture.x;
-            const deltaY = finger.clientY - gesture.y;
-            gesture.x = finger.clientX;
-            gesture.y = finger.clientY;
+            // Browser TouchList order is not a contact identity. Preserve the
+            // original pair even if the browser reverses its ordering.
+            const current = previous.map(old => {
+                for (let i = 0; i < event.touches.length; i++) {
+                    if (event.touches[i].identifier === old.identifier)
+                        return point(event.touches[i]);
+                }
+                return null;
+            });
+            if (current.some(finger => !finger)) {
+                rebase(event.touches);
+                return;
+            }
+            gesture.contacts = current;
+
+            if (current.length === 2) {
+                const previousDistance = Math.hypot(
+                    previous[1].x - previous[0].x, previous[1].y - previous[0].y);
+                const distance = Math.hypot(
+                    current[1].x - current[0].x, current[1].y - current[0].y);
+                if (!previousDistance || !distance)
+                    return;
+
+                const change = {
+                    scaleFactor: distance / previousDistance,
+                    clientX: (current[0].x + current[1].x) / 2,
+                    clientY: (current[0].y + current[1].y) / 2,
+                    previousClientX: (previous[0].x + previous[1].x) / 2,
+                    previousClientY: (previous[0].y + previous[1].y) / 2
+                };
+                if (Number.isFinite(change.scaleFactor)
+                        && (change.scaleFactor !== 1
+                            || change.clientX !== change.previousClientX
+                            || change.clientY !== change.previousClientY))
+                    onPinch(change);
+                return;
+            }
 
             const previousLeft = element.scrollLeft;
             const previousTop = element.scrollTop;
 
-            // Clamp explicitly, including browsers which expose rubber-band
-            // overscroll offsets. Finger movement at an edge must not create
-            // a remote wheel event or scroll the page behind the client.
+            // Clamp even browsers' rubber-band offsets. Edge movement must not
+            // scroll the surrounding page or become a remote wheel event.
             element.scrollLeft = Math.max(0, Math.min(
                 Math.max(0, element.scrollWidth - element.clientWidth),
-                previousLeft - deltaX));
+                previousLeft - (current[0].x - previous[0].x)));
             element.scrollTop = Math.max(0, Math.min(
                 Math.max(0, element.scrollHeight - element.clientHeight),
-                previousTop - deltaY));
+                previousTop - (current[0].y - previous[0].y)));
 
             if (element.scrollLeft !== previousLeft || element.scrollTop !== previousTop)
                 onScroll(element.scrollLeft, element.scrollTop);
@@ -108,33 +163,41 @@ angular.module('client').factory('ClientLocalPan', [function ClientLocalPanFacto
         const end = function end(event) {
             if (!gesture)
                 return;
-
-            if (gesture.local)
+            if (gesture.local) {
                 capture(event);
-            // Never resume from one of the remaining contacts after a partial
-            // release/cancel. Wait until all fingers lift before a new pan.
+                if (!enabled())
+                    gesture.cancelled = true;
+            }
             if (!event.touches.length)
                 gesture = null;
             else if (gesture.local)
-                gesture.identifier = null;
+                rebase(event.touches);
+        };
+
+        const cancelTouch = function cancelTouch(event) {
+            if (gesture && gesture.local)
+                gesture.cancelled = true;
+            end(event);
         };
 
         element.addEventListener('touchstart', start, options);
         element.addEventListener('touchmove', move, options);
         element.addEventListener('touchend', end, options);
-        element.addEventListener('touchcancel', end, options);
+        element.addEventListener('touchcancel', cancelTouch, options);
 
-        /** Stop moving a detached view without leaking the owned gesture. */
+        /** Cancel motion while retaining local ownership through final release. */
         this.cancel = function cancel() {
-            if (gesture)
-                gesture.identifier = null;
+            if (gesture) {
+                gesture.cancelled = true;
+                gesture.contacts = null;
+            }
         };
 
         this.dispose = function dispose() {
             element.removeEventListener('touchstart', start, options);
             element.removeEventListener('touchmove', move, options);
             element.removeEventListener('touchend', end, options);
-            element.removeEventListener('touchcancel', end, options);
+            element.removeEventListener('touchcancel', cancelTouch, options);
             gesture = null;
         };
 

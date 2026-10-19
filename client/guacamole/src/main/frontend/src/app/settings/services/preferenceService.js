@@ -117,9 +117,10 @@ angular.module('settings').provider('preferenceService', ['$injector',
     };
 
     // iPadOS can use a desktop Mac user agent. Touch points distinguish that
-    // mode from a Mac. Keyboard preferences remain independent of the
-    // versioned iOS mouse-default migration applied after stored values merge.
+    // mode from a Mac. A platform fallback also covers iPhone/iPod browsers
+    // which mask or omit their device name in the user agent.
     var isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent || '')
+        || /iPad|iPhone|iPod/i.test(navigator.platform || '')
         || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
     /**
@@ -198,6 +199,20 @@ angular.module('settings').provider('preferenceService', ['$injector',
         provider.preferences.iosTouchpadDefaultVersion = 1;
     }
 
+    // Earlier builds automatically persisted NONE on navigation, so its
+    // presence alone cannot distinguish an old desktop default from a choice.
+    // Upgrade that legacy value once; keep existing text/OSK/native choices and
+    // every subsequent explicit choice, including NONE. Use an independent
+    // marker because the mouse migration may already have run on this browser.
+    var migrateIOSKeyboard = isIOS && !(storedPreferences
+        && typeof storedPreferences.iosNativeKeyboardDefaultVersion === 'number'
+        && storedPreferences.iosNativeKeyboardDefaultVersion >= 1);
+    if (migrateIOSKeyboard) {
+        if (provider.preferences.inputMethod === inputMethods.NONE)
+            provider.preferences.inputMethod = inputMethods.NATIVE;
+        provider.preferences.iosNativeKeyboardDefaultVersion = 1;
+    }
+
     // Factory method required by provider
     this.$get = ['$injector', function preferenceServiceFactory($injector) {
 
@@ -230,9 +245,9 @@ angular.module('settings').provider('preferenceService', ['$injector',
             localStorageService.setItem(GUAC_PREFERENCES_STORAGE_KEY, service.preferences);
         };
 
-        // Commit the migration before any menu choice or navigation can occur.
-        // Otherwise a reload could reset an intentional absolute selection.
-        if (migrateIOSMouse)
+        // Commit migrations before any menu choice or navigation can occur.
+        // Otherwise a reload could reset an intentional mouse/keyboard choice.
+        if (migrateIOSMouse || migrateIOSKeyboard)
             service.save();
 
         // Persist settings when window is unloaded

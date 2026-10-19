@@ -115,7 +115,7 @@ test('mode changes never steal an existing remote gesture or leak the end of an 
     view.setEnabled(false);
     view.event('touchmove', [finger(2, 100, 100)]);
     view.event('touchend', []);
-    assert.deepEqual(view.scrolls, [[100, 300]]);
+    assert.deepEqual(view.scrolls, [], 'disabling Pan suspends the owned gesture');
     assert.deepEqual(view.remote, []);
     view.event('touchstart', [finger(3, 1, 1)]);
     assert.deepEqual(view.remote, ['touchstart']);

@@ -17,14 +17,17 @@
 
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { preferenceFixture: fixture } = require('./helpers/preference-fixtures');
+const { preferenceFixture: fixture, clientControllerFixture } = require('./helpers/preference-fixtures');
 
 const devices = [
     { name: 'iPad', userAgent: 'Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X)' },
     { name: 'iPhone', userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)' },
     { name: 'iPod', userAgent: 'Mozilla/5.0 (iPod touch; CPU iPhone OS 15_0 like Mac OS X)' },
     { name: 'desktop-UA iPad', userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15)',
-        platform: 'MacIntel', maxTouchPoints: 5 }
+        platform: 'MacIntel', maxTouchPoints: 5 },
+    { name: 'masked-UA iPhone', userAgent: 'Mozilla/5.0 (Macintosh)', platform: 'iPhone', maxTouchPoints: 5 },
+    { name: 'platform-only iPhone', platform: 'iPhone' },
+    { name: 'platform-only iPod', platform: 'iPod' }
 ];
 
 test('fresh iOS browsers default to native keyboard and relative mouse before a session is created', () => {
@@ -34,6 +37,7 @@ test('fresh iOS browsers default to native keyboard and relative mouse before a 
         assert.equal(service.preferences.inputMethod, 'native', device.name);
         assert.equal(service.preferences.emulateAbsoluteMouse, false, device.name);
         assert.equal(storage.stored.iosTouchpadDefaultVersion, 1);
+        assert.equal(storage.stored.iosNativeKeyboardDefaultVersion, 1);
         assert.equal(storage.saves.length, 1, 'migration must be committed before the first navigation');
     }
 });
@@ -55,7 +59,8 @@ test('non-iOS browsers retain physical keyboard and absolute touch defaults', ()
 test('versioned saved input and mouse choices override iOS defaults independently', () => {
     for (const device of devices) {
         for (const inputMethod of ['none', 'text', 'osk', 'native']) {
-            const { service } = fixture({ inputMethod, iosTouchpadDefaultVersion: 1 }).load(device);
+            const { service } = fixture({ inputMethod, iosTouchpadDefaultVersion: 1,
+                iosNativeKeyboardDefaultVersion: 1 }).load(device);
             assert.equal(service.preferences.inputMethod, inputMethod);
             assert.equal(service.preferences.emulateAbsoluteMouse, false);
         }
@@ -67,18 +72,19 @@ test('versioned saved input and mouse choices override iOS defaults independentl
     }
 });
 
-test('legacy iOS absolute defaults migrate once without changing keyboard or unrelated settings', () => {
+test('legacy iOS keyboard and absolute defaults migrate once without changing unrelated settings', () => {
     const stored = { inputMethod: 'none', emulateAbsoluteMouse: true,
         language: 'nb', timezone: 'Europe/Oslo', numberOfRecentConnections: 9 };
     const storage = fixture(stored);
     const { service } = storage.load(devices[0]);
-    assert.equal(service.preferences.inputMethod, 'none');
+    assert.equal(service.preferences.inputMethod, 'native');
     assert.equal(service.preferences.emulateAbsoluteMouse, false);
     assert.equal(service.preferences.language, 'nb');
     assert.equal(service.preferences.timezone, stored.timezone);
     assert.equal(service.preferences.numberOfRecentConnections, stored.numberOfRecentConnections);
     assert.equal(storage.saves.length, 1);
     assert.equal(storage.stored.iosTouchpadDefaultVersion, 1);
+    assert.equal(storage.stored.iosNativeKeyboardDefaultVersion, 1);
     assert.equal(storage.load(devices[0]).service.preferences.emulateAbsoluteMouse, false);
     assert.equal(storage.saves.length, 1, 'reload must not run the migration again');
 });
@@ -135,9 +141,69 @@ test('existing relative mouse settings acquire the marker once and future marker
     storage.load(devices[1]);
     assert.equal(storage.saves.length, 1);
 
-    const future = fixture({ emulateAbsoluteMouse: true, iosTouchpadDefaultVersion: 2 });
+    const future = fixture({ inputMethod: 'none', emulateAbsoluteMouse: true,
+        iosTouchpadDefaultVersion: 2, iosNativeKeyboardDefaultVersion: 2 });
     const current = future.load(devices[0]).service;
     assert.equal(current.preferences.emulateAbsoluteMouse, true);
     assert.equal(current.preferences.iosTouchpadDefaultVersion, 2);
+    assert.equal(current.preferences.inputMethod, 'none');
+    assert.equal(current.preferences.iosNativeKeyboardDefaultVersion, 2);
     assert.equal(future.saves.length, 0);
+});
+
+test('keyboard migration runs independently after an earlier mouse migration and preserves its explicit choice', () => {
+    for (const device of devices) {
+        const storage = fixture({ inputMethod: 'none', emulateAbsoluteMouse: true,
+            iosTouchpadDefaultVersion: 1 });
+        const { service } = storage.load(device);
+        assert.equal(service.preferences.inputMethod, 'native', device.name);
+        assert.equal(service.preferences.emulateAbsoluteMouse, true, device.name);
+        assert.equal(storage.stored.iosNativeKeyboardDefaultVersion, 1);
+        assert.equal(storage.saves.length, 1);
+        storage.load(device);
+        assert.equal(storage.saves.length, 1, 'keyboard migration must not repeat');
+    }
+});
+
+test('existing text and OSK selections survive keyboard migration and acquire the marker once', () => {
+    for (const inputMethod of ['text', 'osk', 'native']) {
+        const storage = fixture({ inputMethod, iosTouchpadDefaultVersion: 1 });
+        assert.equal(storage.load(devices[1]).service.preferences.inputMethod, inputMethod);
+        assert.equal(storage.stored.iosNativeKeyboardDefaultVersion, 1);
+        assert.equal(storage.saves.length, 1);
+        assert.equal(storage.load(devices[1]).service.preferences.inputMethod, inputMethod);
+        assert.equal(storage.saves.length, 1);
+    }
+});
+
+test('native-default menu choices persist immediately and explicit NONE survives iPhone reload', () => {
+    for (const inputMethod of ['none', 'text', 'osk']) {
+        const storage = fixture({ inputMethod: 'none', iosTouchpadDefaultVersion: 1 });
+        const preferences = storage.load(devices[1]).service;
+        const client = clientControllerFixture(preferences);
+        client.watches.get('menu.inputMethod')('native');
+        assert.equal(client.keyboard.enabled, true);
+        client.scope.menu.inputMethod = inputMethod;
+        client.watches.get('menu.inputMethod')(inputMethod);
+        assert.equal(storage.stored.inputMethod, inputMethod);
+        assert.equal(storage.stored.iosNativeKeyboardDefaultVersion, 1);
+        const reload = storage.load(devices[1]).service;
+        assert.equal(reload.preferences.inputMethod, inputMethod);
+        assert.equal(storage.saves.length, 2, 'explicit selection saves immediately; reload does not remigrate');
+    }
+});
+
+test('non-iOS saved preferences never acquire or run either iOS migration', () => {
+    for (const inputMethod of ['none', 'text', 'osk', 'native']) {
+        const stored = { inputMethod, emulateAbsoluteMouse: true, language: 'pl', experimentalVideoMode: 'avc444' };
+        const storage = fixture(stored);
+        const preferences = storage.load({ platform: 'MacIntel', maxTouchPoints: 0 }).service.preferences;
+        assert.equal(preferences.inputMethod, inputMethod);
+        assert.equal(preferences.emulateAbsoluteMouse, true);
+        assert.equal(preferences.language, 'pl');
+        assert.equal(preferences.experimentalVideoMode, 'avc444');
+        assert.equal(preferences.iosNativeKeyboardDefaultVersion, undefined);
+        assert.equal(preferences.iosTouchpadDefaultVersion, undefined);
+        assert.equal(storage.saves.length, 0);
+    }
 });

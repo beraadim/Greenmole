@@ -57,6 +57,8 @@ angular.module('client').directive('guacClient', [function guacClient() {
         const ManagedClientState = $injector.get('ManagedClientState');
         const ClientInputQueue = $injector.get('ClientInputQueue');
         const ClientLocalPan = $injector.get('ClientLocalPan');
+        const ClientLocalZoom = $injector.get('ClientLocalZoom');
+        const ClientViewBounds = $injector.get('ClientViewBounds');
         const ClientSmartPan = $injector.get('ClientSmartPan');
         const ClientResizeQueue = $injector.get('ClientResizeQueue');
             
@@ -163,6 +165,27 @@ angular.module('client').directive('guacClient', [function guacClient() {
         };
         const smartPan = new ClientSmartPan(main, syncLocalScroll);
 
+        const containedPointerBounds = () => nativeKeyboard.enabled && !nativeKeyboard.panning
+            ? ClientViewBounds.get(main, displayContainer, display, $window.visualViewport) : null;
+
+        // Touchpad movement accumulates in scaled CSS coordinates. Keep that
+        // accumulator aligned after local zoom/pan so reversing at a view edge
+        // responds immediately instead of first undoing invisible overshoot.
+        const rebaseRelativePointer = () => {
+            if (!display || !touchPad.currentState)
+                return;
+            let x = Number.isFinite(display.cursorX) ? display.cursorX : 0;
+            let y = Number.isFinite(display.cursorY) ? display.cursorY : 0;
+            const bounds = containedPointerBounds();
+            if (bounds && bounds.clipped) {
+                x = Math.max(bounds.minX, Math.min(bounds.maxX, x));
+                y = Math.max(bounds.minY, Math.min(bounds.maxY, y));
+                display.moveCursor(x, y);
+            }
+            touchPad.currentState.x = x * display.getScale();
+            touchPad.currentState.y = y * display.getScale();
+        };
+
         // Pan is an explicit native-keyboard tool. Capture the touch before
         // touchscreen/touchpad emulation can press a remote button, retaining
         // the focused text editor and leaving hardware mouse input unchanged.
@@ -171,7 +194,17 @@ angular.module('client').directive('guacClient', [function guacClient() {
             (left, top) => {
                 smartPan.markManual();
                 syncLocalScroll(left, top);
-            }, () => smartPan.markManual());
+            }, () => smartPan.markManual(), change => {
+                if (!client || !display)
+                    return;
+                smartPan.markManual();
+                const scroll = ClientLocalZoom.apply(main, displayContainer, display,
+                    $scope.client.clientProperties, change);
+                if (scroll) {
+                    rebaseRelativePointer();
+                    syncLocalScroll(scroll.left, scroll.top);
+                }
+            });
 
         const resizeQueue = new ClientResizeQueue((width, height) => {
             if (client)
@@ -322,7 +355,7 @@ angular.module('client').directive('guacClient', [function guacClient() {
          * @param {boolean} emulated
          *     Whether to display and scroll to the software cursor.
          */
-        const handleMouseInput = function handleMouseInput(event, emulated) {
+        const handleMouseInput = function handleMouseInput(event, emulated, device) {
 
             // Do not attempt to handle mouse state changes if the client
             // or display are not yet available
@@ -345,6 +378,22 @@ angular.module('client').directive('guacClient', [function guacClient() {
             state.x /= display.getScale();
             state.y /= display.getScale();
 
+            const bounds = containedPointerBounds();
+            const contained = bounds && bounds.clipped;
+            if (contained) {
+                state.x = Math.max(bounds.minX, Math.min(bounds.maxX,
+                    Number.isFinite(state.x) ? state.x : bounds.minX));
+                state.y = Math.max(bounds.minY, Math.min(bounds.maxY,
+                    Number.isFinite(state.y) ? state.y : bounds.minY));
+                // Rebase the source device too, preserving buttons/wheel pulses.
+                event.state.x = state.x * display.getScale();
+                event.state.y = state.y * display.getScale();
+                if (device && device.currentState) {
+                    device.currentState.x = event.state.x;
+                    device.currentState.y = event.state.y;
+                }
+            }
+
             const primary = (event.type === 'mousedown' && state.left && !primaryButtonDown)
                 || (event.type === 'mouseup' && !state.left && primaryButtonDown);
             smartPan.recordPointer(state.x, state.y, primary);
@@ -352,7 +401,7 @@ angular.module('client').directive('guacClient', [function guacClient() {
 
             display.showCursor(emulated || !localCursor);
             display.moveCursor(Math.floor(state.x), Math.floor(state.y));
-            if (emulated)
+            if (emulated && !contained)
                 scrollToMouse(event.state);
 
             // Only adjacent free movement may be replaced. Drag paths, wheel
@@ -360,7 +409,19 @@ angular.module('client').directive('guacClient', [function guacClient() {
             const freeMovement = event.type === 'mousemove'
                 && !state.left && !state.middle && !state.right
                 && !state.up && !state.down;
-            inputQueue.enqueue(() => targetClient.sendMouseState(state), freeMovement);
+            inputQueue.enqueue(() => {
+                targetClient.sendMouseState(state);
+                // Sending also moves Guacamole's local cursor. A queued input
+                // keeps its original remote coordinates, but a later zoom or
+                // keyboard opening may have made those coordinates invisible.
+                // Correct local feedback without changing the ordered input.
+                const currentBounds = targetClient === client && inputViewActive
+                    ? containedPointerBounds() : null;
+                if (currentBounds && currentBounds.clipped
+                        && (display.cursorX < currentBounds.minX || display.cursorX > currentBounds.maxX
+                            || display.cursorY < currentBounds.minY || display.cursorY > currentBounds.maxY))
+                    rebaseRelativePointer();
+            }, freeMovement);
 
             // Process modifier observations when the event occurs. Any keys
             // inferred by these listeners join the same input queue, after
@@ -369,8 +430,9 @@ angular.module('client').directive('guacClient', [function guacClient() {
 
         };
 
-        const handleMouseEvent = event => handleMouseInput(event, false);
-        const handleEmulatedMouseEvent = event => handleMouseInput(event, true);
+        const handleMouseEvent = event => handleMouseInput(event, false, mouse);
+        const handleEmulatedMouseEvent = event => handleMouseInput(event, true, touchScreen);
+        const handleTouchpadMouseEvent = event => handleMouseInput(event, true, touchPad);
 
         /**
          * Return the name of the angular event associated with the provided
@@ -531,7 +593,7 @@ angular.module('client').directive('guacClient', [function guacClient() {
             // Clear existing event handling
             touch.offEach(['touchstart', 'touchmove', 'touchend'], handleTouchEvent);
             touchScreen.offEach(['mousedown', 'mousemove', 'mouseup'], handleEmulatedMouseEvent);
-            touchPad.offEach(['mousedown', 'mousemove', 'mouseup'], handleEmulatedMouseEvent);
+            touchPad.offEach(['mousedown', 'mousemove', 'mouseup'], handleTouchpadMouseEvent);
 
             // Direct touch belongs to absolute mode. An explicit relative
             // preference must remain a trackpad even if the server supports
@@ -547,7 +609,7 @@ angular.module('client').directive('guacClient', [function guacClient() {
             // Use touchpad for mouse emulation if absolute mouse emulation
             // is not preferred
             else
-                touchPad.onEach(['mousedown', 'mousemove', 'mouseup'], handleEmulatedMouseEvent);
+                touchPad.onEach(['mousedown', 'mousemove', 'mouseup'], handleTouchpadMouseEvent);
 
         });
 
@@ -565,6 +627,7 @@ angular.module('client').directive('guacClient', [function guacClient() {
             // Apply scale if client attached
             if (display)
                 display.scale(scale);
+            rebaseRelativePointer();
             updateSmartPan();
             
             if (scale !== $scope.client.clientProperties.scale)
@@ -630,6 +693,7 @@ angular.module('client').directive('guacClient', [function guacClient() {
             $scope.$evalAsync(() => {
                 updateDisplayScale();
                 updateSmartPan();
+                rebaseRelativePointer();
             });
 
         };
@@ -664,9 +728,17 @@ angular.module('client').directive('guacClient', [function guacClient() {
             $scope.$evalAsync(updateSmartPan);
         });
 
+        $scope.$watch(() => nativeKeyboard.enabled && !nativeKeyboard.panning,
+            rebaseRelativePointer);
+
         // Scroll client display if absolute mouse is in use (the same drag
         // gesture is needed for moving the mouse pointer with relative mouse)
         $scope.clientDrag = function clientDrag(inProgress, startX, startY, currentX, currentY, deltaX, deltaY) {
+
+            // Native input has explicit local gesture ownership. Its Pan tool
+            // handles navigation; disabling Pan restores remote touch input.
+            if (nativeKeyboard.enabled)
+                return false;
 
             if ($scope.emulateAbsoluteMouse) {
                 $scope.client.clientProperties.scrollLeft -= deltaX;
@@ -705,6 +777,14 @@ angular.module('client').directive('guacClient', [function guacClient() {
 
         // Zoom and pan client via pinch gestures
         $scope.clientPinch = function clientPinch(inProgress, startLength, currentLength, centerX, centerY) {
+
+            // The capture-phase Pan tool performs native-input zoom directly.
+            // Do not let bubbling legacy pinch/drag handlers navigate the view
+            // while the user has selected remote pointer control instead.
+            if (nativeKeyboard.enabled) {
+                initialScale = null;
+                return false;
+            }
 
             // Do not handle pinch gestures if they would conflict with remote
             // handling of similar gestures
@@ -825,7 +905,7 @@ angular.module('client').directive('guacClient', [function guacClient() {
             mouse.off('mouseout', hideCursor);
             mouse.offEach(['mousedown', 'mousemove', 'mouseup'], handleMouseEvent);
             touchScreen.offEach(['mousedown', 'mousemove', 'mouseup'], handleEmulatedMouseEvent);
-            touchPad.offEach(['mousedown', 'mousemove', 'mouseup'], handleEmulatedMouseEvent);
+            touchPad.offEach(['mousedown', 'mousemove', 'mouseup'], handleTouchpadMouseEvent);
             touch.offEach(['touchstart', 'touchmove', 'touchend'], handleTouchEvent);
         });
 
