@@ -1,8 +1,8 @@
 {
   "schema": "greenmole-release-validation-v1",
   "release": "1.6.1-greenmole.9",
-  "status": "web image built and tested; not deployed",
-  "verified_at_utc": "2026-10-19T13:23:05.139630+00:00",
+  "status": "web image built, tested and deployed",
+  "verified_at_utc": "2026-10-19T13:44:21.328620+00:00",
   "dependency_pins_unchanged_from": "1.6.1-greenmole.8",
   "release_inputs_sha256": "590f5e80eb25cd6680ba5347c72bc66c9a9454e6e9d85a5fdf8e434b94c94ac4",
   "frontend_node_tests": {
@@ -177,7 +177,7 @@
   "video_common_js_unchanged": true,
   "native_server_unchanged": true,
   "new_video_transport_matrix_run": false,
-  "production_deployed": false,
+  "production_deployed": true,
   "container_images_published": false,
   "private_runtime_material_included": false,
   "limitations": [
@@ -356,5 +356,197 @@
   "source_secret_scan": {
     "staged_findings": 0,
     "redacted": true
+  },
+  "deployment": {
+    "version": "1.6.1-greenmole.9",
+    "revision": "0360ea14e25d80c2f6a04e08d4a37f3c2eac1739",
+    "deployed_at_utc": "2026-10-19T13:41:56.449945+00:00",
+    "component_changed": "web",
+    "web_image": {
+      "tag": "greenmole/web:1.6.1-greenmole.9",
+      "id": "sha256:2f3438b1214a2414c49b06acc3330ab84c8070cf946353cb33933bae9672a949"
+    },
+    "native_daemon_image": {
+      "tag": "greenmole/guacd:1.6.1-greenmole.8",
+      "id": "sha256:214a9af689e8b73da08fd403393601ea5fcf764dd41bff42dec1630518463404"
+    },
+    "native_daemon_preserved": true,
+    "configuration_preserved": true,
+    "runtime_settings_preserved": true,
+    "unrelated_containers_unchanged": true,
+    "languages": 16,
+    "branding_assets": [
+      {
+        "path": "images/greenmole.png",
+        "sha256": "5c1cb410e7f474ad971f29cfd09895d1413a58abbe9cb038c1afd1e38a6729a7"
+      },
+      {
+        "path": "images/greenmole-64.png",
+        "sha256": "057f7d79653146b28275b8611a5d212c031cc8a3b3de1cedb3ddd7f8c837891d"
+      },
+      {
+        "path": "images/greenmole-144.png",
+        "sha256": "673509e1684cf7f6348c521c084e4fd9ec972d6b59ffed2d3500ce1ee8057e9a"
+      },
+      {
+        "path": "images/greenmole-256.png",
+        "sha256": "97d2c5adee44099733133d87d4c6e6d504c752f40c56b7097a357d61b7ba34e1"
+      }
+    ],
+    "rdp_plugin_handshake": true,
+    "web_to_guacd_tcp": true,
+    "common_js_unchanged": true,
+    "rollback_images": [
+      "greenmole/web:rollback-greenmole.8-before-greenmole.9"
+    ],
+    "web_http_ready": true,
+    "guacd_healthy": true,
+    "web_restart_count": 0,
+    "web_oom_killed": false,
+    "critical_startup_log_lines": 0,
+    "compose_dependency_configuration_preserved": true,
+    "initial_attempt_rolled_back_on_generated_compose_dependency_label_difference": true,
+    "previous_attempt_evidence_retained_privately": true
+  },
+  "post_deployment_health": {
+    "web_http_ready": true,
+    "version": "1.6.1-greenmole.9",
+    "guacd_healthy": true,
+    "restart_counts": {
+      "web": 0,
+      "guacd": 0
+    },
+    "oom_killed": false,
+    "critical_log_lines": 0,
+    "matched_tested_web_image": true,
+    "native_daemon_preserved": true
+  },
+  "live_browser_smoke": {
+    "status": "passed",
+    "version": "1.6.1-greenmole.9",
+    "target": "anonymous live gateway login",
+    "authenticated": false,
+    "rdpConnected": false,
+    "syntheticClientInjected": false,
+    "cases": [
+      {
+        "case": "desktop-chromium",
+        "engine": "chromium",
+        "browserVersion": "155.0.8059.80",
+        "viewport": {
+          "width": 1000,
+          "height": 750
+        },
+        "version": "1.6.1-greenmole.9",
+        "branding": true,
+        "logoSize": [
+          96,
+          96
+        ],
+        "loginFieldsVisible": true,
+        "noHorizontalOverflow": true,
+        "iosDefaultsMigrated": false,
+        "preferences": {
+          "runtime": {
+            "inputMethod": "none",
+            "emulateAbsoluteMouse": true
+          },
+          "stored": {},
+          "authTokenPresent": false,
+          "clientFixturePresent": false
+        },
+        "authenticated": false,
+        "rdpConnected": false,
+        "pageErrors": [],
+        "forbiddenRequests": []
+      },
+      {
+        "case": "iphone-chromium",
+        "engine": "chromium",
+        "browserVersion": "155.0.8059.80",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "version": "1.6.1-greenmole.9",
+        "branding": true,
+        "logoSize": [
+          96,
+          96
+        ],
+        "loginFieldsVisible": true,
+        "noHorizontalOverflow": true,
+        "iosDefaultsMigrated": true,
+        "preferences": {
+          "runtime": {
+            "inputMethod": "native",
+            "emulateAbsoluteMouse": false,
+            "iosTouchpadDefaultVersion": 1,
+            "iosNativeKeyboardDefaultVersion": 1
+          },
+          "stored": {
+            "inputMethod": "native",
+            "emulateAbsoluteMouse": false,
+            "iosTouchpadDefaultVersion": 1,
+            "iosNativeKeyboardDefaultVersion": 1
+          },
+          "authTokenPresent": false,
+          "clientFixturePresent": false
+        },
+        "authenticated": false,
+        "rdpConnected": false,
+        "pageErrors": [],
+        "forbiddenRequests": []
+      },
+      {
+        "case": "iphone-webkit",
+        "engine": "webkit",
+        "browserVersion": "26.0",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "version": "1.6.1-greenmole.9",
+        "branding": true,
+        "logoSize": [
+          96,
+          96
+        ],
+        "loginFieldsVisible": true,
+        "noHorizontalOverflow": true,
+        "iosDefaultsMigrated": true,
+        "preferences": {
+          "runtime": {
+            "inputMethod": "native",
+            "emulateAbsoluteMouse": false,
+            "iosTouchpadDefaultVersion": 1,
+            "iosNativeKeyboardDefaultVersion": 1
+          },
+          "stored": {
+            "inputMethod": "native",
+            "emulateAbsoluteMouse": false,
+            "iosTouchpadDefaultVersion": 1,
+            "iosNativeKeyboardDefaultVersion": 1
+          },
+          "authTokenPresent": false,
+          "clientFixturePresent": false
+        },
+        "authenticated": false,
+        "rdpConnected": false,
+        "pageErrors": [],
+        "forbiddenRequests": []
+      }
+    ],
+    "owned_forward_removed": true,
+    "visual_review": {
+      "desktop_chromium": "passed",
+      "iphone_chromium": "passed",
+      "iphone_webkit": "passed"
+    }
+  },
+  "independent_post_deployment_audit": {
+    "tested_web_image_matches": true,
+    "native_daemon_identity_unchanged": true,
+    "web_runtime_settings_match_original_greenmole8": true
   }
 }
