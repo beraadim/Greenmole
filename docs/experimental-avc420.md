@@ -27,6 +27,15 @@ Select Images and reconnect to return to the original image path.
 A browser fallback stays on images for that RDP connection; reconnecting makes a
 fresh capability decision. No system browser security flags are needed.
 
+Greenmole.11 paces startup and temporary presentation pressure before selecting
+fallback. It begins with at most four outstanding AVC420 access units (two
+AVC444 pairs) and expands the window only after an ordered presentation ACK.
+At the window limit, it waits for progress within the oldest frame's existing
+two-second deadline instead of immediately disabling video. No reference frame
+is skipped, and memory limits remain unchanged. A genuine timeout or decoder
+failure still selects images for that connection. This does not automatically
+restart video after a permanent fallback.
+
 ## Transport and limits
 
 The browser advertises `video/x-guacamole-avc420;v=1` only after an asynchronous,
@@ -54,6 +63,12 @@ padding to the visible desktop. It acknowledges presentation after the canvas
 operation, not merely receipt of encoded bytes. Decoder state, tasks and native
 VideoFrames are disposed on fallback, reset, resize and disconnection. Payloads,
 retained bytes, in-flight work and presentation deadlines are bounded.
+Encoded frames waiting in the bounded browser FIFO do not consume their native
+decode/presentation deadline until submission. The asynchronous configuration
+probe has its own two-second limit. Gateway records distinguish readiness,
+first presentation, pacing recovery and fallback with content-free counters;
+neither the Mac's AVC mode nor graphics ACK latency alone proves browser video
+playback or measures Wi-Fi latency.
 
 ## Image fallback and scope
 

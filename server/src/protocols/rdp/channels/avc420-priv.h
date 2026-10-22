@@ -19,6 +19,7 @@
 #include <guacamole/stream.h>
 #include <guacamole/timestamp.h>
 #include <pthread.h>
+#include <time.h>
 
 typedef struct guac_rdp_avc420_pending {
     uint32_t sequence;
@@ -40,6 +41,8 @@ struct guac_rdp_avc420 {
     uint32_t sequence;
     size_t pending_bytes;
     unsigned int pending_count, pending_head;
+    unsigned int pacing_events, pacing_logged;
+    guac_timestamp last_pacing_log;
     guac_rdp_avc420_pending pending[GUAC_RDP_AVC420_MAX_PENDING];
     /* The following fields are confined to FreeRDP's graphics thread. */
     unsigned char* frame;
@@ -65,5 +68,13 @@ struct guac_rdp_avc420 {
 void guac_rdp_avc420_send_frame(guac_client* client);
 void guac_rdp_avc420_open(guac_client* client);
 int guac_rdp_avc420_wait_ready(guac_client* client);
+/** Waits with lock held, temporarily releasing it for independent ACKs. */
+int guac_rdp_avc420_wait_changed(guac_rdp_avc420* video,
+        const struct timespec* deadline);
+/** Bounded FIFO credit wait. Never drops an H.264 access unit. */
+int guac_rdp_avc420_wait_credit(guac_client* client);
+/** Logs only internal state and fixed event/reason codes; lock must be held. */
+void guac_rdp_avc420_log_state(guac_client* client, const char* event,
+        const char* cause, guac_timestamp duration);
 
 #endif

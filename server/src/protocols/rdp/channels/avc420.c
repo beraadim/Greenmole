@@ -21,7 +21,6 @@
 #include <guacamole/protocol.h>
 #include <guacamole/socket.h>
 #include <inttypes.h>
-#include <errno.h>
 #include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -166,6 +165,22 @@ static const char* avc444_failure_reason(const char* message) {
     return NULL;
 }
 
+/** Same fixed, content-free reason codes used by AVC420VideoPlayer. */
+static const char* avc420_failure_reason(const char* message) {
+    static const struct { const char* ack; const char* reason; } reasons[] = {
+        {"AVC420:fallback:invalid-stream", "browser AVC420 stream validation failed"},
+        {"AVC420:fallback:unsupported-config", "browser AVC420 configuration unsupported"},
+        {"AVC420:fallback:decoder-error", "browser AVC420 decoder error"},
+        {"AVC420:fallback:frame-timeout", "browser AVC420 frame presentation deadline exceeded"},
+        {"AVC420:fallback:assembly-timeout", "browser AVC420 frame assembly deadline exceeded"},
+        {"AVC420:fallback:backlog-limit", "browser AVC420 queue safety limit exceeded"},
+        {"AVC420:fallback:presentation-error", "browser AVC420 ordered presentation failed"}
+    };
+    for (size_t i = 0; i < sizeof(reasons) / sizeof(reasons[0]); i++)
+        if (!strcmp(message, reasons[i].ack)) return reasons[i].reason;
+    return NULL;
+}
+
 static int video_ack(guac_user* user, guac_stream* stream,
         char* message, guac_protocol_status status) {
     guac_rdp_avc420* video = video_for(user->client);
@@ -181,11 +196,14 @@ static int video_ack(guac_user* user, guac_stream* stream,
     snprintf(ready, sizeof(ready), "%s:ready", codec);
     if (status != GUAC_PROTOCOL_STATUS_SUCCESS) {
         invalid = 1;
-        const char* failure = video->stream_avc444 ? avc444_failure_reason(message) : NULL;
+        const char* failure = video->stream_avc444
+            ? avc444_failure_reason(message) : avc420_failure_reason(message);
         if (failure) reason = failure;
     }
     else if (!video->ready && !strcmp(message, ready)) {
         video->ready = 1;
+        guac_rdp_avc420_log_state(user->client, "decoder-ready", "ready-ack",
+                guac_timestamp_current() - video->opened);
         pthread_cond_broadcast(&video->ready_changed);
     }
     else if (video->ready && video->pending_count) {
@@ -195,10 +213,16 @@ static int video_ack(guac_user* user, guac_stream* stream,
         if (strcmp(expected, message))
             invalid = 1;
         else {
+            int first = !video->presented;
+            guac_timestamp duration = guac_timestamp_current() - pending->sent;
             video->pending_bytes -= pending->bytes;
             video->pending_head = (video->pending_head + 1) % GUAC_RDP_AVC420_MAX_PENDING;
             video->pending_count--;
             video->presented = 1;
+            if (first)
+                guac_rdp_avc420_log_state(user->client, "first-presented",
+                        "presentation-ack", duration);
+            pthread_cond_broadcast(&video->ready_changed);
         }
     }
     else invalid = 1;
@@ -252,24 +276,7 @@ int guac_rdp_avc420_wait_ready(guac_client* client) {
     /* Only the first IDR waits. The independent Guacamole ACK thread does
      * not acquire any FreeRDP/display locks and signals this condition. */
     while (!video->ready && !video->disabled) {
-        if (video->ready_monotonic) {
-            if (pthread_cond_timedwait(&video->ready_changed, &video->lock,
-                        &deadline) == ETIMEDOUT)
-                break;
-        }
-        else {
-            /* Platforms without monotonic condition variables must not turn
-             * a wall-clock rollback into an unbounded first-frame stall. */
-            pthread_mutex_unlock(&video->lock);
-            const struct timespec pause = { .tv_nsec = 10000000 };
-            nanosleep(&pause, NULL);
-            struct timespec now;
-            clock_gettime(CLOCK_MONOTONIC, &now);
-            pthread_mutex_lock(&video->lock);
-            if (now.tv_sec > deadline.tv_sec || (now.tv_sec == deadline.tv_sec
-                        && now.tv_nsec >= deadline.tv_nsec))
-                break;
-        }
+        if (!guac_rdp_avc420_wait_changed(video, &deadline)) break;
     }
     int ready = video->ready && !video->disabled;
     pthread_mutex_unlock(&video->lock);
@@ -387,7 +394,8 @@ void guac_rdp_avc420_send_frame(guac_client* client) {
          * itself. Opening during SurfaceCommand would put its first resize
          * after video, correctly causing the browser to dispose the decoder. */
         guac_rdp_avc420_open(client);
-        if (guac_rdp_avc420_wait_ready(client))
+        if (guac_rdp_avc420_wait_ready(client)
+                && guac_rdp_avc420_wait_credit(client))
             guac_client_for_owner(client, send_for_owner, client);
     }
     free(video->frame);
@@ -442,6 +450,8 @@ void guac_rdp_avc420_poll(guac_client* client) {
     const char* reason = video->reason;
     int log = !video->fallback_logged;
     video->fallback_logged |= refresh;
+    if (refresh && log)
+        guac_rdp_avc420_log_state(client, "image-fallback", reason, 0);
     pthread_mutex_unlock(&video->lock);
     if (!refresh) return;
     guac_client_for_owner(client, close_for_owner, client);

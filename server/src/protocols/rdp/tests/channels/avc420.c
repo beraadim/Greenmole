@@ -32,6 +32,7 @@
 #include <guacamole/protocol.h>
 #include <guacamole/socket.h>
 #include <guacamole/timestamp.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -106,16 +107,32 @@ static void ready(fixture* f) {
             f->rdp.avc420->stream_avc444 ? "AVC444:ready" : "AVC420:ready",
             GUAC_PROTOCOL_STATUS_SUCCESS);
 }
-static void frame(fixture* f) {
+static void access_unit(fixture* f, int is_key) {
     guac_rdp_avc420* v = f->rdp.avc420;
-    v->frame = malloc(sizeof(key));
+    const unsigned char* main = is_key ? key : delta;
+    size_t main_length = is_key ? sizeof(key) : sizeof(delta);
+    size_t prefix = v->stream_avc444 ? 16 : 0;
+    v->frame_length = prefix + main_length
+        + (v->stream_avc444 ? sizeof(delta) : 0);
+    v->frame = malloc(v->frame_length);
     CU_ASSERT_PTR_NOT_NULL_FATAL(v->frame);
-    memcpy(v->frame, key, sizeof(key));
-    v->frame_length = sizeof(key);
+    if (prefix) {
+        const unsigned char rectangles[] = {0,0,0,0,0,16,0,16,0,0,0,0,0,16,0,16};
+        memcpy(v->frame, rectangles, sizeof(rectangles));
+        memcpy(v->frame + prefix + main_length, delta, sizeof(delta));
+    }
+    memcpy(v->frame + prefix, main, main_length);
     v->width = v->height = 16;
-    v->frame_key = 1;
+    v->frame_key = is_key;
+    v->frame_aux_key = 0;
+    v->frame_avc444 = v->stream_avc444;
+    v->frame_main_length = main_length;
+    v->frame_aux_length = v->stream_avc444 ? sizeof(delta) : 0;
     v->supported_frame = v->commands = 1;
     guac_rdp_avc420_send_frame(f->client);
+}
+static void frame(fixture* f) {
+    access_unit(f, 1);
 }
 
 void test_avc420__capability_recording_and_shared_viewer_gate() {
@@ -301,11 +318,13 @@ void test_avc420__network_backlog_and_idle_deadline_are_bounded() {
     init_fixture(&f, 1);
     ready(&f);
     f.rdp.avc420->presented = 1;
-    for (unsigned int i = 0; i < GUAC_RDP_AVC420_MAX_PENDING; i++) frame(&f);
+    for (unsigned int i = 0; i < 8; i++) frame(&f);
     CU_ASSERT_FALSE(f.rdp.avc420->disabled);
+    f.rdp.avc420->pending[0].sent = guac_timestamp_current()
+        - GUAC_RDP_AVC420_ACK_TIMEOUT;
     frame(&f);
     CU_ASSERT_TRUE(f.rdp.avc420->disabled);
-    CU_ASSERT_EQUAL(f.rdp.avc420->pending_count, GUAC_RDP_AVC420_MAX_PENDING);
+    CU_ASSERT_EQUAL(f.rdp.avc420->pending_count, 8);
     free_fixture(&f);
     init_fixture(&f, 1);
     ready(&f);
@@ -723,6 +742,155 @@ void test_avc420__avc444_failure_reasons_are_static_and_allowlisted() {
         CU_ASSERT_TRUE(video->refresh);
         CU_ASSERT_STRING_EQUAL(video->reason, cases[i].reason);
         CU_ASSERT_FALSE(video->presented);
+        free_fixture(&f);
+    }
+}
+
+typedef struct pacing_wake {
+    fixture* f;
+    int action;
+} pacing_wake;
+
+static void* wake_pacing(void* data) {
+    pacing_wake* wake = data;
+    guac_timestamp_msleep(30);
+    guac_rdp_avc420* video = wake->f->rdp.avc420;
+    if (wake->action == 1)
+        guac_rdp_avc420_stop(wake->f->client, "test cancellation");
+    else if (wake->action == 2)
+        guac_rdp_avc420_leave(wake->f->client, wake->f->owner);
+    else if (wake->action == 3) {
+        for (int i = 0; i < 10; i++) {
+            pthread_mutex_lock(&video->lock);
+            pthread_cond_broadcast(&video->ready_changed);
+            pthread_mutex_unlock(&video->lock);
+            guac_timestamp_msleep(20);
+        }
+    }
+    else {
+        char ack[32];
+        snprintf(ack, sizeof(ack), "%s:1", video->stream_avc444 ? "AVC444" : "AVC420");
+        guac_stream* stream = video->stream;
+        stream->ack_handler(wake->f->owner, stream, ack, GUAC_PROTOCOL_STATUS_SUCCESS);
+    }
+    return NULL;
+}
+
+/** A slow first presentation earns credit without skipping dependent AUs. */
+void test_avc420__startup_and_steady_windows_wait_for_ordered_presentation_credit() {
+    for (int avc444 = 0; avc444 <= 1; avc444++) {
+        for (int presented = 0; presented <= 1; presented++) {
+            fixture f;
+            init_fixture(&f, avc444 ? 2 : 1);
+            ready(&f);
+            guac_rdp_avc420* video = f.rdp.avc420;
+            video->presented = presented;
+            unsigned int window = avc444 ? (presented ? 4 : 2) : (presented ? 8 : 4);
+            for (unsigned int i = 0; i < window; i++) access_unit(&f, !i);
+            CU_ASSERT_EQUAL(video->pending_count, window);
+            CU_ASSERT_EQUAL(video->sequence, window);
+            CU_ASSERT_EQUAL(video->presented, presented);
+            pacing_wake wake = { .f = &f };
+            pthread_t thread;
+            CU_ASSERT_EQUAL_FATAL(pthread_create(&thread, NULL, wake_pacing, &wake), 0);
+            access_unit(&f, 0);
+            pthread_join(thread, NULL);
+            CU_ASSERT_FALSE(video->disabled);
+            CU_ASSERT_TRUE(video->presented);
+            CU_ASSERT_EQUAL(video->pacing_events, 1);
+            CU_ASSERT_EQUAL(video->pending_head, 1);
+            CU_ASSERT_EQUAL(video->pending_count, window);
+            CU_ASSERT_EQUAL(video->sequence, window + 1);
+            unsigned int tail = (video->pending_head + video->pending_count - 1)
+                % GUAC_RDP_AVC420_MAX_PENDING;
+            CU_ASSERT_EQUAL(video->pending[tail].sequence, window + 1);
+            CU_ASSERT_EQUAL(video->pending[tail].bytes,
+                    avc444 ? 16 + 2 * sizeof(delta) : sizeof(delta));
+            CU_ASSERT_PTR_NULL(video->frame);
+            CU_ASSERT_EQUAL(video->frame_length, 0);
+            free_fixture(&f);
+        }
+    }
+}
+
+/** Byte pressure uses the same bounded wait even below the frame window. */
+void test_avc420__byte_credit_recovers_without_exceeding_the_existing_limit() {
+    fixture f;
+    init_fixture(&f, 1);
+    ready(&f);
+    frame(&f);
+    guac_rdp_avc420* video = f.rdp.avc420;
+    video->pending[0].bytes = video->pending_bytes
+        = GUAC_RDP_AVC420_MAX_PENDING_BYTES - 1;
+    pacing_wake wake = { .f = &f };
+    pthread_t thread;
+    CU_ASSERT_EQUAL_FATAL(pthread_create(&thread, NULL, wake_pacing, &wake), 0);
+    access_unit(&f, 0);
+    pthread_join(thread, NULL);
+    CU_ASSERT_FALSE(video->disabled);
+    CU_ASSERT_EQUAL(video->pacing_events, 1);
+    CU_ASSERT_EQUAL(video->sequence, 2);
+    CU_ASSERT_EQUAL(video->pending_count, 1);
+    CU_ASSERT_EQUAL(video->pending_bytes, sizeof(delta));
+    free_fixture(&f);
+}
+
+/** Unrelated wakes never restart the existing oldest-picture deadline. */
+void test_avc420__pacing_deadline_is_fixed_and_stop_or_owner_leave_wake_waiters() {
+    for (int action = 1; action <= 3; action++) {
+        fixture f;
+        init_fixture(&f, 1);
+        ready(&f);
+        for (int i = 0; i < 4; i++) access_unit(&f, !i);
+        guac_rdp_avc420* video = f.rdp.avc420;
+        if (action == 3)
+            video->pending[0].sent = guac_timestamp_current()
+                - GUAC_RDP_AVC420_ACK_TIMEOUT + 120;
+        pacing_wake wake = { .f = &f, .action = action };
+        pthread_t thread;
+        CU_ASSERT_EQUAL_FATAL(pthread_create(&thread, NULL, wake_pacing, &wake), 0);
+        guac_timestamp started = guac_timestamp_current();
+        access_unit(&f, 0);
+        guac_timestamp elapsed = guac_timestamp_current() - started;
+        pthread_join(thread, NULL);
+        CU_ASSERT_TRUE(video->disabled);
+        CU_ASSERT_TRUE(video->refresh);
+        CU_ASSERT_EQUAL(video->sequence, 4);
+        CU_ASSERT_EQUAL(video->pending_count, 4);
+        CU_ASSERT_PTR_NULL(video->frame);
+        CU_ASSERT_TRUE(elapsed < 1000);
+        if (action == 3)
+            CU_ASSERT_STRING_EQUAL(video->reason,
+                    "browser video pacing presentation deadline exceeded");
+        free_fixture(&f);
+    }
+}
+
+/** Legacy failure ACKs work, while untrusted strings never become log reasons. */
+void test_avc420__avc420_failure_reasons_are_static_and_allowlisted() {
+    static const struct { const char* ack; const char* reason; } cases[] = {
+        {"AVC420:fallback:invalid-stream", "browser AVC420 stream validation failed"},
+        {"AVC420:fallback:unsupported-config", "browser AVC420 configuration unsupported"},
+        {"AVC420:fallback:decoder-error", "browser AVC420 decoder error"},
+        {"AVC420:fallback:frame-timeout", "browser AVC420 frame presentation deadline exceeded"},
+        {"AVC420:fallback:assembly-timeout", "browser AVC420 frame assembly deadline exceeded"},
+        {"AVC420:fallback:backlog-limit", "browser AVC420 queue safety limit exceeded"},
+        {"AVC420:fallback:presentation-error", "browser AVC420 ordered presentation failed"},
+        {"AVC420:fallback", "browser decoder rejected frame or invalid ACK"},
+        {"AVC420:fallback:decoder-error\nsecret-user-data", "browser decoder rejected frame or invalid ACK"},
+        {"AVC444:fallback:decoder-error", "browser decoder rejected frame or invalid ACK"},
+        {"AVC420:fallback:unknown", "browser decoder rejected frame or invalid ACK"}
+    };
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        fixture f;
+        init_fixture(&f, 1);
+        ready(&f);
+        guac_rdp_avc420* video = f.rdp.avc420;
+        video->stream->ack_handler(f.owner, video->stream, (char*) cases[i].ack,
+                GUAC_PROTOCOL_STATUS_SERVER_ERROR);
+        CU_ASSERT_TRUE(video->disabled);
+        CU_ASSERT_TRUE(video->refresh);
+        CU_ASSERT_STRING_EQUAL(video->reason, cases[i].reason);
         free_fixture(&f);
     }
 }

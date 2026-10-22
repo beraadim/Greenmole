@@ -113,7 +113,7 @@ describe('Guacamole experimental AVC420 video', function() {
             configureBase64();
             stream.onblob('%%%not-base64%%%');
             expect(stream.onblob).toBeNull();
-            expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback', 0x0300);
+            expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback:invalid-stream', 0x0300);
             expect(chunks.length).toBe(0);
         });
         it('bounds ' + mode + ' Base64 before invoking either decoder', function() {
@@ -121,7 +121,7 @@ describe('Guacamole experimental AVC420 video', function() {
             var atob = spyOn(window, 'atob').and.callThrough();
             stream.onblob('A'.repeat(131073));
             expect(convert).not.toHaveBeenCalled(); expect(atob).not.toHaveBeenCalled();
-            expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback', 0x0300);
+            expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback:invalid-stream', 0x0300);
             expect(chunks.length).toBe(0);
         });
     });
@@ -157,7 +157,7 @@ describe('Guacamole experimental AVC420 video', function() {
         for (var i = 2; i <= 17; i++) send(envelope(i, delta));
         await settle();
         expect(stream.onblob).toBeNull();
-        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback', 0x0300);
+        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback:backlog-limit', 0x0300);
         display.flush();
         expect(layer.drawVideoFrame).not.toHaveBeenCalled();
     });
@@ -174,34 +174,111 @@ describe('Guacamole experimental AVC420 video', function() {
         expect(stream.sendAck).toHaveBeenCalledTimes(12);
         expect(stream.onblob).not.toBeNull();
     });
+    it('preserves every reference through a slow progressing encoded burst without aging queued frames', async function() {
+        jasmine.clock().install();
+        try {
+            for (var i = 1; i <= 12; i++) { send(envelope(i, i === 1 ? key : delta)); display.flush(); }
+            await settle();
+            var pictures = [];
+            for (var batch = 0; batch < 3; batch++) {
+                jasmine.clock().tick(1500);
+                for (var sequence = batch * 4 + 1; sequence <= batch * 4 + 4; sequence++) {
+                    var decoded = frame(sequence); pictures.push(decoded);
+                    decoders[0].callbacks.output(decoded);
+                }
+            }
+            expect(chunks.map(function(chunk) { return chunk.timestamp; }))
+                .toEqual(Array.from({ length: 12 }, function(_, i) { return (i + 1) * 1000; }));
+            expect(stream.sendAck.calls.allArgs()).toEqual(Array.from({ length: 12 }, function(_, i) {
+                return ['AVC420:' + (i + 1), 0];
+            }));
+            pictures.forEach(function(decoded) { expect(decoded.close).toHaveBeenCalledTimes(1); });
+            expect(stream.onblob).not.toBeNull();
+            jasmine.clock().tick(10000);
+            expect(stream.sendAck).toHaveBeenCalledTimes(12);
+        }
+        finally { jasmine.clock().uninstall(); }
+    });
+    it('bounds a stalled submitted frame and cancels all queued work before image fallback', async function() {
+        jasmine.clock().install();
+        try {
+            for (var i = 1; i <= 8; i++) { send(envelope(i, i === 1 ? key : delta)); display.flush(); }
+            await settle();
+            var held = frame(2); decoders[0].callbacks.output(held);
+            display.drawImage(layer, 0, 0, { width: 32, height: 18 }); display.flush();
+            jasmine.clock().tick(2000);
+            expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback:frame-timeout', 0x0300);
+            expect(decoders[0].close).toHaveBeenCalledTimes(1);
+            expect(held.close).toHaveBeenCalledTimes(1);
+            expect(layer.drawVideoFrame).not.toHaveBeenCalled();
+            display.flush();
+            expect(layer.drawImage).toHaveBeenCalledTimes(1);
+            var late = frame(1); decoders[0].callbacks.output(late);
+            expect(late.close).toHaveBeenCalledTimes(1);
+            expect(layer.drawVideoFrame).not.toHaveBeenCalled();
+        }
+        finally { jasmine.clock().uninstall(); }
+    });
+    it('bounds an unresolved configuration and ignores its answer after disposal', async function() {
+        jasmine.clock().install();
+        try {
+            var answer;
+            window.VideoDecoder.isConfigSupported = function() {
+                return new Promise(function(resolve) { answer = resolve; });
+            };
+            send(envelope(1, key)); display.flush(); await settle();
+            jasmine.clock().tick(2000);
+            expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback:unsupported-config', 0x0300);
+            expect(display.getQueueStatistics().blocked).toBe(false);
+            answer({ supported: true }); await settle();
+            expect(decoders.length).toBe(0);
+            expect(stream.sendAck).toHaveBeenCalledTimes(1);
+        }
+        finally { jasmine.clock().uninstall(); }
+    });
+    it('reports only allowlisted decoder causes without forwarding exception text', async function() {
+        var states = []; player.onstatechange = function(state, reason) { states.push([state, reason]); };
+        send(envelope(1, key)); await settle();
+        decoders[0].callbacks.error(new Error('private native failure details'));
+        expect(states).toEqual([['fallback', 'decoder-error']]);
+        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback:decoder-error', 0x0300);
+        player.dispose(true, 'private\nforged-cause');
+        expect(stream.sendAck).toHaveBeenCalledTimes(1);
+    });
+    it('does not send a fabricated or arbitrary fallback reason', function() {
+        var states = []; player.onstatechange = function(state, reason) { states.push([state, reason]); };
+        player.dispose(true, 'private\nforged-cause');
+        expect(states).toEqual([['fallback', null]]);
+        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback', 0x0300);
+    });
     it('bounds advertised dimensions and rejects a delta before a keyframe', function() {
         send(envelope(1, key, { width: 8193 }));
-        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback', 0x0300);
+        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback:invalid-stream', 0x0300);
         expect(decoders.length).toBe(0);
     });
     it('requires SPS/PPS and a consistent key flag', function() {
         send(envelope(1, delta));
-        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback', 0x0300);
+        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback:invalid-stream', 0x0300);
         expect(decoders.length).toBe(0);
     });
     it('rejects duplicate frame sequences instead of ambiguously matching output', async function() {
         send(envelope(1, key)); await settle();
         send(envelope(1, delta));
-        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback', 0x0300);
+        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback:invalid-stream', 0x0300);
     });
     it('times out partial envelopes and unblocks pending display work', function() {
         jasmine.clock().install();
         try {
             send(envelope(1, key).slice(0, 8));
             jasmine.clock().tick(2000);
-            expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback', 0x0300);
+            expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback:assembly-timeout', 0x0300);
         }
         finally { jasmine.clock().uninstall(); }
     });
     it('fails safely when the actual SPS configuration is unsupported', async function() {
         window.VideoDecoder.isConfigSupported = function() { return Promise.resolve({ supported: false }); };
         send(envelope(1, key)); display.flush(); await settle();
-        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback', 0x0300);
+        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback:unsupported-config', 0x0300);
         expect(decoders.length).toBe(0);
         expect(display.getQueueStatistics().blocked).toBe(false);
     });
@@ -209,14 +286,14 @@ describe('Guacamole experimental AVC420 video', function() {
         send(envelope(1, key)); await settle();
         var invalid = frame(1, 64, 64); decoders[0].callbacks.output(invalid);
         expect(invalid.close).toHaveBeenCalledTimes(1);
-        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback', 0x0300);
+        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback:invalid-stream', 0x0300);
     });
     it('requests fallback when the canvas draw throws and still releases its frame', async function() {
         layer.drawVideoFrame.and.throwError('canvas unavailable');
         send(envelope(1, key)); display.flush(); await settle();
         var decoded = frame(1); decoders[0].callbacks.output(decoded);
         expect(decoded.close).toHaveBeenCalledTimes(1);
-        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback', 0x0300);
+        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:fallback:presentation-error', 0x0300);
     });
     it('notifies native fallback when Client resizes the video layer and releases the decoder', async function() {
         var originalSupport = Guacamole.AVC420VideoPlayer.supported;

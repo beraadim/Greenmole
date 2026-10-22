@@ -97,7 +97,7 @@ describe('Guacamole AVC420 real WebCodecs integration', function() {
             near(client.getDisplay().flatten().getContext('2d').getImageData(5, 5, 1, 1).data, [224, 32, 192]);
             expect(client.getVideoStatistics().status).toBe('fallback');
             expect(client.getVideoStatistics().presentedFrames).toBe(24);
-            expect(sent.some(function(message) { return message[0] === 'ack' && message[2] === 'AVC420:fallback'; })).toBe(false);
+            expect(sent.some(function(message) { return message[0] === 'ack' && message[2].indexOf('AVC420:fallback') === 0; })).toBe(false);
         }
         finally { client.disconnect(); }
     });

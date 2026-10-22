@@ -39,6 +39,7 @@ Guacamole.AVC444VideoPlayer = function AVC444VideoPlayer(stream, layer, display)
     var pending = {}, pendingCount = 0, pendingBytes = 0, decodeQueue = [], activePairs = 0;
     var header = new Uint8Array(32), headerUsed = 0, payload = null, payloadUsed = 0, metadata = null;
     var assemblyTimer = null;
+    var configurationTimer = null;
     var MAX_BYTES = 8 * 1024 * 1024, MAX_PENDING_BYTES = 16 * 1024 * 1024, TIMEOUT = 2000;
 
     this.dispose = function dispose(notify, reason) {
@@ -48,7 +49,8 @@ Guacamole.AVC444VideoPlayer = function AVC444VideoPlayer(stream, layer, display)
         if (player.onstatechange) player.onstatechange('fallback', reason);
         stream.onblob = stream.onend = null;
         if (assemblyTimer !== null) window.clearTimeout(assemblyTimer);
-        assemblyTimer = null; payload = metadata = null;
+        if (configurationTimer !== null) window.clearTimeout(configurationTimer);
+        assemblyTimer = configurationTimer = null; payload = metadata = null;
         Object.keys(pending).forEach(function cancel(sequence) {
             var item = pending[sequence];
             window.clearTimeout(item.timer);
@@ -111,6 +113,9 @@ Guacamole.AVC444VideoPlayer = function AVC444VideoPlayer(stream, layer, display)
         // native frames/copies and two reconstructed pictures can be retained.
         while (!closed && decodeQueue.length && activePairs < 2) {
             var item = decodeQueue.shift(); activePairs++;
+            // Encoded FIFO time precedes this pair's native/copy/presentation
+            // budget. Keep healthy ordered progress through a bounded burst.
+            item.timer = window.setTimeout(failed('frame-timeout'), TIMEOUT);
             try {
                 for (var side = 0; side < 2; side++)
                     decoder.decode(new window.EncodedVideoChunk({ type: item.keys[side] ? 'key' : 'delta',
@@ -140,6 +145,7 @@ Guacamole.AVC444VideoPlayer = function AVC444VideoPlayer(stream, layer, display)
             // reconstruction remains on the GPU and AVC420 is unchanged.
             var config = { codec: codec, optimizeForLatency: true, hardwareAcceleration: 'prefer-software',
                 codedWidth: Math.ceil(info.width / 16) * 16, codedHeight: Math.ceil(info.height / 16) * 16 };
+            configurationTimer = window.setTimeout(failed('unsupported-config'), TIMEOUT);
             decoderReady = Promise.resolve().then(function supportedConfig() {
                 return window.VideoDecoder.isConfigSupported(config);
             }).then(function configure(result) {
@@ -147,7 +153,8 @@ Guacamole.AVC444VideoPlayer = function AVC444VideoPlayer(stream, layer, display)
                 if (!result.supported) return fail('unsupported-config');
                 try { renderer = new Guacamole.AVC444Renderer(failed('context-lost')); }
                 catch (error) { return fail('renderer-error'); }
-                decoder = new window.VideoDecoder({ output: output, error: failed('decoder-error') }); decoder.configure(config); pump();
+                decoder = new window.VideoDecoder({ output: output, error: failed('decoder-error') }); decoder.configure(config);
+                window.clearTimeout(configurationTimer); configurationTimer = null; pump();
             }).catch(failed('decoder-error'));
         }
         if (info.width !== streamWidth || info.height !== streamHeight || nals.some(function changed(nal) {
@@ -157,7 +164,6 @@ Guacamole.AVC444VideoPlayer = function AVC444VideoPlayer(stream, layer, display)
         var item = { width: info.width, height: info.height, sequence: info.sequence,
             bytes: data.length, data: frames, keys: keys, frames: [null, null], received: [false, false], planes: [null, null] };
         pending[info.sequence] = item; pendingCount++; pendingBytes += item.bytes;
-        item.timer = window.setTimeout(failed('frame-timeout'), TIMEOUT);
         item.task = display.scheduleVideoFrame(layer, info.width, info.height, function presented(success) {
             if (closed || !pending[info.sequence]) return;
             window.clearTimeout(item.timer); delete pending[info.sequence];

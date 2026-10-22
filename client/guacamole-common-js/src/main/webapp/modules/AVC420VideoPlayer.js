@@ -50,23 +50,27 @@ Guacamole.AVC420VideoPlayer = function AVC420VideoPlayer(stream, layer, display)
     var payloadUsed = 0;
     var metadata = null;
     var assemblyTimer = null;
+    var configurationTimer = null;
     var MAX_BYTES = 8 * 1024 * 1024;
     var MAX_PENDING_BYTES = 16 * 1024 * 1024;
     var TIMEOUT = 2000;
 
     // Disposing must become terminal before cancelling tasks: cancellation can
     // synchronously flush the display and invoke task completion callbacks.
-    this.dispose = function dispose(notify) {
+    this.dispose = function dispose(notify, reason) {
         if (closed) return;
         closed = true;
-        if (player.onstatechange) player.onstatechange('fallback');
+        reason = Guacamole.AVC420VideoPlayer.isFailureReason(reason) ? reason : null;
+        if (player.onstatechange) player.onstatechange('fallback', reason);
         stream.onblob = stream.onend = null;
         if (assemblyTimer !== null) window.clearTimeout(assemblyTimer);
-        assemblyTimer = null;
-        payload = null;
+        if (configurationTimer !== null) window.clearTimeout(configurationTimer);
+        assemblyTimer = configurationTimer = null;
+        payload = metadata = null;
         Object.keys(pending).forEach(function cancel(sequence) {
             var item = pending[sequence];
             window.clearTimeout(item.timer);
+            item.data = null;
             // Invalidate the entire stream before another display flush can
             // execute a different, already-decoded task from this stream.
             item.task.cancel(true);
@@ -79,10 +83,11 @@ Guacamole.AVC420VideoPlayer = function AVC420VideoPlayer(stream, layer, display)
             catch (ignore) {}
             decoder = null;
         }
-        if (notify) stream.sendAck('AVC420:fallback', 0x0300);
+        if (notify) stream.sendAck('AVC420:fallback' + (reason ? ':' + reason : ''), 0x0300);
     };
 
-    function fail() { player.dispose(true); }
+    function fail(reason) { player.dispose(true, reason || 'invalid-stream'); }
+    function failed(reason) { return function failure() { fail(reason); }; }
 
     function output(frame) {
         var sequence = frame.timestamp / 1000;
@@ -94,7 +99,7 @@ Guacamole.AVC420VideoPlayer = function AVC420VideoPlayer(stream, layer, display)
         if (frame.displayWidth < item.width || frame.displayHeight < item.height
                 || frame.displayWidth > item.width + 15 || frame.displayHeight > item.height + 15) {
             frame.close();
-            fail();
+            fail('invalid-stream');
             return;
         }
         item.task.complete(frame);
@@ -131,48 +136,56 @@ Guacamole.AVC420VideoPlayer = function AVC420VideoPlayer(stream, layer, display)
         while (!closed && decodeQueue.length && activeFrames < 4) {
             var item = decodeQueue.shift();
             activeFrames++;
+            // Encoded FIFO time is not decoder/presentation time. Healthy
+            // progress may queue several access units without any one of them
+            // spending two seconds in the native or ordered display pipeline.
+            item.timer = window.setTimeout(failed('frame-timeout'), TIMEOUT);
             try {
                 decoder.decode(new window.EncodedVideoChunk({ type: item.key ? 'key' : 'delta',
                     timestamp: item.sequence * 1000, data: item.data }));
                 item.data = null;
             }
-            catch (ignore) { fail(); }
+            catch (ignore) { fail('decoder-error'); }
         }
     }
 
     function decode(data, info) {
         var nal = inspect(data);
         var key = !!(info.flags & 1);
-        if (nal.idr !== key || (key && (!nal.codec || !nal.pps))) return fail();
+        if (nal.idr !== key || (key && (!nal.codec || !nal.pps))) return fail('invalid-stream');
         if (!decoderReady) {
-            if (!key) return fail();
+            if (!key) return fail('invalid-stream');
             codec = nal.codec;
             streamWidth = info.width;
             streamHeight = info.height;
             var config = { codec: codec, optimizeForLatency: true,
                 codedWidth: info.width, codedHeight: info.height };
+            // The platform's asynchronous configuration probe must also be
+            // bounded before any per-submission frame deadline can exist.
+            configurationTimer = window.setTimeout(failed('unsupported-config'), TIMEOUT);
             // Probe the actual SPS profile/level as well as the initial general
             // H.264 capability. Tasks reserve order while this query is pending.
             decoderReady = Promise.resolve().then(function supportedConfig() {
                 return window.VideoDecoder.isConfigSupported(config);
             }).then(function configure(result) {
                 if (closed) return;
-                if (!result.supported) throw new Error('Unsupported AVC configuration');
-                decoder = new window.VideoDecoder({ output: output, error: fail });
+                if (!result.supported) return fail('unsupported-config');
+                decoder = new window.VideoDecoder({ output: output, error: failed('decoder-error') });
                 decoder.configure(config);
+                window.clearTimeout(configurationTimer);
+                configurationTimer = null;
                 pump();
-            }).catch(fail);
+            }).catch(failed('decoder-error'));
         }
         // Configuration/dimensions require a new stream and clean keyframe.
         if ((nal.codec && nal.codec !== codec) || info.width !== streamWidth
-                || info.height !== streamHeight) return fail();
-        if (pendingCount >= 16 || pendingBytes + data.length > MAX_PENDING_BYTES) return fail();
+                || info.height !== streamHeight) return fail('invalid-stream');
+        if (pendingCount >= 16 || pendingBytes + data.length > MAX_PENDING_BYTES) return fail('backlog-limit');
         var item = { width: info.width, height: info.height, bytes: data.length,
             data: data, key: key, sequence: info.sequence };
         pending[info.sequence] = item;
         pendingCount++;
         pendingBytes += data.length;
-        item.timer = window.setTimeout(fail, TIMEOUT);
         item.task = display.scheduleVideoFrame(layer, info.width, info.height, function presented(success) {
             if (closed || !pending[info.sequence]) return;
             window.clearTimeout(item.timer);
@@ -180,7 +193,7 @@ Guacamole.AVC420VideoPlayer = function AVC420VideoPlayer(stream, layer, display)
             pendingCount--;
             pendingBytes -= item.bytes;
             activeFrames--;
-            if (!success) return fail();
+            if (!success) return fail('presentation-error');
             if (player.onstatechange) player.onstatechange('playing');
             stream.sendAck('AVC420:' + info.sequence, 0);
             pump();
@@ -197,8 +210,8 @@ Guacamole.AVC420VideoPlayer = function AVC420VideoPlayer(stream, layer, display)
         if (view.getUint32(0) !== 0x47415631 || sequence <= lastSequence
                 || !width || !height || width > 8192 || height > 8192
                 || width * height > 33554432 || (flags & ~1)
-                || !length || length > MAX_BYTES
-                || pendingBytes + length > MAX_PENDING_BYTES) return fail();
+                || !length || length > MAX_BYTES) return fail('invalid-stream');
+        if (pendingBytes + length > MAX_PENDING_BYTES) return fail('backlog-limit');
         lastSequence = sequence;
         metadata = { sequence: sequence, width: width, height: height, flags: flags };
         payload = new Uint8Array(length);
@@ -208,7 +221,7 @@ Guacamole.AVC420VideoPlayer = function AVC420VideoPlayer(stream, layer, display)
     stream.onblob = function receiveBlob(base64) {
         if (closed) return;
         // Bound the allocation before atob(), including hostile custom servers.
-        if (typeof base64 !== 'string' || base64.length > 131072) return fail();
+        if (typeof base64 !== 'string' || base64.length > 131072) return fail('invalid-stream');
         var data;
         try {
             // Native byte decoding avoids a binary string and JavaScript work
@@ -216,10 +229,10 @@ Guacamole.AVC420VideoPlayer = function AVC420VideoPlayer(stream, layer, display)
             data = typeof Uint8Array.fromBase64 === 'function'
                 ? Uint8Array.fromBase64(base64) : window.atob(base64);
         }
-        catch (ignore) { return fail(); }
+        catch (ignore) { return fail('invalid-stream'); }
         var offset = 0;
         while (!closed && offset < data.length) {
-            if (assemblyTimer === null) assemblyTimer = window.setTimeout(fail, TIMEOUT);
+            if (assemblyTimer === null) assemblyTimer = window.setTimeout(failed('assembly-timeout'), TIMEOUT);
             var target = payload || header;
             var used = payload ? payloadUsed : headerUsed;
             var count = Math.min(target.length - used, data.length - offset);
@@ -251,6 +264,12 @@ Guacamole.AVC420VideoPlayer = function AVC420VideoPlayer(stream, layer, display)
 /** The exact versioned downstream capability, never advertised by default. */
 Guacamole.AVC420VideoPlayer.MIMETYPE = 'video/x-guacamole-avc420;v=1';
 Guacamole.AVC420VideoPlayer.supported = false;
+
+/** Bounded, content-free causes shared with the gateway ACK allowlist. */
+Guacamole.AVC420VideoPlayer.isFailureReason = function isFailureReason(reason) {
+    return ['invalid-stream', 'unsupported-config', 'decoder-error', 'frame-timeout',
+        'assembly-timeout', 'backlog-limit', 'presentation-error'].indexOf(reason) !== -1;
+};
 
 /**
  * Resolves browser capability after an asynchronous WebCodecs check. Secure

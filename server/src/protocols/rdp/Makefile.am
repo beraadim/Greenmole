@@ -61,6 +61,7 @@ libguac_client_rdp_la_SOURCES =                  \
     channels/rdpdr/rdpdr.c                       \
     channels/rdpei.c                             \
     channels/avc420.c                            \
+    channels/avc420-flow.c                       \
     channels/avc420-graphics.c                   \
     channels/rdpgfx.c                            \
     channels/rdpsnd/rdpsnd-messages.c            \

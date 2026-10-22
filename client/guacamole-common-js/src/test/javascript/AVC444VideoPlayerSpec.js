@@ -129,6 +129,47 @@ describe('Guacamole experimental AVC444 video', function() {
         decoders[0].callbacks.output(frame(1, 0)); decoders[0].callbacks.output(frame(1, 1)); await settle();
         expect(chunks.length).toBe(6);
     });
+    it('preserves interleaved reference order through slow progressing queued pairs', async function() {
+        jasmine.clock().install();
+        try {
+            for (var i = 1; i <= 6; i++) { send(envelope(i)); display.flush(); } await settle();
+            var pictures = [];
+            for (var batch = 0; batch < 3; batch++) {
+                jasmine.clock().tick(1500);
+                for (var sequence = batch * 2 + 1; sequence <= batch * 2 + 2; sequence++) {
+                    var main = frame(sequence, 0), aux = frame(sequence, 1); pictures.push(main, aux);
+                    decoders[0].callbacks.output(main); decoders[0].callbacks.output(aux); await settle();
+                }
+            }
+            expect(chunks.map(function(chunk) { return chunk.timestamp; }))
+                .toEqual(Array.from({ length: 12 }, function(_, i) { return (i + 2) * 1000; }));
+            expect(stream.sendAck.calls.allArgs()).toEqual(Array.from({ length: 6 }, function(_, i) {
+                return ['AVC444:' + (i + 1), 0];
+            }));
+            pictures.forEach(function(decoded) { expect(decoded.close).toHaveBeenCalledTimes(1); });
+            rendered.forEach(function(picture) { expect(picture.close).toHaveBeenCalledTimes(1); });
+            expect(stream.onblob).not.toBeNull();
+            jasmine.clock().tick(10000); expect(stream.sendAck).toHaveBeenCalledTimes(6);
+        }
+        finally { jasmine.clock().uninstall(); }
+    });
+    it('bounds an unresolved configuration before any pair is submitted', async function() {
+        jasmine.clock().install();
+        try {
+            var answer;
+            window.VideoDecoder.isConfigSupported = function() {
+                return new Promise(function(resolve) { answer = resolve; });
+            };
+            send(envelope(1)); display.flush(); await settle();
+            jasmine.clock().tick(2000);
+            expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC444:fallback:unsupported-config', 0x0300);
+            expect(display.getQueueStatistics().blocked).toBe(false);
+            answer({ supported: true }); await settle();
+            expect(decoders.length).toBe(0);
+            expect(stream.sendAck).toHaveBeenCalledTimes(1);
+        }
+        finally { jasmine.clock().uninstall(); }
+    });
     it('closes copied native frames on disposal and suppresses late promise completion', async function() {
         var finish;
         Guacamole.AVC444Renderer.copyFrame = function() { return new Promise(function(resolve) { finish = resolve; }); };
