@@ -1,0 +1,404 @@
+{
+  "schema": "greenmole-release-validation-v1",
+  "release": "1.6.1-greenmole.10",
+  "status": "web image built, tested and deployed",
+  "verified_at_utc": "2026-10-22T07:33:41.984919+00:00",
+  "source_revision": "e3c8ac42c94327e83bbe30604905fb3bf182fe8a",
+  "platform": "linux/amd64",
+  "dependency_pins_unchanged_from": "1.6.1-greenmole.9",
+  "release_inputs_sha256": "e745a96ead320829530f5432cbb103ca3b64b7ac071ee4fec60b56a465b09c40",
+  "frontend_node_tests": {
+    "passed": 160,
+    "failed": 0,
+    "skipped": 0
+  },
+  "production_webpack_passed": true,
+  "production_webpack_existing_bundle_size_warnings": 3,
+  "build": {
+    "source_revision": "e3c8ac42c94327e83bbe30604905fb3bf182fe8a",
+    "maven_reactor_success": true,
+    "maven_tests_explicitly_enabled": true,
+    "java_unit_tests_passed": 64,
+    "java_unit_failures": 0,
+    "java_unit_errors": 0,
+    "firefox_jasmine": {
+      "passed": 256,
+      "total": 259,
+      "capability_skipped": 3
+    },
+    "web_image": {
+      "tag": "greenmole/web:1.6.1-greenmole.10",
+      "id": "sha256:9a8874f10e073dbdb18266293621a0989a2e2ae4082e0adf29f9f32048b716a9",
+      "architecture": "amd64",
+      "revision": "e3c8ac42c94327e83bbe30604905fb3bf182fe8a",
+      "version": "1.6.1-greenmole.10"
+    },
+    "source_archive_sha256": "195315396d22ca7a70397b763d06482b88258528ede361927811e5a1669a59a6",
+    "native_server_rebuilt": false,
+    "native_tests_repeated": false,
+    "production_unchanged_during_build": true
+  },
+  "packaged_ui_browser_checks": [
+    {
+      "status": "passed",
+      "engine": "chromium",
+      "browserVersion": "155.0.8059.86",
+      "version": "1.6.1-greenmole.10",
+      "source_revision": "e3c8ac42c94327e83bbe30604905fb3bf182fe8a",
+      "packagedImage": true,
+      "realClientControllerAndTemplate": true,
+      "syntheticTransportOnly": true,
+      "authenticated": false,
+      "rdpConnected": false,
+      "limitations": [
+        "Headless Chrome touch and viewport emulation does not verify the physical iOS software keyboard."
+      ],
+      "image_id": "sha256:9a8874f10e073dbdb18266293621a0989a2e2ae4082e0adf29f9f32048b716a9",
+      "cases": [
+        {
+          "status": "passed",
+          "viewport": {
+            "width": 320,
+            "height": 844
+          },
+          "settingsOpensCurrentConnectionMenu": true,
+          "settingsOpeningIdempotent": true,
+          "keyboardDismissed": true,
+          "panningDisabled": true,
+          "noRemoteInput": true,
+          "noRemoteResizeOrReconnect": true,
+          "noAutomaticKeyboardRefocus": true,
+          "viewportListenersCleaned": true,
+          "toolbar_height_css_px": 138.375,
+          "minimum_touch_target_css_px": 44,
+          "no_horizontal_overflow": true,
+          "page_errors": 0,
+          "unexpected_requests": 0
+        },
+        {
+          "status": "passed",
+          "viewport": {
+            "width": 360,
+            "height": 844
+          },
+          "settingsOpensCurrentConnectionMenu": true,
+          "settingsOpeningIdempotent": true,
+          "keyboardDismissed": true,
+          "panningDisabled": true,
+          "noRemoteInput": true,
+          "noRemoteResizeOrReconnect": true,
+          "noAutomaticKeyboardRefocus": true,
+          "viewportListenersCleaned": true,
+          "toolbar_height_css_px": 91.188,
+          "minimum_touch_target_css_px": 44,
+          "no_horizontal_overflow": true,
+          "page_errors": 0,
+          "unexpected_requests": 0
+        },
+        {
+          "status": "passed",
+          "viewport": {
+            "width": 375,
+            "height": 844
+          },
+          "settingsOpensCurrentConnectionMenu": true,
+          "settingsOpeningIdempotent": true,
+          "keyboardDismissed": true,
+          "panningDisabled": true,
+          "noRemoteInput": true,
+          "noRemoteResizeOrReconnect": true,
+          "noAutomaticKeyboardRefocus": true,
+          "viewportListenersCleaned": true,
+          "toolbar_height_css_px": 91.188,
+          "minimum_touch_target_css_px": 44,
+          "no_horizontal_overflow": true,
+          "page_errors": 0,
+          "unexpected_requests": 0
+        },
+        {
+          "status": "passed",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "settingsOpensCurrentConnectionMenu": true,
+          "settingsOpeningIdempotent": true,
+          "keyboardDismissed": true,
+          "panningDisabled": true,
+          "noRemoteInput": true,
+          "noRemoteResizeOrReconnect": true,
+          "noAutomaticKeyboardRefocus": true,
+          "viewportListenersCleaned": true,
+          "toolbar_height_css_px": 91.188,
+          "minimum_touch_target_css_px": 44,
+          "no_horizontal_overflow": true,
+          "page_errors": 0,
+          "unexpected_requests": 0
+        },
+        {
+          "status": "passed",
+          "viewport": {
+            "width": 768,
+            "height": 844
+          },
+          "settingsOpensCurrentConnectionMenu": true,
+          "settingsOpeningIdempotent": true,
+          "keyboardDismissed": true,
+          "panningDisabled": true,
+          "noRemoteInput": true,
+          "noRemoteResizeOrReconnect": true,
+          "noAutomaticKeyboardRefocus": true,
+          "viewportListenersCleaned": true,
+          "toolbar_height_css_px": 50.375,
+          "minimum_touch_target_css_px": 44,
+          "no_horizontal_overflow": true,
+          "page_errors": 0,
+          "unexpected_requests": 0
+        }
+      ]
+    }
+  ],
+  "packaged_runtime_smoke": {
+    "source_revision": "e3c8ac42c94327e83bbe30604905fb3bf182fe8a",
+    "version": "1.6.1-greenmole.10",
+    "image_id": "sha256:9a8874f10e073dbdb18266293621a0989a2e2ae4082e0adf29f9f32048b716a9",
+    "architecture": "amd64",
+    "isolated_internal_network": true,
+    "synthetic_empty_user_mapping": true,
+    "production_configuration_mounted": false,
+    "host_ports_published": false,
+    "production_unchanged": true,
+    "languages": 16,
+    "translation_metadata_valid": true,
+    "greenmole_name_and_version_served": true,
+    "branding_assets_byte_identical": [
+      {
+        "path": "images/greenmole-64.png",
+        "sha256": "057f7d79653146b28275b8611a5d212c031cc8a3b3de1cedb3ddd7f8c837891d",
+        "dimensions": [
+          64,
+          64
+        ]
+      },
+      {
+        "path": "images/greenmole.png",
+        "sha256": "5c1cb410e7f474ad971f29cfd09895d1413a58abbe9cb038c1afd1e38a6729a7",
+        "dimensions": [
+          1254,
+          1254
+        ]
+      },
+      {
+        "path": "images/greenmole-256.png",
+        "sha256": "97d2c5adee44099733133d87d4c6e6d504c752f40c56b7097a357d61b7ba34e1",
+        "dimensions": [
+          256,
+          256
+        ]
+      },
+      {
+        "path": "images/greenmole-144.png",
+        "sha256": "673509e1684cf7f6348c521c084e4fd9ec972d6b59ffed2d3500ce1ee8057e9a",
+        "dimensions": [
+          144,
+          144
+        ]
+      }
+    ],
+    "common_js_sha256": "f6be587aca8e4c8b65438c302e4ab302df48e54860c6eba961a9fb21d3fd86d6",
+    "common_js_unchanged_from_greenmole8": true
+  },
+  "fixture_cleanup": {
+    "production_unchanged": true,
+    "temporary_container_and_network_removed": true,
+    "temporary_synthetic_mapping_removed": true,
+    "owned_ssh_forward_removed": true
+  },
+  "attribution": {
+    "modified_upstream_files_with_file_local_notices": 92,
+    "unchanged_upstream_license_and_notice_files": 213,
+    "both_upstream_histories_reachable": true
+  },
+  "native_server_unchanged": true,
+  "video_common_js_unchanged": true,
+  "new_video_transport_matrix_run": false,
+  "production_deployed": true,
+  "container_images_published": false,
+  "private_runtime_material_included": false,
+  "deployment": {
+    "version": "1.6.1-greenmole.10",
+    "revision": "e3c8ac42c94327e83bbe30604905fb3bf182fe8a",
+    "deployed_at_utc": "2026-10-22T07:31:02.999549+00:00",
+    "component_changed": "web",
+    "web_image": {
+      "tag": "greenmole/web:1.6.1-greenmole.10",
+      "id": "sha256:9a8874f10e073dbdb18266293621a0989a2e2ae4082e0adf29f9f32048b716a9"
+    },
+    "native_daemon_image": {
+      "tag": "greenmole/guacd:1.6.1-greenmole.8",
+      "id": "sha256:214a9af689e8b73da08fd403393601ea5fcf764dd41bff42dec1630518463404"
+    },
+    "native_daemon_preserved": true,
+    "configuration_preserved": true,
+    "runtime_settings_preserved": true,
+    "unrelated_containers_unchanged": true,
+    "languages": 16,
+    "branding_assets": [
+      {
+        "path": "images/greenmole.png",
+        "sha256": "5c1cb410e7f474ad971f29cfd09895d1413a58abbe9cb038c1afd1e38a6729a7"
+      },
+      {
+        "path": "images/greenmole-64.png",
+        "sha256": "057f7d79653146b28275b8611a5d212c031cc8a3b3de1cedb3ddd7f8c837891d"
+      },
+      {
+        "path": "images/greenmole-144.png",
+        "sha256": "673509e1684cf7f6348c521c084e4fd9ec972d6b59ffed2d3500ce1ee8057e9a"
+      },
+      {
+        "path": "images/greenmole-256.png",
+        "sha256": "97d2c5adee44099733133d87d4c6e6d504c752f40c56b7097a357d61b7ba34e1"
+      }
+    ],
+    "rdp_plugin_handshake": true,
+    "web_to_guacd_tcp": true,
+    "common_js_unchanged": true,
+    "rollback_images": [
+      "greenmole/web:rollback-greenmole.9-before-greenmole.10"
+    ],
+    "web_http_ready": true,
+    "guacd_healthy": true,
+    "web_restart_count": 0,
+    "web_oom_killed": false,
+    "critical_startup_log_lines": 0
+  },
+  "configuration_guard": {
+    "initial_two_attempts_returned_to_previous_web_image": true,
+    "original_configuration_verified_after_each_rollback": true,
+    "empty_dns_slice_representation_normalized": true,
+    "only_unique_nonoverlapping_bind_order_normalized": true,
+    "complete_mount_attributes_compared": true,
+    "custom_dns_and_other_runtime_differences_still_rejected": true,
+    "failed_attempt_and_backup_evidence_retained_privately": true
+  },
+  "post_deployment_health": {
+    "web_http_ready": true,
+    "version": "1.6.1-greenmole.10",
+    "guacd_healthy": true,
+    "restart_counts": {
+      "web": 0,
+      "guacd": 0
+    },
+    "oom_killed": false,
+    "critical_log_lines": 0,
+    "matched_tested_web_image": true,
+    "native_daemon_preserved": true
+  },
+  "independent_original_configuration_audit": {
+    "passed": true,
+    "initial_greenmole9_baseline_used": true,
+    "tested_greenmole10_web_image_matches": true,
+    "original_web_config_environment_hostconfig_mounts_networks_preserved": true,
+    "original_configuration_content_preserved": true,
+    "original_configuration_entries_ownership_modes_and_types_preserved": true,
+    "compose_change_limited_to_one_web_image_reference": true,
+    "effective_compose_preserved_except_web_image": true,
+    "original_native_daemon_exact_identity_and_settings_preserved": true,
+    "original_unrelated_containers_unchanged": true,
+    "original_web_rollback_image_preserved": true
+  },
+  "live_browser_smoke": {
+    "status": "passed",
+    "version": "1.6.1-greenmole.10",
+    "target": "live Oberon deployment over root-owned loopback SSH forward",
+    "authenticated": false,
+    "rdpConnected": false,
+    "syntheticClientInjected": false,
+    "cases": [
+      {
+        "case": "desktop-chromium",
+        "engine": "chromium",
+        "browserVersion": "155.0.8059.86",
+        "viewport": {
+          "width": 1000,
+          "height": 750
+        },
+        "version": "1.6.1-greenmole.10",
+        "branding": true,
+        "logoSize": [
+          96,
+          96
+        ],
+        "loginFieldsVisible": true,
+        "noHorizontalOverflow": true,
+        "iosDefaultsMigrated": false,
+        "preferences": {
+          "runtime": {
+            "inputMethod": "none",
+            "emulateAbsoluteMouse": true
+          },
+          "stored": {},
+          "authTokenPresent": false,
+          "clientFixturePresent": false
+        },
+        "authenticated": false,
+        "rdpConnected": false,
+        "pageErrors": [],
+        "forbiddenRequests": []
+      },
+      {
+        "case": "iphone-chromium",
+        "engine": "chromium",
+        "browserVersion": "155.0.8059.86",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "version": "1.6.1-greenmole.10",
+        "branding": true,
+        "logoSize": [
+          96,
+          96
+        ],
+        "loginFieldsVisible": true,
+        "noHorizontalOverflow": true,
+        "iosDefaultsMigrated": true,
+        "preferences": {
+          "runtime": {
+            "inputMethod": "native",
+            "emulateAbsoluteMouse": false,
+            "iosTouchpadDefaultVersion": 1,
+            "iosNativeKeyboardDefaultVersion": 1
+          },
+          "stored": {
+            "inputMethod": "native",
+            "emulateAbsoluteMouse": false,
+            "iosTouchpadDefaultVersion": 1,
+            "iosNativeKeyboardDefaultVersion": 1
+          },
+          "authTokenPresent": false,
+          "clientFixturePresent": false
+        },
+        "authenticated": false,
+        "rdpConnected": false,
+        "pageErrors": [],
+        "forbiddenRequests": []
+      }
+    ],
+    "owned_forward_removed": true,
+    "visual_review": {
+      "desktop_chromium": "passed",
+      "iphone_chromium": "passed"
+    }
+  },
+  "source_secret_scan": {
+    "staged_findings": 0,
+    "redacted": true
+  },
+  "limitations": [
+    "Physical iPhone/iPad keyboard presentation remains a device acceptance check.",
+    "Packaged and live browser checks use Chrome; cached WebKit was incompatible with the available automation runtime.",
+    "No production authentication or RDP session was used by acceptance checks."
+  ]
+}
