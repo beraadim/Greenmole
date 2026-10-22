@@ -57,6 +57,7 @@ angular.module('client').directive('guacClient', [function guacClient() {
         const ManagedClientState = $injector.get('ManagedClientState');
         const ClientInputQueue = $injector.get('ClientInputQueue');
         const ClientLocalPan = $injector.get('ClientLocalPan');
+        const ClientTouchScroll = $injector.get('ClientTouchScroll');
         const ClientLocalZoom = $injector.get('ClientLocalZoom');
         const ClientViewBounds = $injector.get('ClientViewBounds');
         const ClientSmartPan = $injector.get('ClientSmartPan');
@@ -151,8 +152,61 @@ angular.module('client').directive('guacClient', [function guacClient() {
          * @type ClientInputQueue
          */
         const inputQueue = new ClientInputQueue();
-        inputQueue.setBlocked(clipboardService.isSyncInProgress());
+        let clipboardBlocked = clipboardService.isSyncInProgress();
+        inputQueue.setBlocked(clipboardBlocked);
         let inputViewActive = true;
+        let remoteMouseButtons = { left: false, middle: false, right: false };
+
+        const canSendTouchScroll = () => inputViewActive && client && display
+            && !clipboardBlocked && $scope.client.clientState.connectionState
+                === ManagedClientState.ConnectionState.CONNECTED;
+
+        const sendTouchScroll = (dx, dy) => {
+            if (!canSendTouchScroll()) {
+                remoteScroll.cancel();
+                return;
+            }
+            rebaseRelativePointer();
+            const targetClient = client;
+            const x = Math.max(0, Math.min(display.getWidth() - 1,
+                Number.isFinite(display.cursorX) ? display.cursorX : 0));
+            const y = Math.max(0, Math.min(display.getHeight() - 1,
+                Number.isFinite(display.cursorY) ? display.cursorY : 0));
+            const released = { x, y, ...remoteMouseButtons,
+                up: false, down: false, scrollLeft: false, scrollRight: false };
+            const pulses = [];
+            for (let n = 0; n < Math.abs(dy); n++)
+                pulses.push(dy < 0 ? 'up' : 'down');
+            // The extra horizontal wheel bits are implemented by the RDP
+            // backend. Other protocols retain their existing vertical wheel.
+            if ($scope.client.protocol === 'rdp') {
+                for (let n = 0; n < Math.abs(dx); n++)
+                    pulses.push(dx < 0 ? 'scrollLeft' : 'scrollRight');
+            }
+            if (!pulses.length)
+                return;
+            inputQueue.enqueue(() => {
+                // RDP servers may process wheel deltas without moving their
+                // pointer to the wheel PDU's coordinates. Seed an ordinary
+                // movement first so a locally clamped/zoomed cursor scrolls
+                // the application actually shown beneath it.
+                if (targetClient !== client || !canSendTouchScroll())
+                    return;
+                targetClient.sendMouseState(released);
+                for (const direction of pulses) {
+                    if (targetClient !== client || !canSendTouchScroll())
+                        break;
+                    // Keep a wheel press/release together inside one queue
+                    // item, including a reentrant detach or transport failure.
+                    try {
+                        targetClient.sendMouseState({ ...released, [direction]: true });
+                    }
+                    finally {
+                        targetClient.sendMouseState(released);
+                    }
+                }
+            });
+        };
 
         const syncLocalScroll = (left, top) => {
             const target = $scope.client;
@@ -205,6 +259,21 @@ angular.module('client').directive('guacClient', [function guacClient() {
                     syncLocalScroll(scroll.left, scroll.top);
                 }
             });
+
+        const remoteScroll = new ClientTouchScroll(main,
+            () => client && display && nativeKeyboard.enabled && nativeKeyboard.scrolling,
+            sendTouchScroll, $window);
+        let lastTouchTool = `${nativeKeyboard.enabled}:${nativeKeyboard.panning}:${nativeKeyboard.scrolling}`;
+        const stopNativeInputListener = nativeKeyboard.subscribe(() => {
+            const tool = `${nativeKeyboard.enabled}:${nativeKeyboard.panning}:${nativeKeyboard.scrolling}`;
+            if (tool !== lastTouchTool) {
+                // Neither tool may resume a contact which began in another
+                // mode, even if toggled away and back between touch events.
+                localPan.cancel();
+                remoteScroll.cancel();
+                lastTouchTool = tool;
+            }
+        });
 
         const resizeQueue = new ClientResizeQueue((width, height) => {
             if (client)
@@ -398,6 +467,7 @@ angular.module('client').directive('guacClient', [function guacClient() {
                 || (event.type === 'mouseup' && !state.left && primaryButtonDown);
             smartPan.recordPointer(state.x, state.y, primary);
             primaryButtonDown = !!state.left;
+            remoteMouseButtons = { left: !!state.left, middle: !!state.middle, right: !!state.right };
 
             display.showCursor(emulated || !localCursor);
             display.moveCursor(Math.floor(state.x), Math.floor(state.y));
@@ -493,8 +563,10 @@ angular.module('client').directive('guacClient', [function guacClient() {
 
             // Pending input belongs only to the client that received it.
             localPan.cancel();
+            remoteScroll.cancel();
             smartPan.clear();
             primaryButtonDown = false;
+            remoteMouseButtons = { left: false, middle: false, right: false };
             inputQueue.clear();
             resizeQueue.clear();
             connectionRequested = false;
@@ -566,6 +638,7 @@ angular.module('client').directive('guacClient', [function guacClient() {
         // element's resize sensor is ready. Remeasure before enabling the
         // queue so it cannot flush a stale initial viewport.
         $scope.$watch('client.clientState.connectionState', function connectionStateChanged(state) {
+            remoteScroll.cancel();
             const states = ManagedClientState.ConnectionState;
             const active = state === states.WAITING || state === states.CONNECTED;
             if (active)
@@ -886,15 +959,21 @@ angular.module('client').directive('guacClient', [function guacClient() {
 
         // Track clipboard synchronization status
         const stopClipboardSyncListener = $rootScope.$on('clipboardSyncInProgress', function clipboardSyncStatus(event, status) {
+            // A gesture begun during clipboard synchronization must not replay
+            // old wheel motion after the gate opens. Own it through release.
+            clipboardBlocked = !!status;
+            remoteScroll.cancel();
             inputQueue.setBlocked(status);
         });
 
         $scope.$on('$destroy', function destroyClientInput() {
             inputViewActive = false;
             stopClipboardSyncListener();
+            stopNativeInputListener();
             viewportListenerActive = false;
             stopViewportListener();
             localPan.dispose();
+            remoteScroll.dispose();
             smartPan.dispose();
             inputQueue.dispose();
             resizeQueue.dispose();

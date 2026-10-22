@@ -4,6 +4,7 @@
     <div class="native-keyboard-controls" ng-if="nativeKeyboard">
         <button type="button" class="native-keyboard-show"
                 ng-mousedown="$event.preventDefault()" ng-click="showNativeKeyboard($event)"
+                aria-pressed="{{nativeKeyboardState.keyboardOpen}}"
                 aria-label="{{'CLIENT.ACTION_SHOW_NATIVE_KEYBOARD' | translate}}"
                 title="{{'CLIENT.ACTION_SHOW_NATIVE_KEYBOARD' | translate}}">
             <span aria-hidden="true">⌨</span>
@@ -17,11 +18,16 @@
             <span aria-hidden="true">↕</span>
             <span class="native-keyboard-label">{{'CLIENT.ACTION_PAN_DESKTOP' | translate}}</span>
         </button>
-        <button type="button" class="native-keyboard-hide"
-                ng-mousedown="$event.preventDefault()" ng-click="hideNativeKeyboard($event)"
-                aria-label="{{'CLIENT.ACTION_HIDE_NATIVE_KEYBOARD' | translate}}"
-                title="{{'CLIENT.ACTION_HIDE_NATIVE_KEYBOARD' | translate}}">
-            <span aria-hidden="true">⌄</span>
+        <button type="button" class="native-keyboard-scroll"
+                ng-mousedown="$event.preventDefault()" ng-click="toggleRemoteScroll($event)"
+                aria-pressed="{{nativeKeyboardState.scrolling}}"
+                aria-label="{{'CLIENT.ACTION_SCROLL_WHEEL' | translate}}"
+                title="{{'CLIENT.HELP_SCROLL_WHEEL' | translate}}">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+                <rect x="5" y="2" width="14" height="20" rx="7" fill="none" stroke="currentColor" stroke-width="2"/>
+                <path d="M12 5v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span class="native-keyboard-label">{{'CLIENT.ACTION_SCROLL_WHEEL' | translate}}</span>
         </button>
         <button type="button" class="native-keyboard-settings"
                 ng-mousedown="$event.preventDefault()" ng-click="showConnectionSettings($event)"

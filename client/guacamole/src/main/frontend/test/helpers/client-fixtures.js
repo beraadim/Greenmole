@@ -85,10 +85,14 @@ class InputDevice {
 
 function directiveFixture({ blocked = false, root = eventBus(), clipboardService,
         clock = fakeClock(), state = 'CONNECTED', protocol = 'rdp', density = 1, evalAsync,
-        nativeKeyboard = { enabled: false, panning: false },
+        nativeKeyboard = { enabled: false, panning: false, scrolling: false },
         viewportService = { getRemoteSize: (width, height) => ({ width, height }),
             subscribe: () => () => {} } } = {}) {
     const scope = eventBus();
+    // Partial keyboard fixtures preserve their object identity so tests can
+    // select tools directly; production provides an event subscription.
+    if (!nativeKeyboard.subscribe)
+        nativeKeyboard.subscribe = () => () => {};
     const watches = new Map();
     let touchBehaviorChanged;
     scope.$watch = (expression, callback) => watches.set(expression, callback);
@@ -119,7 +123,9 @@ function directiveFixture({ blocked = false, root = eventBus(), clipboardService
             client: {
                 getDisplay: () => display,
                 sendMouseState: state => sent.push([name, 'mouse', state.x, state.y,
-                    !!state.left, !!state.middle, !!state.right, !!state.up, !!state.down]),
+                    !!state.left, !!state.middle, !!state.right, !!state.up, !!state.down,
+                    ...(state.scrollLeft || state.scrollRight
+                        ? [!!state.scrollLeft, !!state.scrollRight] : [])]),
                 sendKeyEvent: (pressed, keysym) => sent.push([name, 'key', pressed, keysym]),
                 sendTouchState: state => sent.push([name, 'touch', state.x, state.y, state.force]),
                 sendSize: (width, height) => sent.push([name, 'size', width, height])
@@ -144,6 +150,7 @@ function directiveFixture({ blocked = false, root = eventBus(), clipboardService
     const container = { appendChild() {}, offsetLeft: 0, offsetTop: 0, style: {} };
     const element = { 0: main, find: () => [container] };
     const loaded = sources(['client/types/ClientInputQueue.js', 'client/types/ClientLocalPan.js',
+        'client/types/ClientTouchScroll.js',
         'client/types/ClientLocalZoom.js', 'client/types/ClientViewBounds.js',
         'client/types/ClientSmartPan.js', 'client/types/ClientResizeQueue.js',
         'client/types/ManagedClientState.js', 'client/directives/guacClient.js'], {
@@ -163,6 +170,7 @@ function directiveFixture({ blocked = false, root = eventBus(), clipboardService
         ManagedClientState: loaded.factories.ManagedClientState(),
         ClientInputQueue: loaded.factories.ClientInputQueue(),
         ClientLocalPan: loaded.factories.ClientLocalPan(),
+        ClientTouchScroll: loaded.factories.ClientTouchScroll(),
         ClientLocalZoom: loaded.factories.ClientLocalZoom(),
         ClientViewBounds: loaded.factories.ClientViewBounds(),
         ClientSmartPan: loaded.factories.ClientSmartPan(),

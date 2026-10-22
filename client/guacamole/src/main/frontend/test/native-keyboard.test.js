@@ -160,12 +160,38 @@ test('native mode never auto-focuses, uses the same mounted editor synchronously
 test('Show explicitly reopens after OS keyboard dismissal leaves the editor focused', () => {
     const fixture = textInputFixture();
     fixture.show();
+    fixture.service.setKeyboardOpen(false);
     fixture.show();
     assert.equal(fixture.focusCalls, 2);
     assert.deepEqual(fixture.focusGestures, [true, true]);
     assert.equal(fixture.service.focused, true);
     assert.equal(fixture.service.panning, true);
     assert.deepEqual(fixture.focusPanning, [true, true]);
+});
+
+test('Show toggles the keyboard and indicator while Pan and remote Scroll remain exclusive', () => {
+    const fixture = textInputFixture();
+    fixture.show();
+    assert.equal(fixture.service.keyboardOpen, true);
+    fixture.gesture('toggleRemoteScroll');
+    assert.equal(fixture.service.scrolling, true);
+    assert.equal(fixture.service.panning, false);
+    assert.equal(fixture.service.focused, true);
+    fixture.gesture('toggleDesktopPan');
+    assert.equal(fixture.service.scrolling, false);
+    assert.equal(fixture.service.panning, true);
+    fixture.show();
+    assert.equal(fixture.service.keyboardOpen, false);
+    assert.equal(fixture.service.focused, false);
+    assert.equal(fixture.service.panning, false);
+    assert.equal(fixture.service.scrolling, false);
+    // The explicit scroll tool can also operate with the software keyboard hidden.
+    fixture.gesture('toggleRemoteScroll');
+    assert.equal(fixture.service.scrolling, true);
+    assert.equal(fixture.focusCalls, 1);
+    fixture.scope.$broadcast('$destroy');
+    assert.equal(fixture.service.scrolling, false);
+    assert.deepEqual(fixture.sent, []);
 });
 
 test('native Settings opens the connection menu after dismissing keyboard and Pan, without remote input or refocus', () => {
@@ -416,6 +442,8 @@ test('only explicit Show rearms Pan; plain editor focus and in-progress composit
     assert.equal(fixture.service.panning, false);
     assert.equal(fixture.focusCalls, 2);
     fixture.event('compositionend');
+    fixture.show(); // The active Show toggle first hides the existing editor.
+    assert.equal(fixture.service.keyboardOpen, false);
     fixture.show();
     assert.equal(fixture.service.panning, true);
     assert.equal(fixture.focusCalls, 3);

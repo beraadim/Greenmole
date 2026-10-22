@@ -1,4 +1,6 @@
 /*
+ * Modified for Greenmole by its maintainers.
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -454,6 +456,10 @@ Guacamole.Mouse.State = function State(template) {
      */
     this.down = template.down || false;
 
+    /** Horizontal wheel buttons, used by Greenmole's RDP touch-scroll tool. */
+    this.scrollLeft = template.scrollLeft || false;
+    this.scrollRight = template.scrollRight || false;
+
 };
 
 /**
@@ -510,7 +516,13 @@ Guacamole.Mouse.State.Buttons = {
      * @constant
      * @type {!string}
      */
-    DOWN : 'down'
+    DOWN : 'down',
+
+    /** The sixth mouse button, clicked for horizontal scrolling left. */
+    SCROLL_LEFT : 'scrollLeft',
+
+    /** The seventh mouse button, clicked for horizontal scrolling right. */
+    SCROLL_RIGHT : 'scrollRight'
 
 };
 

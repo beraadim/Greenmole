@@ -6,7 +6,7 @@
     "APP" : {
 
         "NAME"    : "Greenmole",
-        "VERSION" : "${project.version}-greenmole.10",
+        "VERSION" : "${project.version}-greenmole.11",
 
         "ACTION_ACKNOWLEDGE"        : "OK",
         "ACTION_CANCEL"             : "Cancel",
@@ -65,6 +65,8 @@
     "CLIENT" : {
 
         "ACTION_PAN_DESKTOP" : "Pan desktop",
+        "ACTION_SCROLL_WHEEL" : "Scroll wheel",
+        "HELP_SCROLL_WHEEL" : "Drag the desktop to scroll the remote application at the pointer, without clicking or moving the local view. Scroll wheel and Pan desktop cannot be enabled together.",
         "HELP_PAN_DESKTOP" : "Show keyboard enables Pan desktop to keep the last remote click or pointer position in view. Drag to adjust the local view. Turn Pan desktop off to interact with the remote computer. Hiding or dismissing the keyboard turns it off automatically.",
 
         "NAME_INPUT_METHOD_NATIVE" : "Native keyboard",

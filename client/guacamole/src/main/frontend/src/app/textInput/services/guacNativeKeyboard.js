@@ -33,7 +33,9 @@ angular.module('textInput').factory('guacNativeKeyboard', ['$window', function g
             || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1),
         enabled: false,
         focused: false,
+        keyboardOpen: false,
         panning: false,
+        scrolling: false,
         toolbarHeight: 0
     };
 
@@ -49,7 +51,9 @@ angular.module('textInput').factory('guacNativeKeyboard', ['$window', function g
             service.enabled = enabled;
             if (!enabled) {
                 service.focused = false;
+                service.keyboardOpen = false;
                 service.panning = false;
+                service.scrolling = false;
                 service.toolbarHeight = 0;
             }
             notify();
@@ -58,10 +62,23 @@ angular.module('textInput').factory('guacNativeKeyboard', ['$window', function g
 
     service.setFocused = function setFocused(focused) {
         focused = service.enabled && !!focused;
-        if (service.focused !== focused || (!focused && service.panning)) {
+        if (service.focused !== focused
+                || (!focused && (service.keyboardOpen || service.panning || service.scrolling))) {
             service.focused = focused;
-            if (!focused)
+            service.keyboardOpen = focused;
+            if (!focused) {
                 service.panning = false;
+                service.scrolling = false;
+            }
+            notify();
+        }
+    };
+
+    /** iOS may dismiss its keyboard while the mounted editor keeps focus. */
+    service.setKeyboardOpen = function setKeyboardOpen(open) {
+        open = service.enabled && service.focused && !!open;
+        if (service.keyboardOpen !== open) {
+            service.keyboardOpen = open;
             notify();
         }
     };
@@ -69,8 +86,21 @@ angular.module('textInput').factory('guacNativeKeyboard', ['$window', function g
     /** Pan mode belongs to this session and always starts disabled. */
     service.setPanning = function setPanning(panning) {
         panning = service.enabled && !!panning;
-        if (service.panning !== panning) {
+        if (service.panning !== panning || (panning && service.scrolling)) {
             service.panning = panning;
+            if (panning)
+                service.scrolling = false;
+            notify();
+        }
+    };
+
+    /** Remote scrolling and local Pan/zoom never own a touch simultaneously. */
+    service.setScrolling = function setScrolling(scrolling) {
+        scrolling = service.enabled && !!scrolling;
+        if (service.scrolling !== scrolling || (scrolling && service.panning)) {
+            service.scrolling = scrolling;
+            if (scrolling)
+                service.panning = false;
             notify();
         }
     };

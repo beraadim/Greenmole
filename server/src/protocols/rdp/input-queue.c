@@ -1,4 +1,6 @@
 /*
+ * Modified for Greenmole by its maintainers.
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -114,8 +116,6 @@ static void guac_rdp_handle_mouse_event(guac_rdp_client* rdp_client,
             if (pressed_mask & 0x01) flags |= PTR_FLAGS_BUTTON1;
             if (pressed_mask & 0x02) flags |= PTR_FLAGS_BUTTON3;
             if (pressed_mask & 0x04) flags |= PTR_FLAGS_BUTTON2;
-            if (pressed_mask & 0x08) flags |= PTR_FLAGS_WHEEL | 0x78;
-            if (pressed_mask & 0x10) flags |= PTR_FLAGS_WHEEL | PTR_FLAGS_WHEEL_NEGATIVE | 0x88;
 
             /* Send event */
             pthread_mutex_lock(&(rdp_client->message_lock));
@@ -126,7 +126,15 @@ static void guac_rdp_handle_mouse_event(guac_rdp_client* rdp_client,
         }
 
         /* Scroll event */
-        if (pressed_mask & 0x18) {
+        if (pressed_mask & 0x78) {
+
+            /* Horizontal wheel is legal only after server capability negotiation. */
+#ifdef HAVE_SETTERS_GETTERS
+            BOOL horizontal_wheel = freerdp_settings_get_bool(
+                    GUAC_RDP_CONTEXT(rdp_inst)->settings, FreeRDP_HasHorizontalWheel);
+#else
+            BOOL horizontal_wheel = GUAC_RDP_CONTEXT(rdp_inst)->settings->HasHorizontalWheel;
+#endif
 
             /* Down */
             if (pressed_mask & 0x08) {
@@ -141,6 +149,22 @@ static void guac_rdp_handle_mouse_event(guac_rdp_client* rdp_client,
                 pthread_mutex_lock(&(rdp_client->message_lock));
                 GUAC_RDP_CONTEXT(rdp_inst)->input->MouseEvent(
                         GUAC_RDP_CONTEXT(rdp_inst)->input, PTR_FLAGS_WHEEL | PTR_FLAGS_WHEEL_NEGATIVE | 0x88, x, y);
+                pthread_mutex_unlock(&(rdp_client->message_lock));
+            }
+
+            /* Horizontal wheel uses separate pulses, never left/right clicks. */
+            if (horizontal_wheel && (pressed_mask & GUAC_CLIENT_MOUSE_SCROLL_LEFT)) {
+                pthread_mutex_lock(&(rdp_client->message_lock));
+                GUAC_RDP_CONTEXT(rdp_inst)->input->MouseEvent(
+                        GUAC_RDP_CONTEXT(rdp_inst)->input,
+                        PTR_FLAGS_HWHEEL | PTR_FLAGS_WHEEL_NEGATIVE | 0x88, x, y);
+                pthread_mutex_unlock(&(rdp_client->message_lock));
+            }
+
+            if (horizontal_wheel && (pressed_mask & GUAC_CLIENT_MOUSE_SCROLL_RIGHT)) {
+                pthread_mutex_lock(&(rdp_client->message_lock));
+                GUAC_RDP_CONTEXT(rdp_inst)->input->MouseEvent(
+                        GUAC_RDP_CONTEXT(rdp_inst)->input, PTR_FLAGS_HWHEEL | 0x78, x, y);
                 pthread_mutex_unlock(&(rdp_client->message_lock));
             }
 

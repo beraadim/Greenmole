@@ -161,10 +161,15 @@ angular.module('textInput').directive('guacTextInput', [function guacTextInput()
              */
             $scope.showNativeKeyboard = function showNativeKeyboard(event) {
                 event.preventDefault();
-                // Explicit Show also handles iOS hiding its software keyboard
-                // while leaving this editor focused. Never interrupt an IME.
+                // Toggling must not interrupt a pending IME composition.
                 if (composingText)
                     return;
+                if (guacNativeKeyboard.keyboardOpen) {
+                    $scope.hideNativeKeyboard(event);
+                    return;
+                }
+                // Explicit Show also handles iOS hiding its software keyboard
+                // while leaving this editor focused. Never interrupt an IME.
                 if (hasFocus)
                     target.blur();
                 // Blur ends the previous Pan cycle. Rearm only afterwards,
@@ -182,6 +187,7 @@ angular.module('textInput').directive('guacTextInput', [function guacTextInput()
                 event.preventDefault();
                 target.blur();
                 guacNativeKeyboard.setPanning(false);
+                guacNativeKeyboard.setScrolling(false);
             };
 
             $scope.showConnectionSettings = function showConnectionSettings(event) {
@@ -191,6 +197,7 @@ angular.module('textInput').directive('guacTextInput', [function guacTextInput()
                 // or automatically reopening the device keyboard afterwards.
                 target.blur();
                 guacNativeKeyboard.setPanning(false);
+                guacNativeKeyboard.setScrolling(false);
                 $scope.$emit('guacShowMenu');
             };
 
@@ -199,6 +206,11 @@ angular.module('textInput').directive('guacTextInput', [function guacTextInput()
             $scope.toggleDesktopPan = function toggleDesktopPan(event) {
                 event.preventDefault();
                 guacNativeKeyboard.setPanning(!guacNativeKeyboard.panning);
+            };
+
+            $scope.toggleRemoteScroll = function toggleRemoteScroll(event) {
+                event.preventDefault();
+                guacNativeKeyboard.setScrolling(!guacNativeKeyboard.scrolling);
             };
 
             var toolbar = $element[0];
@@ -240,6 +252,7 @@ angular.module('textInput').directive('guacTextInput', [function guacTextInput()
                     guacNativeKeyboard.setFocused(false);
                     guacNativeKeyboard.setToolbarHeight(0);
                     guacNativeKeyboard.setPanning(false);
+                    guacNativeKeyboard.setScrolling(false);
                 }
                 else {
                     guacNativeKeyboard.setFocused(hasFocus);
@@ -482,6 +495,7 @@ angular.module('textInput').directive('guacTextInput', [function guacTextInput()
                 if ($scope.nativeKeyboard) {
                     guacNativeKeyboard.setFocused(false);
                     guacNativeKeyboard.setPanning(false);
+                    guacNativeKeyboard.setScrolling(false);
                     guacNativeKeyboard.setToolbarHeight(0);
                 }
                 target.onfocus = target.onblur = null;

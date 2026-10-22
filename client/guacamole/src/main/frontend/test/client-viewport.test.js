@@ -31,11 +31,19 @@ function fixture({ visualViewport = true, nativeState = {}, visualState = {} } =
     const native = {
         enabled: false,
         focused: false,
+        keyboardOpen: !!nativeState.focused,
         toolbarHeight: 44,
         setPanning(panning) {
             panning = this.enabled && !!panning;
             if (this.panning !== panning) {
                 this.panning = panning;
+                [...keyboardCallbacks].forEach(callback => callback());
+            }
+        },
+        setKeyboardOpen(open) {
+            open = this.enabled && this.focused && !!open;
+            if (this.keyboardOpen !== open) {
+                this.keyboardOpen = open;
                 [...keyboardCallbacks].forEach(callback => callback());
             }
         },
@@ -71,6 +79,8 @@ function fixture({ visualViewport = true, nativeState = {}, visualState = {} } =
         clock, window, native, service, scope, element, scrolls, visualClock,
         keyboardCallbacks,
         keyboard(properties) {
+            if ('focused' in properties)
+                native.keyboardOpen = !!properties.focused;
             Object.assign(native, properties);
             [...keyboardCallbacks].forEach(callback => callback());
         },
@@ -103,6 +113,32 @@ test('viewport initializes synchronously and uses events without idle polling', 
     assert.equal(f.element.style.height, '900px');
     assert.equal(f.clock.timers.size, 0);
     assert.equal(f.keyboardCallbacks.size, 1);
+});
+
+test('keyboard toggle indicator follows confirmed OS dismissal with Pan already off', () => {
+    const f = fixture({ nativeState: { enabled: true, focused: true, panning: false } });
+    f.visible({ height: 430 });
+    assert.equal(f.native.keyboardOpen, true);
+    f.visible({ height: 768 });
+    f.clock.advance(150);
+    assert.equal(f.native.keyboardOpen, false);
+    assert.equal(f.native.focused, true, 'OS dismissal may retain editor focus');
+    f.scope.$broadcast('$destroy');
+    assert.equal(f.clock.timers.size, 0);
+});
+
+test('keyboard indicator ignores browser chrome and cancels detached dismissal work', () => {
+    const f = fixture({ nativeState: { enabled: true, focused: true, panning: false } });
+    f.visible({ height: 710 });
+    f.visible({ height: 768 });
+    f.clock.advance(200);
+    assert.equal(f.native.keyboardOpen, true);
+    f.visible({ height: 430 });
+    f.visible({ height: 768 });
+    f.scope.$broadcast('$destroy');
+    f.clock.advance(200);
+    assert.equal(f.native.keyboardOpen, true);
+    assert.equal(f.clock.timers.size, 0);
 });
 
 test('physical and native input both size the desktop to the visible browser area above Safari chrome', () => {

@@ -137,7 +137,7 @@
 }
 
 .text-input.native-keyboard .text-input-field {
-    min-width: 0;
+    min-width: 44px;
 }
 
 .text-input.native-keyboard .target {
@@ -208,8 +208,16 @@
     }
 }
 
-.text-input.native-keyboard .native-keyboard-pan[aria-pressed="true"] {
+.text-input.native-keyboard .native-keyboard-controls button[aria-pressed="true"] {
     color: #182218;
     background: #9fd378;
     border-color: #c3e5a8;
+}
+
+/* Intermediate tablet/split-view widths need compact actions too, but still
+   have room for the editor on the same row as the controls. */
+@media (min-width: 601px) and (max-width: 800px) {
+    .text-input.native-keyboard .native-keyboard-label {
+        display: none;
+    }
 }

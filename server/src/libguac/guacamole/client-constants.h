@@ -1,4 +1,6 @@
 /*
+ * Modified for Greenmole by its maintainers.
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -74,6 +76,11 @@
  * these as separate buttons, not a wheel.
  */
 #define GUAC_CLIENT_MOUSE_SCROLL_DOWN 0x10
+
+/** Horizontal wheel button masks. Greenmole's RDP backend forwards these as
+ * RDP horizontal wheel events, independently of ordinary left/right buttons. */
+#define GUAC_CLIENT_MOUSE_SCROLL_LEFT 0x20
+#define GUAC_CLIENT_MOUSE_SCROLL_RIGHT 0x40
 
 /**
  * The minimum number of buffers to create before allowing free'd buffers to

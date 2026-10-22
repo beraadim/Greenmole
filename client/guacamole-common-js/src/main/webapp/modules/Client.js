@@ -533,6 +533,8 @@ Guacamole.Client = function(tunnel) {
         if (mouseState.right)  buttonMask |= 4;
         if (mouseState.up)     buttonMask |= 8;
         if (mouseState.down)   buttonMask |= 16;
+        if (mouseState.scrollLeft)  buttonMask |= 32;
+        if (mouseState.scrollRight) buttonMask |= 64;
 
         // Send message
         tunnel.sendMessage("mouse", Math.floor(x), Math.floor(y), buttonMask);

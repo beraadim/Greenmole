@@ -38,6 +38,8 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
     var holdingKeyboard = false;
     var keyboardOcclusionObserved = false;
     var panDismissTimer = null;
+    var keyboardIndicatorObserved = false;
+    var keyboardIndicatorDismissTimer = null;
 
     var requestFrame = $window.requestAnimationFrame
         ? function(callback) { return $window.requestAnimationFrame(callback); }
@@ -60,6 +62,32 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
         }
     }
 
+    function cancelKeyboardIndicatorDismissal() {
+        if (keyboardIndicatorDismissTimer !== null) {
+            $window.clearTimeout(keyboardIndicatorDismissTimer);
+            keyboardIndicatorDismissTimer = null;
+        }
+    }
+
+    // Focus is only keyboard intent on iOS. Track a confirmed opening and
+    // settled dismissal independently of Pan, which may have been turned off.
+    function observeKeyboardIndicator(intent, widthChanged, zoomed, inset) {
+        cancelKeyboardIndicatorDismissal();
+        if (!intent || !guacNativeKeyboard.keyboardOpen || widthChanged || zoomed) {
+            keyboardIndicatorObserved = false;
+            return;
+        }
+        if (inset >= 120)
+            keyboardIndicatorObserved = true;
+        if (keyboardIndicatorObserved && inset <= 80 && panDismissTimer === null) {
+            keyboardIndicatorDismissTimer = $window.setTimeout(function() {
+                keyboardIndicatorDismissTimer = null;
+                keyboardIndicatorObserved = false;
+                guacNativeKeyboard.setKeyboardOpen(false);
+            }, 150);
+        }
+    }
+
     /** iPadOS can dismiss its keyboard without blurring the native editor. */
     function observeKeyboardPan(intent, widthChanged, zoomed, inset) {
         cancelPanDismissal();
@@ -79,6 +107,9 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
                 // resulting synchronous viewport update cannot arm another
                 // dismissal or override a later manual Pan selection.
                 keyboardOcclusionObserved = false;
+                keyboardIndicatorObserved = false;
+                cancelKeyboardIndicatorDismissal();
+                guacNativeKeyboard.setKeyboardOpen(false);
                 guacNativeKeyboard.setPanning(false);
             }, 150);
         }
@@ -158,6 +189,7 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
         lastWidth = width;
         var keyboardInset = holdingKeyboard ? Math.max(0, fullHeight - visibleHeight) : 0;
         observeKeyboardPan(intent, widthChanged, zoomed, keyboardInset);
+        observeKeyboardIndicator(intent, widthChanged, zoomed, keyboardInset);
         publish({
             // Browser chrome can reduce the visible area in every input mode,
             // including None. Using innerHeight there would size the remote
@@ -175,6 +207,7 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
             preserveLayout: preserveLayout,
             keyboardActive: holdingKeyboard,
             keyboardFocused: intent,
+            keyboardOpen: nativeEnabled && !!guacNativeKeyboard.keyboardOpen,
             layoutWidth: width,
             layoutReady: !nativeEnabled || guacNativeKeyboard.toolbarHeight > 0,
             panning: nativeEnabled && !!guacNativeKeyboard.panning,
@@ -185,6 +218,7 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
     function schedule() {
         cancelSettle();
         cancelPanDismissal();
+        cancelKeyboardIndicatorDismissal();
         if (frame === null)
             frame = requestFrame(function() { update(false); });
     }
@@ -218,6 +252,7 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
         unsubscribeKeyboard = null;
         cancelSettle();
         cancelPanDismissal();
+        cancelKeyboardIndicatorDismissal();
         if (frame !== null)
             cancelFrame(frame);
         frame = null;
@@ -226,6 +261,7 @@ angular.module('client').factory('guacViewportService', ['$window', 'guacNativeK
         lastWidth = 0;
         holdingKeyboard = false;
         keyboardOcclusionObserved = false;
+        keyboardIndicatorObserved = false;
     }
 
     return {
