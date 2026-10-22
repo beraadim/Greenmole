@@ -1,7 +1,7 @@
 {
   "schema": "greenmole-release-validation-v1",
   "version": "1.6.1-greenmole.11",
-  "status": "source validated; matched image build pending",
+  "status": "matched images built and isolated acceptance passed; ready for deployment",
   "source_checks": {
     "frontend_node_passed": 176,
     "frontend_webpack_passed": true,
@@ -17,7 +17,8 @@
     "native_wheel_consumer_cases": 4,
     "native_avc_cases": 23,
     "independent_flow_and_input_reviews_passed": true,
-    "diff_and_staged_secret_checks_passed": true
+    "diff_and_staged_secret_checks_passed": true,
+    "committed_source_secret_scan_passed": true
   },
   "video_policy": {
     "avc420_startup_access_units": 4,
@@ -67,5 +68,115 @@
     "Physical iPhone/iPad software keyboard behavior and Safari performance require device acceptance after deployment.",
     "Bounded backpressure recovers before fallback; genuine stalls still permanently select images for that connection.",
     "Graphics ACK latency includes processing and is not a network-only Wi-Fi measurement."
-  ]
+  ],
+  "source_revision": "a1fb3681e4063af40ac238be2f6119c70bc7b41f",
+  "verified_at_utc": "2026-10-22T21:36:04.132393+00:00",
+  "build": {
+    "source_revision": "a1fb3681e4063af40ac238be2f6119c70bc7b41f",
+    "source_archive_sha256": "501860cfbc95e98707a9d608069c3b99127878c2caf9063731679cdfdded1a5f",
+    "pinned_image_builds_passed": true,
+    "maven_reactor_success": true,
+    "maven_tests_explicitly_enabled": true,
+    "java_unit_tests_passed": 64,
+    "java_unit_failures": 0,
+    "java_unit_errors": 0,
+    "firefox_jasmine": {
+      "passed": 266,
+      "total": 269,
+      "capability_skipped": 3
+    },
+    "native_tests_passed": 304,
+    "native_failed_or_errored": false,
+    "images": [
+      {
+        "component": "server",
+        "tag": "greenmole/guacd:1.6.1-greenmole.11",
+        "id": "sha256:0373e5b598805dab7b59e13455a1babba58bf286020b663bea7e0ed2d9160747",
+        "architecture": "amd64",
+        "revision": "a1fb3681e4063af40ac238be2f6119c70bc7b41f",
+        "version": "1.6.1-greenmole.11"
+      },
+      {
+        "component": "client",
+        "tag": "greenmole/web:1.6.1-greenmole.11",
+        "id": "sha256:8d95f1b169dc3817eb31c427d461f99c238dcef5777a185cdf6dfee6bdf86cad",
+        "architecture": "amd64",
+        "revision": "a1fb3681e4063af40ac238be2f6119c70bc7b41f",
+        "version": "1.6.1-greenmole.11"
+      }
+    ],
+    "production_unchanged": true,
+    "deployed": false
+  },
+  "packaged_mobile_acceptance": {
+    "status": "passed",
+    "engine": "chromium",
+    "browser_version": "155.0.8059.86",
+    "web_image_id": "sha256:8d95f1b169dc3817eb31c427d461f99c238dcef5777a185cdf6dfee6bdf86cad",
+    "real_client_controller_and_compiled_template": true,
+    "synthetic_transport_only": true,
+    "authenticated": false,
+    "rdp_connected": false,
+    "viewport_widths": [
+      320,
+      360,
+      375,
+      390,
+      600,
+      601,
+      640,
+      768
+    ],
+    "all_eight_cases_verified": {
+      "keyboardShowToggle": true,
+      "keyboardDismissIndicator": true,
+      "scrollPanExclusive": true,
+      "horizontalWheelPairs": true,
+      "gestureHandoverCancelled": true,
+      "reconnectCancelled": true,
+      "noRemoteClicksOrTouches": true,
+      "noRemoteResizeOrReconnect": true,
+      "settingsClearsModes": true,
+      "viewportListenersCleaned": true,
+      "destroyCancelsPendingScroll": true
+    },
+    "minimum_touch_target_pixels": 44,
+    "no_horizontal_overflow": true,
+    "page_errors": 0,
+    "forbidden_requests": 0,
+    "cleanup": {
+      "production_unchanged": true,
+      "temporary_container_and_network_removed": true,
+      "temporary_synthetic_mapping_removed": true,
+      "owned_ssh_forward_removed": true
+    },
+    "limitations": [
+      "Headless Chrome touch and viewport emulation does not verify the physical iOS software keyboard."
+    ]
+  },
+  "packaged_runtime": {
+    "architecture": "amd64",
+    "isolated_internal_network": true,
+    "synthetic_empty_user_mapping": true,
+    "production_configuration_mounted": false,
+    "host_ports_published": false,
+    "production_unchanged": true,
+    "languages": 16,
+    "translation_metadata_valid": true,
+    "greenmole_name_and_version_served": true,
+    "common_js_sha256": "7729e565940f71f686665b6d7369cb93e45245bad1ed16f89ee1337726e06e58",
+    "common_js_matches_built_image": true,
+    "four_branding_assets_byte_identical": true,
+    "native_version_and_rdp_dynamic_links_passed": true,
+    "extraction_container_never_started": true,
+    "extraction_cleanup_passed": true
+  },
+  "independent_final_audit": {
+    "source_and_image_identities_match": true,
+    "built_and_served_common_js_hashes_match": true,
+    "packaged_claims_supported_by_checks": true,
+    "live_service_identities_match_initial_baseline": true,
+    "owned_temporary_fixtures_removed": true,
+    "deployment_performed": false
+  }
 }
