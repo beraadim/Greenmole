@@ -1,0 +1,71 @@
+{
+  "schema": "greenmole-release-validation-v1",
+  "version": "1.6.1-greenmole.11",
+  "status": "source validated; matched image build pending",
+  "source_checks": {
+    "frontend_node_passed": 176,
+    "frontend_webpack_passed": true,
+    "existing_webpack_bundle_warnings": 3,
+    "chromium_jasmine_passed": 269,
+    "chromium_jasmine_failed": 0,
+    "chromium_jasmine_pending": 0,
+    "real_webcodecs_validation_passed": true,
+    "avc444_native_layout_validation_passed": true,
+    "pinned_native_candidate_passed": 300,
+    "native_candidate_with_final_wheel_overlay_passed": 304,
+    "native_failed_or_errored": 0,
+    "native_wheel_consumer_cases": 4,
+    "native_avc_cases": 23,
+    "independent_flow_and_input_reviews_passed": true,
+    "diff_and_staged_secret_checks_passed": true
+  },
+  "video_policy": {
+    "avc420_startup_access_units": 4,
+    "avc420_steady_access_units": 8,
+    "avc444_startup_pairs": 2,
+    "avc444_steady_pairs": 4,
+    "oldest_presentation_deadline_ms": 2000,
+    "hard_pending_frames": 16,
+    "hard_pending_bytes": 16777216,
+    "wire_protocol_changed": false,
+    "delta_or_reference_frames_dropped": false,
+    "additional_encoded_queue_added": false,
+    "pressure_wait_outside_owner_lifetime_lock": true,
+    "stop_and_leave_wake_pressure_wait": true,
+    "native_and_browser_deadlines_bounded": true,
+    "browser_configuration_deadline_ms": 2000,
+    "browser_submission_deadline_ms": 2000,
+    "permanent_image_fallback_still_available": true,
+    "automatic_video_restart_after_permanent_fallback": false,
+    "content_free_diagnostic_codes_only": true
+  },
+  "native_keyboard": {
+    "keyboard_button_toggles_and_reports_pressed_state": true,
+    "os_dismissal_without_blur_clears_indicator": true,
+    "hide_button_replaced_with_scroll_wheel": true,
+    "pan_zoom_and_scroll_mutually_exclusive": true,
+    "vertical_and_horizontal_remote_wheel_input": true,
+    "horizontal_rdp_capability_required": true,
+    "wheel_press_release_pairs_atomic": true,
+    "rebased_pointer_seed_precedes_scroll": true,
+    "gesture_rate_and_retained_motion_bounded": true,
+    "stale_gesture_replay_prevented": true,
+    "settings_and_viewport_policy_preserved": true
+  },
+  "attribution": {
+    "modified_upstream_files_with_notices": 95,
+    "unchanged_upstream_license_and_notice_files": 213,
+    "both_upstream_histories_reachable": true,
+    "dependency_pins_changed": false
+  },
+  "deployment": {
+    "requested": false,
+    "performed": false,
+    "live_services_or_configuration_changed": false
+  },
+  "limitations": [
+    "Physical iPhone/iPad software keyboard behavior and Safari performance require device acceptance after deployment.",
+    "Bounded backpressure recovers before fallback; genuine stalls still permanently select images for that connection.",
+    "Graphics ACK latency includes processing and is not a network-only Wi-Fi measurement."
+  ]
+}
