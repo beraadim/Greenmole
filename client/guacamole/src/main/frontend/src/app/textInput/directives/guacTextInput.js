@@ -184,6 +184,16 @@ angular.module('textInput').directive('guacTextInput', [function guacTextInput()
                 guacNativeKeyboard.setPanning(false);
             };
 
+            $scope.showConnectionSettings = function showConnectionSettings(event) {
+                event.preventDefault();
+                // Give the connection panel the available viewport. Emit only
+                // toward this bar's owner, without toggling other client views
+                // or automatically reopening the device keyboard afterwards.
+                target.blur();
+                guacNativeKeyboard.setPanning(false);
+                $scope.$emit('guacShowMenu');
+            };
+
             $scope.nativeKeyboardState = guacNativeKeyboard;
 
             $scope.toggleDesktopPan = function toggleDesktopPan(event) {

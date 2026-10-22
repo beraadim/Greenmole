@@ -18,6 +18,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { sources, eventBus } = require('./helpers/client-fixtures');
+const { preferenceFixture, clientControllerFixture } = require('./helpers/preference-fixtures');
 
 function keyboardService(navigator = {}) {
     return sources(['textInput/services/guacNativeKeyboard.js'])
@@ -165,6 +166,32 @@ test('Show explicitly reopens after OS keyboard dismissal leaves the editor focu
     assert.equal(fixture.service.focused, true);
     assert.equal(fixture.service.panning, true);
     assert.deepEqual(fixture.focusPanning, [true, true]);
+});
+
+test('native Settings opens the connection menu after dismissing keyboard and Pan, without remote input or refocus', () => {
+    const preferences = preferenceFixture({ inputMethod: 'native' }).load().service;
+    const page = clientControllerFixture(preferences);
+    const fixture = textInputFixture();
+    // Model the isolated directive's upward event delivery to its page owner.
+    // Both the keyboard action and existing menu listener are production code.
+    fixture.scope.$emit = (name, ...args) => {
+        assert.equal(fixture.service.focused, false);
+        assert.equal(fixture.service.panning, false);
+        return page.scope.$broadcast(name, ...args);
+    };
+    fixture.show();
+    assert.equal(fixture.service.focused, true);
+    fixture.gesture('showConnectionSettings');
+    assert.equal(page.scope.menu.shown, true);
+    fixture.gesture('showConnectionSettings');
+    assert.equal(page.scope.menu.shown, true, 'Settings opens rather than toggles');
+    page.scope.closeMenu();
+    assert.equal(page.scope.menu.shown, false);
+    assert.equal(fixture.service.focused, false);
+    assert.equal(fixture.service.panning, false);
+    assert.equal(fixture.focusCalls, 1);
+    assert.equal(fixture.timeouts.length, 0);
+    assert.deepEqual(fixture.sent, []);
 });
 
 test('native text input sends Unicode codepoints once without echoing passwords in a history', () => {

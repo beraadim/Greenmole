@@ -32,6 +32,11 @@ The control bar remains available after the device keyboard is dismissed. Use
 button. Ctrl, Alt, Esc and Tab remain available for remote keyboard commands.
 An attached hardware keyboard remains usable.
 
+Tap **Settings** (the gear button on narrow screens) in this bar to open the
+connection settings panel, including display, input and clipboard options.
+Opening settings dismisses the device keyboard and turns Pan desktop off;
+closing settings leaves the keyboard hidden until you tap **Show keyboard**.
+
 The control bar reserves its measured height in the layout. The remote desktop
 is sized to the usable area above it, including when the bar wraps on a narrow
 screen. Every input mode, including None, uses the browser's visible viewport

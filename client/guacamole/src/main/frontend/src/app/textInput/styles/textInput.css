@@ -190,6 +190,13 @@
         display: none;
     }
 
+    /* Fit the four toolbar actions beside the shortcut keys on phones while
+       preserving every control's 44px touch target. Smaller views may wrap. */
+    .text-input.native-keyboard .native-keyboard-controls button,
+    .text-input.native-keyboard .text-input-buttons button {
+        margin: 0.1em 0;
+    }
+
     .text-input.native-keyboard .text-input-buttons {
         order: 1;
         margin-left: auto;

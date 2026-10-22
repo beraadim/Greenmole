@@ -23,6 +23,14 @@
                 title="{{'CLIENT.ACTION_HIDE_NATIVE_KEYBOARD' | translate}}">
             <span aria-hidden="true">⌄</span>
         </button>
+        <button type="button" class="native-keyboard-settings"
+                ng-mousedown="$event.preventDefault()" ng-click="showConnectionSettings($event)"
+                aria-controls="guac-menu"
+                aria-label="{{'APP.ACTION_MANAGE_SETTINGS' | translate}}"
+                title="{{'APP.ACTION_MANAGE_SETTINGS' | translate}}">
+            <span aria-hidden="true">⚙</span>
+            <span class="native-keyboard-label">{{'APP.ACTION_MANAGE_SETTINGS' | translate}}</span>
+        </button>
     </div>
 
     <!-- A mounted, visible real editor allows iOS keyboard opening within the
