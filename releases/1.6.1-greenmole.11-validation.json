@@ -1,7 +1,7 @@
 {
   "schema": "greenmole-release-validation-v1",
   "version": "1.6.1-greenmole.11",
-  "status": "matched images built and isolated acceptance passed; ready for deployment",
+  "status": "tested web and guacd images deployed; superseded images removed as requested",
   "source_checks": {
     "frontend_node_passed": 176,
     "frontend_webpack_passed": true,
@@ -60,9 +60,125 @@
     "dependency_pins_changed": false
   },
   "deployment": {
-    "requested": false,
-    "performed": false,
-    "live_services_or_configuration_changed": false
+    "requested": true,
+    "performed": true,
+    "target": "Oberon",
+    "deployed_at_utc": "2026-10-22T21:42:51.914948+00:00",
+    "components_changed": [
+      "web",
+      "guacd"
+    ],
+    "web_image": {
+      "tag": "greenmole/web:1.6.1-greenmole.11",
+      "id": "sha256:8d95f1b169dc3817eb31c427d461f99c238dcef5777a185cdf6dfee6bdf86cad"
+    },
+    "native_daemon_image": {
+      "tag": "greenmole/guacd:1.6.1-greenmole.11",
+      "id": "sha256:0373e5b598805dab7b59e13455a1babba58bf286020b663bea7e0ed2d9160747"
+    },
+    "configuration_preserved": true,
+    "runtime_settings_preserved": true,
+    "effective_compose_preserved_except_two_images": true,
+    "unrelated_containers_unchanged": true,
+    "configuration_backup_retained": true,
+    "rdp_plugin_handshake": true,
+    "web_to_guacd_tcp": true,
+    "independent_post_cleanup_audit": {
+      "passed": true,
+      "fresh_predeployment_greenmole11_backup_used": true,
+      "tested_greenmole11_web_and_guacd_images_match": true,
+      "web_and_guacd_full_config_environment_hostconfig_mounts_networks_preserved": true,
+      "configuration_content_preserved": true,
+      "configuration_entries_ownership_modes_and_types_preserved": true,
+      "compose_changes_limited_to_two_image_references": true,
+      "effective_compose_preserved_except_two_images": true,
+      "unrelated_containers_unchanged": true,
+      "transaction_recovery_images_checked": false,
+      "old_image_retention_required": false,
+      "image_cleanup_separate_from_configuration_audit": true
+    },
+    "post_cleanup_health": {
+      "verified_at_utc": "2026-10-22T21:44:31.372504+00:00",
+      "web_http_ready": true,
+      "guacd_healthy": true,
+      "restart_counts": {
+        "web": 0,
+        "guacd": 0
+      },
+      "oom_killed": false,
+      "critical_log_lines": 0,
+      "log_scope": "since each deployed container started",
+      "matched_tested_web_image": true,
+      "matched_tested_native_image": true,
+      "languages": 16,
+      "greenmole_name_and_version_served": true,
+      "branding_assets_unchanged": true,
+      "common_js_matches_tested_image": true,
+      "authenticated": false,
+      "rdp_connected": false,
+      "services_unchanged_during_checks": true
+    },
+    "anonymous_live_browser_checks": {
+      "status": "passed",
+      "authenticated": false,
+      "rdp_connected": false,
+      "synthetic_client_injected": false,
+      "owned_forward_removed": true,
+      "runtime_image_metadata_verified": true,
+      "services_unchanged_during_checks": true,
+      "cases": [
+        {
+          "case": "desktop-chromium",
+          "engine": "chromium",
+          "browserVersion": "155.0.8059.86",
+          "viewport": {
+            "width": 1000,
+            "height": 750
+          },
+          "version": "1.6.1-greenmole.11",
+          "branding": true,
+          "loginFieldsVisible": true,
+          "noHorizontalOverflow": true,
+          "iosDefaultsMigrated": false,
+          "pageErrors": [],
+          "forbiddenRequests": []
+        },
+        {
+          "case": "iphone-chromium",
+          "engine": "chromium",
+          "browserVersion": "155.0.8059.86",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "version": "1.6.1-greenmole.11",
+          "branding": true,
+          "loginFieldsVisible": true,
+          "noHorizontalOverflow": true,
+          "iosDefaultsMigrated": true,
+          "pageErrors": [],
+          "forbiddenRequests": []
+        }
+      ],
+      "screenshots_visually_reviewed": true
+    },
+    "image_retention": {
+      "removed_at_utc": "2026-10-22T21:44:17.455141+00:00",
+      "superseded_images_removed": true,
+      "removed_tags": [
+        "greenmole/web:1.6.1-greenmole.10",
+        "greenmole/guacd:1.6.1-greenmole.8"
+      ],
+      "removed_image_ids": [
+        "sha256:9a8874f10e073dbdb18266293621a0989a2e2ae4082e0adf29f9f32048b716a9",
+        "sha256:214a9af689e8b73da08fd403393601ea5fcf764dd41bff42dec1630518463404"
+      ],
+      "current_tested_images_retained": true,
+      "containers_unchanged": true,
+      "configuration_backup_retained": true,
+      "persistent_rollback_copy_created": false,
+      "force_or_prune_used": false
+    }
   },
   "limitations": [
     "Physical iPhone/iPad software keyboard behavior and Safari performance require device acceptance after deployment.",
@@ -70,7 +186,7 @@
     "Graphics ACK latency includes processing and is not a network-only Wi-Fi measurement."
   ],
   "source_revision": "a1fb3681e4063af40ac238be2f6119c70bc7b41f",
-  "verified_at_utc": "2026-10-22T21:36:04.132393+00:00",
+  "verified_at_utc": "2026-10-22T21:45:11.298401+00:00",
   "build": {
     "source_revision": "a1fb3681e4063af40ac238be2f6119c70bc7b41f",
     "source_archive_sha256": "501860cfbc95e98707a9d608069c3b99127878c2caf9063731679cdfdded1a5f",
@@ -105,8 +221,8 @@
         "version": "1.6.1-greenmole.11"
       }
     ],
-    "production_unchanged": true,
-    "deployed": false
+    "deployed": true,
+    "production_unchanged_during_build": true
   },
   "packaged_mobile_acceptance": {
     "status": "passed",
@@ -177,6 +293,7 @@
     "packaged_claims_supported_by_checks": true,
     "live_service_identities_match_initial_baseline": true,
     "owned_temporary_fixtures_removed": true,
-    "deployment_performed": false
+    "deployment_performed": false,
+    "scope": "pre-deployment isolated build validation"
   }
 }
