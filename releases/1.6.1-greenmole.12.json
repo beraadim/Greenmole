@@ -1,0 +1,24 @@
+{
+  "version": "1.6.1-greenmole.12",
+  "baseline": "unreleased Apache Guacamole staging/1.6.1; see UPSTREAM.json",
+  "platform": "linux/amd64",
+  "source": "https://github.com/beraadim/Greenmole",
+  "images": {
+    "client": {
+      "tag": "greenmole/web:1.6.1-greenmole.12",
+      "build_args": {
+        "MAVEN_BASE_IMAGE": "maven:3-eclipse-temurin-21-noble@sha256:5496bf5b90ea4ad5af01d63be191f946f15ef5c375a6dd48fc21482a43108ca5",
+        "TOMCAT_BASE_IMAGE": "tomcat:9-jdk21-temurin-noble@sha256:76ecacb60a5e9bbbce96e58606706196d94abd168ba7b91c9156415fe40f6461",
+        "MAVEN_ARGUMENTS": "-DskipTests=false"
+      }
+    }
+  },
+  "unchanged_images": {
+    "server": {
+      "tag": "greenmole/guacd:1.6.1-greenmole.11",
+      "id": "sha256:0373e5b598805dab7b59e13455a1babba58bf286020b663bea7e0ed2d9160747",
+      "source_revision": "a1fb3681e4063af40ac238be2f6119c70bc7b41f",
+      "version": "1.6.1-greenmole.11"
+    }
+  }
+}
