@@ -357,6 +357,98 @@ describe('Guacamole experimental AVC420 video', function() {
             Guacamole.AVC420VideoPlayer.supported = originalSupport;
         }
     });
+    it('reads no diagnostic clock and preserves ACKs while local timing is disabled', async function() {
+        // A stand-in display avoids counting the scheduler's independent clock.
+        player.dispose(false);
+        var directDisplay = { scheduleVideoFrame: function(target, width, height, complete) {
+            return { complete: function(decoded) { decoded.close(); complete(true); }, cancel: function() {} };
+        } };
+        player = new Guacamole.AVC420VideoPlayer(stream, layer, directDisplay);
+        var clock = spyOn(window.performance, 'now').and.returnValue(100);
+        send(envelope(1, key)); await settle();
+        var decoded = frame(1); decoders[0].callbacks.output(decoded);
+        expect(clock).not.toHaveBeenCalled();
+        expect(player.getDiagnostics()).toBeNull();
+        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:1', 0);
+        expect(decoded.close).toHaveBeenCalledTimes(1);
+    });
+    it('separates local assembly, configuration FIFO, decode and ordered draw timing', async function() {
+        var time = 10;
+        spyOn(window.performance, 'now').and.callFake(function() { return time; });
+        expect(player.setDiagnosticsEnabled(true)).toBe(true);
+        var older = display.scheduleVideoFrame(layer, 32, 18, function() {});
+        var bytes = envelope(1, key);
+        send(bytes.slice(0, 8));
+        time = 20; send(bytes.slice(8)); display.flush();
+        time = 50; await settle();
+        time = 80; var decoded = frame(1); decoders[0].callbacks.output(decoded);
+        expect(stream.sendAck).not.toHaveBeenCalled();
+        // A duplicate output must close immediately without resetting the
+        // original output-to-ordered-draw measurement.
+        time = 90; var duplicate = frame(1); decoders[0].callbacks.output(duplicate);
+        expect(duplicate.close).toHaveBeenCalledTimes(1);
+        layer.drawVideoFrame.and.callFake(function(picture) {
+            if (picture.timestamp === 1000) time += 7;
+        });
+        time = 110; older.complete(frame(0));
+        var stats = player.getDiagnostics();
+        expect(stats).toEqual(jasmine.objectContaining({
+            assembledFrames: 1, presentedFrames: 1,
+            assemblyCount: 1, assemblySumMs: 10, assemblyMaxMs: 10,
+            encodedQueueCount: 1, encodedQueueSumMs: 30, encodedQueueMaxMs: 30,
+            decodeOutputCount: 1, decodeOutputSumMs: 30, decodeOutputMaxMs: 30,
+            orderedDisplayCount: 1, orderedDisplaySumMs: 37, orderedDisplayMaxMs: 37,
+            pendingFrames: 0, pendingBytes: 0, encodedQueueFrames: 0, submittedFrames: 0,
+            pendingFramesMax: 1, encodedQueueFramesMax: 1, submittedFramesMax: 1
+        }));
+        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:1', 0);
+        expect(decoded.close).toHaveBeenCalledTimes(1);
+        stats.assemblyCount = 999;
+        expect(player.getDiagnostics().assemblyCount).toBe(1);
+    });
+    it('starts a fresh timing generation without sampling pictures already in flight', async function() {
+        var time = 0;
+        spyOn(window.performance, 'now').and.callFake(function() { return time; });
+        player.setDiagnosticsEnabled(true);
+        send(envelope(1, key)); display.flush(); await settle();
+        time = 20; player.setDiagnosticsEnabled(false);
+        expect(player.getDiagnostics()).toBeNull();
+        player.setDiagnosticsEnabled(true);
+        time = 50; decoders[0].callbacks.output(frame(1));
+        expect(player.getDiagnostics()).toEqual(jasmine.objectContaining({
+            assembledFrames: 0, presentedFrames: 0, decodeOutputCount: 0, orderedDisplayCount: 0
+        }));
+        time = 60; send(envelope(2, delta)); display.flush();
+        time = 80; decoders[0].callbacks.output(frame(2));
+        expect(player.getDiagnostics()).toEqual(jasmine.objectContaining({
+            assembledFrames: 1, presentedFrames: 1, decodeOutputCount: 1,
+            decodeOutputMaxMs: 20, orderedDisplayCount: 1
+        }));
+        expect(stream.sendAck.calls.allArgs()).toEqual([['AVC420:1', 0], ['AVC420:2', 0]]);
+    });
+    it('retains final aggregates after disposal while clearing queues and ignoring late output', async function() {
+        var time = 0;
+        spyOn(window.performance, 'now').and.callFake(function() { return time; });
+        player.setDiagnosticsEnabled(true);
+        send(envelope(1, key)); display.flush(); await settle();
+        time = 10; decoders[0].callbacks.output(frame(1));
+        send(envelope(2, delta)); display.flush();
+        var output = decoders[0].callbacks.output;
+        player.dispose(false);
+        var final = player.getDiagnostics();
+        expect(final).toEqual(jasmine.objectContaining({
+            assembledFrames: 2, presentedFrames: 1,
+            pendingFrames: 0, pendingBytes: 0, encodedQueueFrames: 0, submittedFrames: 0,
+            pendingFramesMax: 1, submittedFramesMax: 1
+        }));
+        time = 1000; var late = frame(2); output(late);
+        expect(late.close).toHaveBeenCalledTimes(1);
+        expect(player.getDiagnostics()).toEqual(final);
+        expect(stream.sendAck).toHaveBeenCalledOnceWith('AVC420:1', 0);
+        player.setDiagnosticsEnabled(false);
+        expect(player.getDiagnostics()).toBeNull();
+        expect(player.setDiagnosticsEnabled(true)).toBe(false);
+    });
     it('does not advertise video through the generic default capability list', function() {
         expect(Guacamole.VideoPlayer.getSupportedTypes()).toEqual([]);
     });

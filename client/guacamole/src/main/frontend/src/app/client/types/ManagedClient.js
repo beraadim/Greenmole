@@ -394,7 +394,7 @@ angular.module('client').factory('ManagedClient', ['$rootScope', '$injector',
             id     : id,
             client : client,
             tunnel : tunnel,
-            performance : new Guacamole.ClientPerformance(client.getDisplay(), tunnel, client.getDisplayRecoveryStatistics)
+            performance : new Guacamole.ClientPerformance(client.getDisplay(), tunnel, client.getDisplayRecoveryStatistics, client)
         });
 
         // Fire events for tunnel errors

@@ -28,6 +28,9 @@
     color: #fff;
     font: 12px/1.5 monospace;
     text-align: left;
+    box-sizing: border-box;
+    max-width: calc(100% - 1.5rem);
+    overflow-wrap: break-word;
     pointer-events: none;
     user-select: none;
 }

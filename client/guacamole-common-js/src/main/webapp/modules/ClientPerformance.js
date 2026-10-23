@@ -28,8 +28,9 @@ var Guacamole = Guacamole || {};
  * @param {!Guacamole.Display} display The client's display.
  * @param {!Guacamole.Tunnel} tunnel The client's tunnel.
  * @param {function():object} [recoveryStatistics] Numeric recovery counters.
+ * @param {!Guacamole.Client} [diagnosticClient] Optional local pipeline timings.
  */
-Guacamole.ClientPerformance = function ClientPerformance(display, tunnel, recoveryStatistics) {
+Guacamole.ClientPerformance = function ClientPerformance(display, tunnel, recoveryStatistics, diagnosticClient) {
 
     var enabled = false;
     var bytes = 0;
@@ -40,6 +41,7 @@ Guacamole.ClientPerformance = function ClientPerformance(display, tunnel, recove
     var previousStatistics;
     var instruction = tunnel.oninstruction;
     var frames = new Guacamole.FrameMetrics();
+    var ownsPipelineDiagnostics = false;
 
     var now = function now() { return window.performance.now(); };
 
@@ -99,6 +101,12 @@ Guacamole.ClientPerformance = function ClientPerformance(display, tunnel, recove
         previousStatistics = display.onstatistics;
         display.statisticWindow = 1000;
         display.onstatistics = statistics;
+        // Preserve a collector that an embedded application already enabled.
+        // Old/custom client bundles may not provide these optional methods.
+        if (diagnosticClient && typeof diagnosticClient.setPipelineDiagnosticsEnabled === 'function'
+                && typeof diagnosticClient.getPipelineStatistics === 'function'
+                && diagnosticClient.getPipelineStatistics() === null)
+            ownsPipelineDiagnostics = diagnosticClient.setPipelineDiagnosticsEnabled(true) === true;
     };
 
     /** Stops collection and restores the display's previous statistics handler. */
@@ -109,6 +117,10 @@ Guacamole.ClientPerformance = function ClientPerformance(display, tunnel, recove
         bytes = 0;
         latest = null;
         frames.reset();
+        if (ownsPipelineDiagnostics) {
+            diagnosticClient.setPipelineDiagnosticsEnabled(false);
+            ownsPipelineDiagnostics = false;
+        }
         if (display.onstatistics === statistics) {
             display.onstatistics = previousStatistics;
             display.statisticWindow = previousWindow;
@@ -145,6 +157,26 @@ Guacamole.ClientPerformance = function ClientPerformance(display, tunnel, recove
             ? recoveryStatistics() : null;
         result.imageFailures = recovery ? recovery.imageFailures : null;
         result.refreshRequests = recovery ? recovery.refreshRequests : null;
+        var video = enabled && connected && diagnosticClient
+                && typeof diagnosticClient.getVideoStatistics === 'function'
+                    ? diagnosticClient.getVideoStatistics() : null;
+        // Only expose the known numeric stages, never an arbitrary player
+        // snapshot or codec data. Samples are local cumulative averages/maxima.
+        result.videoTiming = null;
+        if (video && video.codec === 'avc420' && video.timing) {
+            var stages = {};
+            ['assembly', 'encodedQueue', 'decodeOutput', 'orderedDisplay'].forEach(function stage(name) {
+                var count = video.timing[name + 'Count'];
+                var sum = video.timing[name + 'SumMs'];
+                var maximum = video.timing[name + 'MaxMs'];
+                var valid = typeof count === 'number' && isFinite(count) && count > 0
+                        && typeof sum === 'number' && isFinite(sum) && sum >= 0
+                        && typeof maximum === 'number' && isFinite(maximum) && maximum >= 0;
+                stages[name + 'AverageMs'] = valid ? sum / count : null;
+                stages[name + 'MaxMs'] = valid ? maximum : null;
+            });
+            result.videoTiming = stages;
+        }
         var frameSample = frames.sample(current);
         Object.keys(frameSample).forEach(function(key) { result[key] = frameSample[key]; });
         if (duration > 0 || !enabled) {

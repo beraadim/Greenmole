@@ -231,3 +231,61 @@ at network/upstream pacing; it does not prove packet loss. A high browser in-fli
 count/local completion maximum points to its receive/render/audio work. Compare
 matched diagnostics-off controls before claiming performance gains: optional
 instrumentation adds observer overhead.
+
+### Optional AVC420 browser stages
+
+The performance overlay also collects local AVC420 timings while **Display →
+Show performance statistics** is enabled. Collection remains off by default.
+Opening or closing this overlay changes no encoder, frame-credit, timeout or
+fallback settings. An embedded application can use the existing
+`client.setPipelineDiagnosticsEnabled(true)` opt-in and read the numeric snapshot
+in `client.getVideoStatistics().timing`. Older/custom players without the timing
+API continue to work. AVC444 does not yet expose these stage timings.
+
+Each stage retains only a count, sum and maximum in milliseconds. The overlay
+shows cumulative average / maximum for the current collection:
+
+| Stage | Meaning and limitations |
+| --- | --- |
+| Assembly | First parsed envelope bytes to a complete encoded access unit; starts after Base64 conversion, so it excludes earlier transport, parser and conversion work |
+| Encoded queue | Complete access unit to decoder submission, including validation, initial configuration and time waiting for a bounded decode slot |
+| Decode output | Decoder submission to its output callback; includes codec work and any delay delivering the callback on the browser's JavaScript thread |
+| Ordered display | Output callback to completion of the existing ordered canvas draw, including earlier display work; does not prove physical screen paint |
+
+The snapshot also reports current and maximum pending frames/bytes, encoded
+queue frames and submitted frames. It retains no frame history, contents,
+addresses or hardware identifiers and sends no measurements to the server.
+These measurements use one local clock. Invalid/backwards durations clip to
+zero and counters saturate; no diagnostic clock reads or additional timers are
+introduced while collection is disabled.
+
+Turning collection off releases its samples and totals. A fresh enable starts
+fresh totals. Disposal invalidates unfinished samples, clears their references
+and retains only final numeric totals until the stream/connection or collection
+is replaced. Import, disconnect and reconnect clear the client-visible video
+timings. The overlay preserves diagnostics that an embedded application already
+enabled rather than stopping that application's collection when it closes.
+
+Interpret these stages alongside the gateway's AVC presentation ACK age. That
+age starts after its outbound socket flush and includes forwarding, both network
+directions and browser work. It excludes earlier gateway software decoding and
+socket-flush time. A large recovered ACK age is therefore not sufficient to
+identify a Safari decoder stall or a visible interaction problem. Cumulative
+maxima can refer to different frames and must not be added or subtracted to
+calculate a network latency. The stream's `video owner left` fallback during
+disconnect is cleanup, distinct from a fallback during an active session.
+
+This diagnostic addition deliberately preserves startup/steady credit windows,
+all ordered H.264 inputs, decoder slots, the two-second deadlines, hard queue
+limits and image recovery. Measure a reproducible visible problem before
+changing those policies: reducing credits can shift backlog upstream and reduce
+throughput on a higher-latency connection.
+
+The common-JS browser suite covers separated stage timings, default-off clock
+behavior, stale/canceled samples, bounded counters and client lifecycle. The
+frontend suite covers the overlay's explicit enable/disable and cleanup. For a
+manual narrow-screen check, serve `client/guacamole/src/main/frontend` on
+loopback after installing its existing dependencies, open
+`test/client-video-diagnostics-ui.html` at 320 and 390 CSS pixels, and inspect
+`window.videoDiagnosticsUITestResult`. This uses the actual Angular directive,
+template and CSS with synthetic numeric values; it opens no remote session.

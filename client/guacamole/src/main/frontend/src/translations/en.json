@@ -118,6 +118,12 @@
         "PERFORMANCE_WAITING_IMAGE" : "Waiting for image",
         "PERFORMANCE_IMAGE_FAILURES" : "Image failures",
         "PERFORMANCE_REFRESHES" : "Refresh requests",
+        "PERFORMANCE_VIDEO_TIMING" : "AVC420 stages: average / maximum (ms)",
+        "PERFORMANCE_VIDEO_ASSEMBLY" : "Assembly",
+        "PERFORMANCE_VIDEO_QUEUE" : "Encoded queue",
+        "PERFORMANCE_VIDEO_DECODE_OUTPUT" : "Decode/output",
+        "PERFORMANCE_VIDEO_ORDERED_DISPLAY" : "Ordered display",
+        "PERFORMANCE_VIDEO_TIMING_HELP" : "Local timings while statistics are enabled. Encoded queue includes configuration wait; decode/output includes callback scheduling; ordered display includes waiting and drawing. These are not network RTT or physical screen-paint measurements.",
 
         "ACTION_ACKNOWLEDGE"               : "@:APP.ACTION_ACKNOWLEDGE",
         "ACTION_CANCEL"                    : "@:APP.ACTION_CANCEL",

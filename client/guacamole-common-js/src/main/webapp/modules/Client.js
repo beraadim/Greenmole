@@ -126,6 +126,7 @@ Guacamole.Client = function(tunnel) {
             pipelineDiagnostics.cancel();
             pipelineDiagnostics = null;
         }
+        updateVideoDiagnostics(pipelineDiagnostics !== null);
         return pipelineDiagnostics !== null;
     };
 
@@ -223,12 +224,39 @@ Guacamole.Client = function(tunnel) {
         }
     };
     var videoStatistics = { status: 'images', presentedFrames: 0, codec: null, fallbackReason: null };
+    // Retain at most the latest player so an ended stream's final numeric
+    // snapshot remains available until diagnostics or the connection resets.
+    var videoStatisticsPlayer = null;
+
+    function configureVideoDiagnostics(player, enabled) {
+        if (player && typeof player.setDiagnosticsEnabled === 'function')
+            player.setDiagnosticsEnabled(enabled);
+    }
+
+    function updateVideoDiagnostics(enabled) {
+        Object.keys(videoPlayers).forEach(function updatePlayer(index) {
+            configureVideoDiagnostics(videoPlayers[index], enabled);
+        });
+        // A naturally ended stream is no longer in videoPlayers.
+        if (videoStatisticsPlayer && Object.keys(videoPlayers).every(function differentPlayer(index) {
+            return videoPlayers[index] !== videoStatisticsPlayer;
+        }))
+            configureVideoDiagnostics(videoStatisticsPlayer, enabled);
+    }
+
+    function resetVideoDiagnostics() {
+        updateVideoDiagnostics(false);
+        videoStatisticsPlayer = null;
+    }
 
     /** Returns content-free state for the optional browser video experiment. */
     this.getVideoStatistics = function getVideoStatistics() {
         return { status: videoStatistics.status,
             presentedFrames: videoStatistics.presentedFrames, codec: videoStatistics.codec,
-            fallbackReason: videoStatistics.fallbackReason };
+            fallbackReason: videoStatistics.fallbackReason,
+            timing: pipelineDiagnostics && videoStatisticsPlayer
+                && typeof videoStatisticsPlayer.getDiagnostics === 'function'
+                    ? videoStatisticsPlayer.getDiagnostics() : null };
     };
     var videoLayers = {};
 
@@ -390,6 +418,7 @@ Guacamole.Client = function(tunnel) {
 
         // Cancel any pending display operations/frames and their measurements.
         cancelVideoPlayers();
+        resetVideoDiagnostics();
         if (pipelineDiagnostics) pipelineDiagnostics.cancel();
         display.cancel();
 
@@ -1933,6 +1962,8 @@ Guacamole.Client = function(tunnel) {
                 videoPlayers[stream_index] = videoPlayer;
                 videoLayers[stream_index] = layer;
                 if (isPrivateVideo(mimetype)) {
+                    videoStatisticsPlayer = videoPlayer;
+                    configureVideoDiagnostics(videoPlayer, pipelineDiagnostics !== null);
                     videoStatistics.codec = mimetype === Guacamole.AVC444VideoPlayer.MIMETYPE ? 'avc444' : 'avc420';
                     videoStatistics.status = 'waiting';
                     videoStatistics.fallbackReason = null;
@@ -2047,6 +2078,7 @@ Guacamole.Client = function(tunnel) {
             displayRecovery.reset();
             if (pipelineDiagnostics) pipelineDiagnostics.cancel();
             cancelVideoPlayers();
+            resetVideoDiagnostics();
             display.cancel();
 
             // Send disconnect message and disconnect
@@ -2079,6 +2111,7 @@ Guacamole.Client = function(tunnel) {
         var generation = keepAliveGeneration;
         displayRecovery.reset();
         if (pipelineDiagnostics) pipelineDiagnostics.cancel();
+        resetVideoDiagnostics();
         setState(Guacamole.Client.State.CONNECTING);
         if (generation !== keepAliveGeneration)
             return;

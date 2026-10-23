@@ -54,12 +54,44 @@ Guacamole.AVC420VideoPlayer = function AVC420VideoPlayer(stream, layer, display)
     var MAX_BYTES = 8 * 1024 * 1024;
     var MAX_PENDING_BYTES = 16 * 1024 * 1024;
     var TIMEOUT = 2000;
+    var diagnostics = null;
+    var assemblySample = null;
+
+    function sampleQueue() {
+        if (diagnostics) diagnostics.sampleQueue(pendingCount, pendingBytes,
+                decodeQueue.length, activeFrames);
+    }
+    function clearSamples() {
+        assemblySample = null;
+        Object.keys(pending).forEach(function clear(sequence) { pending[sequence].timing = null; });
+    }
+
+    /** Enables local timing only; no setting or measurement is sent to the peer. */
+    this.setDiagnosticsEnabled = function setDiagnosticsEnabled(enabled) {
+        if (enabled === true && !closed && !diagnostics && Guacamole.VideoPipelineDiagnostics) {
+            diagnostics = new Guacamole.VideoPipelineDiagnostics();
+            sampleQueue();
+        }
+        else if (enabled !== true && diagnostics) {
+            diagnostics.cancel();
+            diagnostics = null;
+            clearSamples();
+        }
+        return diagnostics !== null;
+    };
+
+    /** A numeric snapshot, including final collected totals after disposal. */
+    this.getDiagnostics = function getDiagnostics() {
+        return diagnostics ? diagnostics.getStatistics() : null;
+    };
 
     // Disposing must become terminal before cancelling tasks: cancellation can
     // synchronously flush the display and invoke task completion callbacks.
     this.dispose = function dispose(notify, reason) {
         if (closed) return;
         closed = true;
+        clearSamples();
+        if (diagnostics) diagnostics.cancel();
         reason = Guacamole.AVC420VideoPlayer.isFailureReason(reason) ? reason : null;
         if (player.onstatechange) player.onstatechange('fallback', reason);
         stream.onblob = stream.onend = null;
@@ -78,6 +110,7 @@ Guacamole.AVC420VideoPlayer = function AVC420VideoPlayer(stream, layer, display)
         pending = {};
         decodeQueue = [];
         pendingCount = pendingBytes = activeFrames = 0;
+        sampleQueue();
         if (decoder) {
             try { decoder.close(); }
             catch (ignore) {}
@@ -101,6 +134,10 @@ Guacamole.AVC420VideoPlayer = function AVC420VideoPlayer(stream, layer, display)
             frame.close();
             fail('invalid-stream');
             return;
+        }
+        if (diagnostics && item.timing && !item.timing.orderedDisplay) {
+            diagnostics.complete('decodeOutput', item.timing.decodeOutput);
+            item.timing.orderedDisplay = diagnostics.begin();
         }
         item.task.complete(frame);
     }
@@ -136,6 +173,11 @@ Guacamole.AVC420VideoPlayer = function AVC420VideoPlayer(stream, layer, display)
         while (!closed && decodeQueue.length && activeFrames < 4) {
             var item = decodeQueue.shift();
             activeFrames++;
+            if (diagnostics && item.timing) {
+                diagnostics.complete('encodedQueue', item.timing.encodedQueue);
+                item.timing.decodeOutput = diagnostics.begin();
+            }
+            sampleQueue();
             // Encoded FIFO time is not decoder/presentation time. Healthy
             // progress may queue several access units without any one of them
             // spending two seconds in the native or ordered display pipeline.
@@ -149,7 +191,7 @@ Guacamole.AVC420VideoPlayer = function AVC420VideoPlayer(stream, layer, display)
         }
     }
 
-    function decode(data, info) {
+    function decode(data, info, timing) {
         var nal = inspect(data);
         var key = !!(info.flags & 1);
         if (nal.idr !== key || (key && (!nal.codec || !nal.pps))) return fail('invalid-stream');
@@ -182,7 +224,7 @@ Guacamole.AVC420VideoPlayer = function AVC420VideoPlayer(stream, layer, display)
                 || info.height !== streamHeight) return fail('invalid-stream');
         if (pendingCount >= 16 || pendingBytes + data.length > MAX_PENDING_BYTES) return fail('backlog-limit');
         var item = { width: info.width, height: info.height, bytes: data.length,
-            data: data, key: key, sequence: info.sequence };
+            data: data, key: key, sequence: info.sequence, timing: timing };
         pending[info.sequence] = item;
         pendingCount++;
         pendingBytes += data.length;
@@ -193,12 +235,17 @@ Guacamole.AVC420VideoPlayer = function AVC420VideoPlayer(stream, layer, display)
             pendingCount--;
             pendingBytes -= item.bytes;
             activeFrames--;
+            if (diagnostics && item.timing && success)
+                diagnostics.complete('orderedDisplay', item.timing.orderedDisplay);
+            item.timing = null;
+            sampleQueue();
             if (!success) return fail('presentation-error');
             if (player.onstatechange) player.onstatechange('playing');
             stream.sendAck('AVC420:' + info.sequence, 0);
             pump();
         });
         decodeQueue.push(item);
+        sampleQueue();
         pump();
     }
 
@@ -232,7 +279,12 @@ Guacamole.AVC420VideoPlayer = function AVC420VideoPlayer(stream, layer, display)
         catch (ignore) { return fail('invalid-stream'); }
         var offset = 0;
         while (!closed && offset < data.length) {
-            if (assemblyTimer === null) assemblyTimer = window.setTimeout(failed('assembly-timeout'), TIMEOUT);
+            if (assemblyTimer === null) {
+                assemblyTimer = window.setTimeout(failed('assembly-timeout'), TIMEOUT);
+                // This measures envelope copying/assembly, excluding Base64
+                // decoding performed above before its first byte is copied.
+                if (diagnostics) assemblySample = diagnostics.begin();
+            }
             var target = payload || header;
             var used = payload ? payloadUsed : headerUsed;
             var count = Math.min(target.length - used, data.length - offset);
@@ -253,7 +305,13 @@ Guacamole.AVC420VideoPlayer = function AVC420VideoPlayer(stream, layer, display)
                     headerUsed = payloadUsed = 0;
                     window.clearTimeout(assemblyTimer);
                     assemblyTimer = null;
-                    decode(complete, info);
+                    var timing = null;
+                    if (diagnostics && assemblySample) {
+                        diagnostics.complete('assembly', assemblySample);
+                        timing = { encodedQueue: diagnostics.begin() };
+                    }
+                    assemblySample = null;
+                    decode(complete, info, timing);
                 }
             }
         }

@@ -126,6 +126,64 @@ describe('Guacamole.ClientPerformance', function() {
         monitor.stop();
         expect(display.statisticWindow).toBe(0);
     });
+    it('collects AVC stage averages only while the optional overlay is enabled and connected', function() {
+        var diagnosticClient = {
+            getPipelineStatistics: jasmine.createSpy('pipeline').and.returnValue(null),
+            setPipelineDiagnosticsEnabled: jasmine.createSpy('enable').and.returnValue(true),
+            getVideoStatistics: jasmine.createSpy('video').and.returnValue({ codec: 'avc420', timing: {
+                assemblyCount: 2, assemblySumMs: 20, assemblyMaxMs: 15,
+                encodedQueueCount: 2, encodedQueueSumMs: 60, encodedQueueMaxMs: 40,
+                decodeOutputCount: 2, decodeOutputSumMs: 100, decodeOutputMaxMs: 70,
+                orderedDisplayCount: 2, orderedDisplaySumMs: 10, orderedDisplayMaxMs: 6,
+                unexpectedPrivateField: 'never copied'
+            } })
+        };
+        monitor = new Guacamole.ClientPerformance(display, tunnel, null, diagnosticClient);
+        expect(monitor.sample().videoTiming).toBeNull();
+        expect(diagnosticClient.getVideoStatistics).not.toHaveBeenCalled();
+        monitor.start(); monitor.start();
+        expect(diagnosticClient.setPipelineDiagnosticsEnabled).toHaveBeenCalledOnceWith(true);
+        expect(monitor.sample().videoTiming).toBeNull();
+        tunnel.setState(Guacamole.Tunnel.State.OPEN);
+        expect(monitor.sample().videoTiming).toEqual({
+            assemblyAverageMs: 10, assemblyMaxMs: 15,
+            encodedQueueAverageMs: 30, encodedQueueMaxMs: 40,
+            decodeOutputAverageMs: 50, decodeOutputMaxMs: 70,
+            orderedDisplayAverageMs: 5, orderedDisplayMaxMs: 6
+        });
+        monitor.stop(); monitor.stop();
+        expect(diagnosticClient.setPipelineDiagnosticsEnabled.calls.allArgs()).toEqual([[true], [false]]);
+        diagnosticClient.getVideoStatistics.calls.reset();
+        expect(monitor.sample().videoTiming).toBeNull();
+        expect(diagnosticClient.getVideoStatistics).not.toHaveBeenCalled();
+    });
+    it('preserves pipeline diagnostics independently enabled by an embedded application', function() {
+        var diagnosticClient = {
+            getPipelineStatistics: function() { return {}; },
+            setPipelineDiagnosticsEnabled: jasmine.createSpy('enable')
+        };
+        monitor = new Guacamole.ClientPerformance(display, tunnel, null, diagnosticClient);
+        monitor.start(); monitor.stop();
+        expect(diagnosticClient.setPipelineDiagnosticsEnabled).not.toHaveBeenCalled();
+    });
+    it('ignores absent custom-bundle methods and unavailable or invalid stage samples', function() {
+        var diagnosticClient = {};
+        monitor = new Guacamole.ClientPerformance(display, tunnel, null, diagnosticClient);
+        tunnel.setState(Guacamole.Tunnel.State.OPEN);
+        monitor.start();
+        expect(monitor.sample().videoTiming).toBeNull();
+        diagnosticClient.getVideoStatistics = function() { return { codec: 'avc444', timing: {} }; };
+        expect(monitor.sample().videoTiming).toBeNull();
+        diagnosticClient.getVideoStatistics = function() { return { codec: 'avc420', timing: {
+            assemblyCount: 0, assemblySumMs: 0, assemblyMaxMs: 0,
+            encodedQueueCount: 1, encodedQueueSumMs: NaN, encodedQueueMaxMs: 1,
+            decodeOutputCount: 1, decodeOutputSumMs: 1, decodeOutputMaxMs: Infinity,
+            orderedDisplayCount: 1, orderedDisplaySumMs: -1, orderedDisplayMaxMs: 1
+        } }; };
+        var timing = monitor.sample().videoTiming;
+        Object.keys(timing).forEach(function(key) { expect(timing[key]).toBeNull(); });
+    });
+
 });
 
 describe('Guacamole.Tunnel transport diagnostics', function() {
@@ -158,4 +216,5 @@ describe('Guacamole.Tunnel transport diagnostics', function() {
         fallback.setState(Guacamole.Tunnel.State.CLOSED);
         expect(chained.isConnected()).toBe(false);
     });
+
 });

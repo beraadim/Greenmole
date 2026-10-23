@@ -8,4 +8,9 @@
     <div>{{'CLIENT.PERFORMANCE_PROCESSING_P95' | translate}}: {{number(sample.processingP95)}} ms · {{'CLIENT.PERFORMANCE_SOURCE_FRAMES' | translate}}: {{number(sample.sourceFramesPerFrame)}}</div>
     <div>{{'CLIENT.PERFORMANCE_QUEUE' | translate}}: {{number(sample.pendingFrames)}} · {{'CLIENT.PERFORMANCE_QUEUE_AGE' | translate}}: {{number(sample.oldestFrameAge)}} ms<span ng-if="sample.blocked"> · {{'CLIENT.PERFORMANCE_WAITING_IMAGE' | translate}}</span></div>
     <div>{{'CLIENT.PERFORMANCE_IMAGE_FAILURES' | translate}}: {{number(sample.imageFailures)}} · {{'CLIENT.PERFORMANCE_REFRESHES' | translate}}: {{number(sample.refreshRequests)}}</div>
+    <div ng-if="sample.videoTiming" title="{{'CLIENT.PERFORMANCE_VIDEO_TIMING_HELP' | translate}}">
+        <div>{{'CLIENT.PERFORMANCE_VIDEO_TIMING' | translate}}</div>
+        <div>{{'CLIENT.PERFORMANCE_VIDEO_ASSEMBLY' | translate}}: {{number(sample.videoTiming.assemblyAverageMs)}} / {{number(sample.videoTiming.assemblyMaxMs)}} · {{'CLIENT.PERFORMANCE_VIDEO_QUEUE' | translate}}: {{number(sample.videoTiming.encodedQueueAverageMs)}} / {{number(sample.videoTiming.encodedQueueMaxMs)}}</div>
+        <div>{{'CLIENT.PERFORMANCE_VIDEO_DECODE_OUTPUT' | translate}}: {{number(sample.videoTiming.decodeOutputAverageMs)}} / {{number(sample.videoTiming.decodeOutputMaxMs)}} · {{'CLIENT.PERFORMANCE_VIDEO_ORDERED_DISPLAY' | translate}}: {{number(sample.videoTiming.orderedDisplayAverageMs)}} / {{number(sample.videoTiming.orderedDisplayMaxMs)}}</div>
+    </div>
 </div>
