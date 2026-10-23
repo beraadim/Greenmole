@@ -38,7 +38,8 @@ configuration keys or authentication extensions.
 Greenmole includes improvements to image encoding, browser update scheduling,
 frame recovery, resizing, and clipboard handling. Experimental AVC420 and AVC444
 browser decoding can improve desktop video performance with a compatible server
-such as macrdp. These options default off, require a compatible secure-context
+such as [Greenmole RDP](https://github.com/beraadim/Greenmole-RDP), the companion
+macOS RDP server. These options default off, require a compatible secure-context
 WebCodecs decoder, and need a full reconnect after opt-in. Ordinary connections
 continue to use image updates.
 
@@ -51,6 +52,14 @@ On iPad, select **Input method → Native keyboard** in the connection menu.
 The keyboard controls and visible-area layout adapt to the device keyboard;
 the selection is remembered in that browser. See the
 [native keyboard guide](docs/native-keyboard.md).
+
+## Companion macOS RDP server
+
+[Greenmole RDP](https://github.com/beraadim/Greenmole-RDP) is the macOS server
+companion to Greenmole. It also supports Windows Remote Desktop Connection and
+other compatible RDP clients. Greenmole RDP is an independently maintained fork
+of [MacRDP by x6nux](https://github.com/x6nux/macrdp), separately licensed under
+GPLv3. See its repository for setup instructions and downloads.
 
 ## Build
 
