@@ -12,6 +12,18 @@
  * limitations under the License.
  */
 
+/* FreeRDP 2's inline color helpers use WinPR's GNU __FUNCTION__ macro.
+ * Scope the exception to that external header, keeping our tests and settings
+ * declarations subject to the same strict warnings as the other RDP tests. */
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+#include <freerdp/codec/color.h>
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
+
 #include "../../keymap.h"
 #include "../../settings.h"
 
