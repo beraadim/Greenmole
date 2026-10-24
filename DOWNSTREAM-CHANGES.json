@@ -9,6 +9,7 @@
       "upstream_commit": "84a1acea9f99f849d7e6ad95a3218d385b36c55a",
       "modified_files": [
         "client/Dockerfile",
+        "client/guacamole-common-js/package-lock.json",
         "client/guacamole-common-js/package.json",
         "client/guacamole-common-js/src/main/webapp/modules/Client.js",
         "client/guacamole-common-js/src/main/webapp/modules/Display.js",
