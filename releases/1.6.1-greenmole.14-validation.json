@@ -1,0 +1,244 @@
+{
+  "version": "1.6.1-greenmole.14",
+  "source_revision": "5c7f168a0e3c558184b103374cea008f58833ac8",
+  "verified_at_utc": "2026-10-24T10:17:54.464528+00:00",
+  "status": "source pushed, images built and verified, deployed with existing configuration preserved",
+  "local_dependency_validation": {
+    "scope": "five GitHub Dependabot alerts for two common-js development dependencies",
+    "changed_packages": {
+      "node_modules/markdown-it": {
+        "before": "14.3.0",
+        "after": "14.3.3",
+        "dev_only": true,
+        "license": "MIT"
+      },
+      "node_modules/follow-redirects": {
+        "before": "1.16.0",
+        "after": "1.16.1",
+        "dev_only": true,
+        "license": "MIT"
+      }
+    },
+    "only_version_resolved_integrity_fields_changed": true,
+    "package_manifests_unchanged": true,
+    "npm_ci_clean_install_passed": true,
+    "local_node_version": "24.13.0",
+    "local_npm_version": "11.6.2",
+    "browser_tests": {
+      "status": "passed",
+      "count": 286,
+      "failed": 0,
+      "pending": 0,
+      "real_webcodecs": "passed"
+    },
+    "jsdoc_generation_passed": true,
+    "targeted_packages_absent_from_npm_audit": true,
+    "remaining_common_js_audit_findings": {
+      "info": 0,
+      "low": 0,
+      "moderate": 1,
+      "high": 4,
+      "critical": 0,
+      "total": 5
+    },
+    "remaining_common_js_audit_packages": [
+      "body-parser",
+      "brace-expansion",
+      "engine.io",
+      "qs",
+      "socket.io-parser"
+    ],
+    "downstream_modification_notice_added_after_local_tests": true
+  },
+  "image_build": {
+    "maven_build_success": true,
+    "java_tests_passed": 72,
+    "common_js_firefox_tests_passed": 283,
+    "frontend_node_tests_passed": 183,
+    "native_source_unchanged": true,
+    "native_build_uses_existing_tested_cache": true,
+    "images": {
+      "greenmole/guacd:1.6.1-greenmole.14": {
+        "id": "sha256:7281d641303b130b5d60173280f2d0725ef8c2079852f3345a6834da6f7f5af0",
+        "revision": "5c7f168a0e3c558184b103374cea008f58833ac8"
+      },
+      "greenmole/web:1.6.1-greenmole.14": {
+        "id": "sha256:a5b85455c3e0948533f199a3f47267d86166a89c2991504ca920da026ee9ecb7",
+        "revision": "5c7f168a0e3c558184b103374cea008f58833ac8"
+      }
+    }
+  },
+  "builder_verification": {
+    "status": "passed",
+    "packages": {
+      "follow-redirects": {
+        "installed_version": "1.16.1",
+        "lock_version": "1.16.1",
+        "lock_integrity": "sha512-FNvFGzoMLWmE6Yj9spb/zjd7yiNCHiAW9/Tg9CXrQ8wuu32HtlJOwWO11OJafl5FfY3DxTdQ0vj42zU1kvv5jg=="
+      },
+      "markdown-it": {
+        "installed_version": "14.3.3",
+        "lock_version": "14.3.3",
+        "lock_integrity": "sha512-L//tDAkjTjJCU6pBUSBTgs3Kg4InVaZuUZog/b6V12UKhcDQ7S78877ibbCanRExwPuYP1CZD7Gd2dxSy1GXRg=="
+      }
+    },
+    "common_js_lock_sha256": "905684b20db337c3c0852a82b022aaf9c616d0cd438ceb9162b9653c580bf65b",
+    "lock_matches_committed_source": true,
+    "war_sha256": "dee5c51061100f08520f44ed93dbaf04332e4e67ead1c03efc55dacc66e30c31",
+    "builder_war_matches_runtime_war": true,
+    "npm_ci_and_jsdoc_passed": true,
+    "karma_test_result": {
+      "passed": 283,
+      "skipped": 3,
+      "failed": 0
+    },
+    "temporary_verification_resources_removed": true
+  },
+  "packaged_checks": {
+    "runtime": {
+      "status": "passed",
+      "revision": "5c7f168a0e3c558184b103374cea008f58833ac8",
+      "version": "1.6.1-greenmole.14",
+      "image_ids": [
+        "sha256:7281d641303b130b5d60173280f2d0725ef8c2079852f3345a6834da6f7f5af0",
+        "sha256:a5b85455c3e0948533f199a3f47267d86166a89c2991504ca920da026ee9ecb7"
+      ],
+      "isolated_internal_network": true,
+      "production_configuration_mounted": false,
+      "host_ports_published": false,
+      "synthetic_authentication_only": true,
+      "production_unchanged": true,
+      "language_count": 16,
+      "en_pl_version_correct": true,
+      "packaged_keyboard_template_present": true,
+      "authenticated_rdp_mode_enum_correct": true,
+      "norwegian_alias_and_canonical_present": true,
+      "guacd_optional_argument_advertised_once": true,
+      "guacd_arg_count": 90,
+      "rdp_connection_attempted": false,
+      "startup_error_lines": 0,
+      "artifacts": {
+        "archive_entries": 10904,
+        "nested_jars": 43,
+        "war_sha256": "dee5c51061100f08520f44ed93dbaf04332e4e67ead1c03efc55dacc66e30c31",
+        "runtime_node_modules_absent": true,
+        "common_js_build_source_absent": true,
+        "affected_npm_package_payloads_absent": true
+      }
+    },
+    "browser": {
+      "status": "passed",
+      "version": "1.6.1-greenmole.14",
+      "revision": "5c7f168a0e3c558184b103374cea008f58833ac8",
+      "browser": "155.0.8059.86",
+      "cases": [
+        {
+          "platform": "Win32",
+          "width": 1024,
+          "automaticMode": "windows",
+          "realPackagedControllerAndTemplate": true,
+          "allFourOptionsPersist": true,
+          "queryHintMatchesResolvedPreference": true,
+          "reloadPreservesChoice": true,
+          "noActualTunnelOrRdpConnection": true,
+          "noRemoteInputOrResize": true,
+          "pageErrors": []
+        },
+        {
+          "platform": "iPhone",
+          "width": 375,
+          "automaticMode": "mac",
+          "realPackagedControllerAndTemplate": true,
+          "allFourOptionsPersist": true,
+          "queryHintMatchesResolvedPreference": true,
+          "reloadPreservesChoice": true,
+          "noActualTunnelOrRdpConnection": true,
+          "noRemoteInputOrResize": true,
+          "pageErrors": []
+        }
+      ],
+      "screenshots_visually_reviewed": [
+        "packaged-keyboard-375.png",
+        "packaged-keyboard-1024.png"
+      ]
+    },
+    "cleanup": {
+      "temporary_containers_and_network_removed": true,
+      "temporary_synthetic_config_removed": true,
+      "production_unchanged": true,
+      "owned_ssh_forward_removed": true
+    }
+  },
+  "deployment": {
+    "guacd_health": "healthy",
+    "version": "1.6.1-greenmole.14",
+    "source_revision": "5c7f168a0e3c558184b103374cea008f58833ac8",
+    "images": {
+      "guacamole": "sha256:a5b85455c3e0948533f199a3f47267d86166a89c2991504ca920da026ee9ecb7",
+      "guacd": "sha256:7281d641303b130b5d60173280f2d0725ef8c2079852f3345a6834da6f7f5af0"
+    },
+    "configuration_preserved_except_image_tags": true,
+    "config_files_checked": 16,
+    "container_environment_mounts_and_security_preserved": true,
+    "http_readiness_verified": true,
+    "restart_counts_zero": true,
+    "actual_rdp_session_started": false
+  },
+  "startup_checks": {
+    "web": {
+      "running": true,
+      "restart_count": 0,
+      "startup_error_lines": 0
+    },
+    "gateway": {
+      "running": true,
+      "restart_count": 0,
+      "startup_error_lines": 0
+    }
+  },
+  "source_checks": {
+    "changed_commit_secret_scan_findings": 0,
+    "modified_upstream_files_with_notices": 107,
+    "upstream_license_notice_files_preserved": 213,
+    "upstream_histories_reachable": true
+  },
+  "github_dependency_graph": [
+    {
+      "name": "markdown-it",
+      "version": "14.3.3"
+    },
+    {
+      "name": "follow-redirects",
+      "version": "1.16.1"
+    }
+  ],
+  "github_alerts_at_verification": [
+    {
+      "number": 6,
+      "state": "open",
+      "fixed_at": null
+    },
+    {
+      "number": 5,
+      "state": "open",
+      "fixed_at": null
+    },
+    {
+      "number": 4,
+      "state": "open",
+      "fixed_at": null
+    },
+    {
+      "number": 3,
+      "state": "open",
+      "fixed_at": null
+    },
+    {
+      "number": 2,
+      "state": "open",
+      "fixed_at": null
+    }
+  ],
+  "alert_note": "The committed lockfile, GitHub dependency graph and actual builder all contain the patched versions. GitHub alert-state reevaluation was still pending at verification; no alerts were manually dismissed.",
+  "scope_limits": "Other inherited npm audit findings are recorded in the release notes. This release fixes the two packages behind the five requested alerts, not the entire dependency tree. No actual RDP session or physical Safari acceptance test was run."
+}
