@@ -44,6 +44,43 @@ test('installed AngularJS is the reviewed source, with no original nested runtim
     }
 });
 
+test('production index script URLs resolve to emitted frontend assets', async () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'greenmole-assets-test-'));
+    try {
+        const config = require('../webpack.config');
+        const output = path.join(temporary, 'dist');
+        await new Promise((resolve, reject) => {
+            const compiler = webpack({
+                ...config, context: frontend,
+                output: { ...config.output, path: output }
+            });
+            compiler.run((error, stats) => compiler.close(closeError => {
+                if (error || closeError) reject(error || closeError);
+                else if (stats.hasErrors()) reject(new Error(stats.toString()));
+                else resolve();
+            }));
+        });
+
+        const html = fs.readFileSync(path.join(output, 'index.html'), 'utf8');
+        const scripts = [...html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/g)]
+            .map(match => new URL(match[1], 'https://greenmole.invalid/'));
+        // These two scripts are supplied by the Java webapp, outside webpack.
+        const serverScripts = new Set(['/app.js', '/guacamole-common-js/all.min.js']);
+        assert(scripts.length > serverScripts.size);
+        assert(scripts.some(url => url.pathname === '/angular.min.js'));
+        for (const url of scripts) {
+            assert.equal(url.origin, 'https://greenmole.invalid');
+            if (!serverScripts.has(url.pathname))
+                assert(fs.statSync(path.join(output, decodeURIComponent(url.pathname))).isFile(),
+                    'Missing browser script: ' + url.pathname);
+        }
+        const angular = fs.readFileSync(path.join(output, 'angular.min.js'), 'utf8');
+        assert(angular.includes('1.8.3-greenmole.1'));
+        assert(!fs.existsSync(path.join(output, 'angular/angular.min.js')));
+    }
+    finally { fs.rmSync(temporary, { recursive: true, force: true }); }
+});
+
 test('template cache keeps nested URLs, whitespace behavior and literal content', async () => {
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'greenmole-template-test-'));
     try {

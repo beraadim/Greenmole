@@ -143,10 +143,11 @@ module.exports = {
                 {
                     from: 'angular/angular.js',
                     context: 'node_modules/',
-                    to: 'angular/angular.min.js',
+                    to: 'angular.min.js',
                     transform: async content => {
                         // Ship the reviewed source, never an obsolete prebuilt
-                        // upstream minified file. Retain MIT attribution.
+                        // upstream minified file. The original MIT license is
+                        // included in the packaged dependency notices.
                         const result = await minify(content.toString('utf8'), {
                             ecma: 5,
                             format: { comments: /^!|@license|@preserve/ }
