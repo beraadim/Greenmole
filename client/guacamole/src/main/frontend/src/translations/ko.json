@@ -41,7 +41,7 @@
 
         "FORMAT_DATE_TIME_PRECISE" : "yyyy-MM-dd HH:mm:ss",
 
-        "INFO_ACTIVE_USER_COUNT" : "현재 {USERS} 사용자에 의해 사용중입니다.}.",
+        "INFO_ACTIVE_USER_COUNT" : "현재 {USERS} 사용자에 의해 사용중입니다.",
 
         "TEXT_ANONYMOUS_USER"   : "익명",
         "TEXT_HISTORY_DURATION" : "{VALUE} {UNIT, select, second{초} minute{분} hour{시} day{일} other{}}",

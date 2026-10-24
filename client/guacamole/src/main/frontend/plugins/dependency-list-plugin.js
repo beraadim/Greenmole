@@ -15,12 +15,14 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
+ * Modified for Greenmole by its maintainers. See LICENSE and NOTICE.
  */
 
 const finder = require('find-package-json');
 const fs = require('fs');
 const path = require('path');
-const validate = require('schema-utils');
+const { validate } = require('schema-utils');
 
 /**
  * The name of this plugin.

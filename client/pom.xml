@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
+    Modified for Greenmole by its maintainers.
+
     Licensed to the Apache Software Foundation (ASF) under one
     or more contributor license agreements.  See the NOTICE file
     distributed with this work for additional information
@@ -278,7 +280,7 @@
                             <id>generate-license-files</id>
                             <phase>none</phase>
                             <configuration>
-                                <executable>${rootlocation}/doc/licenses/generate-license-files.sh</executable>
+                                <executable>${rootlocation}/doc/generate-greenmole-license-files.sh</executable>
                                 <arguments>
                                     <argument>${dependency.list.directory}</argument>
                                     <argument>${project.build.directory}/licenses</argument>

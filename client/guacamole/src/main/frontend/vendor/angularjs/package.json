@@ -1,0 +1,18 @@
+{
+  "name": "@greenmole/angularjs",
+  "version": "1.8.3-greenmole.1",
+  "private": true,
+  "description": "AngularJS 1.8.3 with reviewed Greenmole security backports; see SECURITY-PATCHES.md",
+  "main": "index.js",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/beraadim/Greenmole.git"
+  },
+  "files": [
+    "angular.js",
+    "index.js",
+    "LICENSE.md",
+    "SECURITY-PATCHES.md"
+  ]
+}

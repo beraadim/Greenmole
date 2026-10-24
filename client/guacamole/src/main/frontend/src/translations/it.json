@@ -141,7 +141,7 @@
         "HELP_MOUSE_MODE"          : "Determina come si deve comportare il mouse remoto in base al touch.",
         "HELP_MOUSE_MODE_ABSOLUTE" : "Tap to click. Il click è sostituito dal tocco.",
         "HELP_MOUSE_MODE_RELATIVE" : "Trascina il dito per muovere il puntatore del mouse e fai tap al posto del click. Il click sarà effettuato dove si trova il puntatore.",
-        "HELP_SHARE_LINK"          : "La connessione attuale è condivisa e può essere utilizzata da chiunque disponga dei seguenti {LINKS, plurale, uno{link} altri{links}}:",
+        "HELP_SHARE_LINK"          : "La connessione attuale è condivisa e può essere utilizzata da chiunque disponga dei seguenti {LINKS, plural, one{link} other{links}}:",
 
         "INFO_CONNECTION_SHARED"    : "Questa connessione è ora condivisa.",
         "INFO_NO_FILE_TRANSFERS"    : "Nessun trasferimento di file.",

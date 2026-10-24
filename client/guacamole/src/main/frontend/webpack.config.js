@@ -15,15 +15,18 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
+ * Modified for Greenmole by its maintainers. See LICENSE and NOTICE.
  */
 
-const AngularTemplateCachePlugin = require('angular-templatecache-webpack5-plugin');
+const AngularTemplateCachePlugin = require('./plugins/angular-template-cache-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 const DependencyListPlugin = require('./plugins/dependency-list-plugin');
 const HtmlPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
+const { minify } = require('terser');
 const webpack = require('webpack');
 
 module.exports = {
@@ -119,8 +122,7 @@ module.exports = {
             module: 'templates-main',
             outputFilename: 'templates.js',
             root: 'app/',
-            source: 'src/app/**/*.html',
-            standalone: true
+            sourceDirectory: 'src/app'
         }),
 
         // Copy static files to dist/
@@ -138,7 +140,20 @@ module.exports = {
         // Copy core libraries for global inclusion
         new CopyPlugin({
             patterns: [
-                { from: 'angular/angular.min.js', context: 'node_modules/' },
+                {
+                    from: 'angular/angular.js',
+                    context: 'node_modules/',
+                    to: 'angular/angular.min.js',
+                    transform: async content => {
+                        // Ship the reviewed source, never an obsolete prebuilt
+                        // upstream minified file. Retain MIT attribution.
+                        const result = await minify(content.toString('utf8'), {
+                            ecma: 5,
+                            format: { comments: /^!|@license|@preserve/ }
+                        });
+                        return result.code;
+                    }
+                },
                 { from: 'blob-polyfill/Blob.js', context: 'node_modules/' },
                 { from: 'datalist-polyfill/datalist-polyfill.min.js', context: 'node_modules/' },
                 { from: 'jquery/dist/jquery.min.js', context: 'node_modules/' },
@@ -173,6 +188,13 @@ module.exports = {
 
     ],
     resolve: {
+
+        // Compile the maintained source entry rather than its prebundled UMD
+        // artifact, so every shipped transitive dependency is independently
+        // locked and included in the generated license inventory.
+        alias: {
+            'messageformat$': require.resolve('messageformat/lib/messageformat.js')
+        },
 
         fallback: {
             'assert': 'assert/',

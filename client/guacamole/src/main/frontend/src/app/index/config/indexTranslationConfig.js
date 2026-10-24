@@ -15,7 +15,11 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
+ * Modified for Greenmole by its maintainers. See LICENSE and NOTICE.
  */
+
+const configureLegacyMessageFormat = require('../../locale/legacyMessageFormat');
 
 /**
  * The configuration block for setting up everything having to do with i18n.
@@ -37,6 +41,9 @@ angular.module('index').config(['$injector', function($injector) {
 
     // Load translations via translationLoader service
     $translateProvider.useLoader('translationLoader');
+
+    $injector.get('$translateMessageFormatInterpolationProvider')
+        .messageFormatConfigurer(configureLegacyMessageFormat);
 
     // Provide pluralization, etc. via messageformat.js
     $translateProvider.useMessageFormatInterpolation();

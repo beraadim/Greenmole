@@ -1,0 +1,1 @@
+@messageformat/core:3.4.1

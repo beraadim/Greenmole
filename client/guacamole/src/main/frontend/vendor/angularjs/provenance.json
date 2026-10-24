@@ -1,0 +1,29 @@
+{
+  "name": "@greenmole/angularjs",
+  "version": "1.8.3-greenmole.1",
+  "upstream": {
+    "name": "angular",
+    "version": "1.8.3",
+    "url": "https://registry.npmjs.org/angular/-/angular-1.8.3.tgz",
+    "tarballSha256": "005824934b8145261b6ab131070ad7edaa50056cfacad5f86748fbcff9e26cdf",
+    "angularSha256": "fdca889e76f55fdee7ab661920f37ce19233563bf7f4ac8120f8ebc2ac768768"
+  },
+  "patchedAngularSha256": "93a29f37e71cb891a73fb8e4ea23aa679ba40f940195c255698cb371b0311705",
+  "patchSha256": "aaa8113806ebac8b2813c160982bd531eba8160fb74aeadb6e07217507388985",
+  "fixedAdvisories": [
+    "GHSA-prc3-vjfx-vhm9",
+    "GHSA-j58c-ww9w-pwp5",
+    "GHSA-m2h2-264f-f486",
+    "GHSA-m9gf-397r-hwpg",
+    "GHSA-mqm9-c95h-x2p6",
+    "GHSA-4w4v-5hc9-xrr2",
+    "GHSA-2vrf-hf26-jrp5",
+    "GHSA-qwqh-hm9m-p5hr",
+    "GHSA-7x27-g8rg-x87w"
+  ],
+  "notShipped": {
+    "GHSA-2qqx-w9hr-q5gx": "angular-resource is not included in this core-only package or Greenmole runtime."
+  },
+  "licenseSha256": "f64ba8a51fa64d7f4616e88d0850eca2aa43c4ca73a798ff92f744012d0ff4df",
+  "indexSha256": "851cfe04ff97b7fcde6bd2943b1e5fb853fd6c784c5f9b872e6c5a86c64e485e"
+}

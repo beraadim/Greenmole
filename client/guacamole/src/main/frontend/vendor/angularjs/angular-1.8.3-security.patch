@@ -1,0 +1,223 @@
+--- a/angular.js
++++ b/angular.js
+@@ -1,7 +1,8 @@
+ /**
+- * @license AngularJS v1.8.3
++ * @license AngularJS v1.8.3 (Greenmole security backports)
+  * (c) 2010-2020 Google LLC. http://angularjs.org
+  * License: MIT
++ * Modified for Greenmole by its maintainers; see SECURITY-PATCHES.md.
+  */
+ (function(window) {'use strict';
+ 
+@@ -1138,7 +1139,7 @@
+         return new source.constructor(source.valueOf());
+ 
+       case '[object RegExp]':
+-        var re = new RegExp(source.source, source.toString().match(/[^/]*$/)[0]);
++        var re = new RegExp(source.source, source.flags);
+         re.lastIndex = source.lastIndex;
+         return re;
+ 
+@@ -2828,7 +2829,8 @@
+ var version = {
+   // These placeholder strings will be replaced by grunt's `build` task.
+   // They need to be double- or single-quoted.
+-  full: '1.8.3',
++  full: '1.8.3-greenmole.1',
++  vendor: 'Greenmole',
+   major: 1,
+   minor: 8,
+   dot: 3,
+@@ -9408,46 +9410,44 @@
+         throw $compileMinErr('srcset', 'Can\'t pass trusted values to `{0}`: "{1}"', invokeType, value.toString());
+       }
+ 
+-      // Such values are a bit too complex to handle automatically inside $sce.
+-      // Instead, we sanitize each of the URIs individually, which works, even dynamically.
+-
+-      // It's not possible to work around this using `$sce.trustAsMediaUrl`.
+-      // If you want to programmatically set explicitly trusted unsafe URLs, you should use
+-      // `$sce.trustAsHtml` on the whole `img` tag and inject it into the DOM using the
+-      // `ng-bind-html` directive.
+-
+-      var result = '';
+-
+-      // first check if there are spaces because it's not the same pattern
+-      var trimmedSrcset = trim(value);
+-      //                (   999x   ,|   999w   ,|   ,|,   )
+-      var srcPattern = /(\s+\d+x\s*,|\s+\d+w\s*,|\s+,|,\s+)/;
+-      var pattern = /\s/.test(trimmedSrcset) ? srcPattern : /(,)/;
+-
+-      // split srcset into tuple of uri and descriptor except for the last item
+-      var rawUris = trimmedSrcset.split(pattern);
+-
+-      // for each tuples
+-      var nbrUrisWith2parts = Math.floor(rawUris.length / 2);
+-      for (var i = 0; i < nbrUrisWith2parts; i++) {
+-        var innerIdx = i * 2;
+-        // sanitize the uri
+-        result += $sce.getTrustedMediaUrl(trim(rawUris[innerIdx]));
+-        // add the descriptor
+-        result += ' ' + trim(rawUris[innerIdx + 1]);
+-      }
+-
+-      // split the last item into uri and descriptor
+-      var lastTuple = trim(rawUris[i * 2]).split(/\s/);
+-
+-      // sanitize the last uri
+-      result += $sce.getTrustedMediaUrl(trim(lastTuple[0]));
+-
+-      // and add the last descriptor if any
+-      if (lastTuple.length === 2) {
+-        result += (' ' + trim(lastTuple[1]));
+-      }
+-      return result;
++      // Tokenize once following HTML's srcset URL/descriptor boundaries.
++      // Commas inside URLs (notably data:image URLs) are not separators;
++      // trailing commas and commas outside descriptor parentheses are.
++      // Sanitize every candidate, including decimal density descriptors.
++      var result = [];
++      var position = 0;
++      var length = value.length;
++      function whitespace(character) {
++        return character === ' ' || character === '\t' || character === '\n' ||
++            character === '\r' || character === '\f';
++      }
++      while (position < length) {
++        while (position < length && (whitespace(value[position]) || value[position] === ',')) position++;
++        var start = position;
++        while (position < length && !whitespace(value[position])) position++;
++        var uri = value.slice(start, position);
++        if (!uri) break;
++        var descriptors = '';
++        if (uri[uri.length - 1] === ',') {
++          var uriEnd = uri.length;
++          while (uriEnd && uri[uriEnd - 1] === ',') uriEnd--;
++          uri = uri.slice(0, uriEnd);
++        } else {
++          start = position;
++          var inParentheses = false;
++          while (position < length) {
++            var character = value[position];
++            if (character === ',' && !inParentheses) break;
++            if (character === '(') inParentheses = true;
++            else if (character === ')') inParentheses = false;
++            position++;
++          }
++          descriptors = value.slice(start, position).trim();
++          if (position < length) position++;
++        }
++        if (uri) result.push($sce.getTrustedMediaUrl(uri) + (descriptors ? ' ' + descriptors : ''));
++      }
++      return result.join(', ');
+     }
+ 
+ 
+@@ -9587,7 +9587,7 @@
+         nodeName = nodeName_(this.$$element);
+ 
+         // Sanitize img[srcset] values.
+-        if (nodeName === 'img' && key === 'srcset') {
++        if ((nodeName === 'img' || nodeName === 'source') && key === 'srcset') {
+           this[key] = value = sanitizeSrcset(value, '$set(\'srcset\', value)');
+         }
+ 
+@@ -10116,6 +10116,9 @@
+           }
+           break;
+         case NODE_TYPE_TEXT: /* Text Node */
++          // IE can restore user-entered textarea content as DOM text on back
++          // navigation. Never interpret that restored input as an expression.
++          if (msie && node.parentNode && nodeName_(node.parentNode) === 'textarea') break;
+           addTextInterpolateDirective(directives, node.nodeValue);
+           break;
+         case NODE_TYPE_COMMENT: /* Comment */
+@@ -11159,6 +11162,9 @@
+           (nodeName === 'link' && attrNormalizedName === 'href')
+       ) {
+         return $sce.RESOURCE_URL;
++      } else if (nodeName === 'image' && (attrNormalizedName === 'href' ||
++                                           attrNormalizedName === 'ngHref')) {
++        return $sce.MEDIA_URL;
+       } else if (nodeName === 'a' && (attrNormalizedName === 'href' ||
+                                  attrNormalizedName === 'ngHref')) {
+         return $sce.URL;
+@@ -20103,7 +20109,7 @@
+     // The only other type of matcher allowed is a Regexp.
+     // Match entire URL / disallow partial matches.
+     // Flags are reset (i.e. no global, ignoreCase or multiline)
+-    return new RegExp('^' + matcher.source + '$');
++    return new RegExp('^(?:' + matcher.source + ')$');
+   } else {
+     throw $sceMinErr('imatcher',
+         'Matchers may only be "self", string patterns or RegExp objects');
+@@ -22624,14 +22630,20 @@
+       fractionSize = formats.PATTERNS[1].maxFrac;
+     }
+ 
+-    // If the currency symbol is empty, trim whitespace around the symbol
+-    var currencySymbolRe = !currencySymbol ? /\s*\u00A4\s*/g : /\u00A4/g;
+-
+-    // if null or undefined pass it through
+-    return (amount == null)
+-        ? amount
+-        : formatNumber(amount, formats.PATTERNS[1], formats.GROUP_SEP, formats.DECIMAL_SEP, fractionSize).
+-            replace(currencySymbolRe, currencySymbol);
++    if (amount == null) return amount;
++    var formatted = formatNumber(amount, formats.PATTERNS[1], formats.GROUP_SEP,
++        formats.DECIMAL_SEP, fractionSize);
++    if (currencySymbol) return formatted.replace(/\u00A4/g, currencySymbol);
++
++    // Split/trim is linear even when attacker-supplied locale prefixes contain
++    // long whitespace runs before a non-symbol. Backport of Debian's fix.
++    var parts = formatted.split('\u00A4');
++    if (parts.length === 1) return formatted;
++    parts[0] = parts[0].trimEnd();
++    var last = parts.length - 1;
++    parts[last] = parts[last].trimStart();
++    for (var i = 1; i < last; i++) parts[i] = parts[i].trim();
++    return parts.join('');
+   };
+ }
+ 
+@@ -25355,19 +25367,17 @@
+ 
+ // Regex code was initially obtained from SO prior to modification: https://stackoverflow.com/questions/3143070/javascript-regex-iso-datetime#answer-3143231
+ var ISO_DATE_REGEXP = /^\d{4,}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+(?:[+-][0-2]\d:[0-5]\d|Z)$/;
+-// See valid URLs in RFC3987 (http://tools.ietf.org/html/rfc3987)
+-// Note: We are being more lenient, because browsers are too.
+-//   1. Scheme
+-//   2. Slashes
+-//   3. Username
+-//   4. Password
+-//   5. Hostname
+-//   6. Port
+-//   7. Path
+-//   8. Query
+-//   9. Fragment
+-//                 1111111111111111 222   333333    44444        55555555555555555555555     666     77777777     8888888     999
+-var URL_REGEXP = /^[a-z][a-z\d.+-]*:\/*(?:[^:@]+(?::[^@]+)?@)?(?:[^\s:/?#]+|\[[a-f\d:]+])(?::\d+)?(?:\/[^?#]*)?(?:\?[^#]*)?(?:#.*)?$/i;
++// URL input validation uses the platform parser instead of a backtracking
++// expression. This is validation only; URL security contexts still use $sce.
++function isValidUrlInput(value) {
++  if (!/^[a-z][a-z\d.+-]*:/i.test(value) || /\s/.test(value)) return false;
++  try {
++    new window.URL(value);
++    return true;
++  } catch (error) {
++    return false;
++  }
++}
+ // eslint-disable-next-line max-len
+ var EMAIL_REGEXP = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+(\.[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
+ var NUMBER_REGEXP = /^\s*(-|\+)?(\d+|(\d*(\.\d*)))([eE][+-]?\d+)?\s*$/;
+@@ -27285,7 +27295,7 @@
+ 
+   ctrl.$validators.url = function(modelValue, viewValue) {
+     var value = modelValue || viewValue;
+-    return ctrl.$isEmpty(value) || URL_REGEXP.test(value);
++    return ctrl.$isEmpty(value) || isValidUrlInput(value);
+   };
+ }
+ 

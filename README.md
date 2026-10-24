@@ -76,7 +76,7 @@ docker build -t greenmole/web:dev client/
 For reviewed downstream releases, use the pinned build inputs:
 
 ```sh
-python3 scripts/build-images.py releases/1.6.1-greenmole.14.json --jobs 4
+python3 scripts/build-images.py releases/1.6.1-greenmole.15.json --jobs 4
 ```
 
 The driver builds local images; it does not publish or deploy them. It pins base
@@ -89,6 +89,13 @@ When building an exported source archive, set `SOURCE_REVISION` to its Git commi
 and preserve source file permissions when extracting it (`tar -xp`). Runtime
 entrypoints execute as unprivileged container users; the driver rejects
 entrypoints whose permissions would prevent this.
+
+The frontend includes [reviewed AngularJS security backports](client/guacamole/src/main/frontend/vendor/angularjs/SECURITY-PATCHES.md).
+Builds verify source integrity and run browser regressions. Release validation
+also checks the original AngularJS package's advisory feed with
+`npm run audit:angular-upstream` from `client/guacamole/src/main/frontend`, so
+the local package name cannot hide newly reported upstream advisories. Registry
+audit results alone do not validate the vendored framework.
 
 Native `make check` gates the server image. The client build runs Java, Firefox
 browser, and frontend Node tests with `-DskipTests=false`. Also test a real remote

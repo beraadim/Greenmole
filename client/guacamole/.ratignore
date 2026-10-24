@@ -1,2 +1,8 @@
+# Modified for Greenmole by its maintainers.
 src/main/frontend/dist/**/*
 src/main/resources/META-INF/services/*
+
+# Verified MIT AngularJS source and entry point; see vendor/angularjs/LICENSE.md.
+src/main/frontend/vendor/angularjs/angular.js
+src/main/frontend/vendor/angularjs/index.js
+src/main/frontend/vendor/angularjs/angular-1.8.3-security.patch

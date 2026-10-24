@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
+    Modified for Greenmole by its maintainers.
+
     Licensed to the Apache Software Foundation (ASF) under one
     or more contributor license agreements.  See the NOTICE file
     distributed with this work for additional information
@@ -210,7 +212,7 @@
                 </executions>
             </plugin>
 
-            <!-- Unit test using Jasmin and Firefox -->
+            <!-- Unit test using Jasmine and Firefox -->
             <plugin>
                 <groupId>com.github.eirslett</groupId>
                 <artifactId>frontend-maven-plugin</artifactId>
@@ -218,8 +220,9 @@
                 
                 <configuration>
 
-                    <!-- The version of node to use for running tests -->
-                    <nodeVersion>v16.19.1</nodeVersion>
+                    <!-- Match the frontend build tooling; Node 16 is no longer supported. -->
+                    <nodeVersion>v24.13.0</nodeVersion>
+                    <npmVersion>11.7.0</npmVersion>
 
                     <!-- Install dependencies with "npm ci" for repeatability -->
                     <arguments>ci</arguments>

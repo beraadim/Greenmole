@@ -8,9 +8,11 @@
       "upstream_url": "https://github.com/apache/guacamole-client.git",
       "upstream_commit": "84a1acea9f99f849d7e6ad95a3218d385b36c55a",
       "modified_files": [
+        "client/.ratignore",
         "client/Dockerfile",
         "client/guacamole-common-js/package-lock.json",
         "client/guacamole-common-js/package.json",
+        "client/guacamole-common-js/pom.xml",
         "client/guacamole-common-js/src/main/webapp/modules/Client.js",
         "client/guacamole-common-js/src/main/webapp/modules/Display.js",
         "client/guacamole-common-js/src/main/webapp/modules/InputStream.js",
@@ -24,8 +26,11 @@
         "client/guacamole-common/src/main/java/org/apache/guacamole/websocket/GuacamoleWebSocketTunnelEndpoint.java",
         "client/guacamole-ext/src/main/java/org/apache/guacamole/protocols/ProtocolInfo.java",
         "client/guacamole-ext/src/main/resources/org/apache/guacamole/protocols/rdp.json",
+        "client/guacamole/.ratignore",
         "client/guacamole/pom.xml",
+        "client/guacamole/src/main/frontend/package-lock.json",
         "client/guacamole/src/main/frontend/package.json",
+        "client/guacamole/src/main/frontend/plugins/dependency-list-plugin.js",
         "client/guacamole/src/main/frontend/src/app/client/controllers/clientController.js",
         "client/guacamole/src/main/frontend/src/app/client/directives/guacClient.js",
         "client/guacamole/src/main/frontend/src/app/client/directives/guacViewport.js",
@@ -36,6 +41,7 @@
         "client/guacamole/src/main/frontend/src/app/client/types/ClientProperties.js",
         "client/guacamole/src/main/frontend/src/app/client/types/ManagedClient.js",
         "client/guacamole/src/main/frontend/src/app/clipboard/services/clipboardService.js",
+        "client/guacamole/src/main/frontend/src/app/index/config/indexTranslationConfig.js",
         "client/guacamole/src/main/frontend/src/app/index/services/iconService.js",
         "client/guacamole/src/main/frontend/src/app/login/styles/dialog.css",
         "client/guacamole/src/main/frontend/src/app/login/templates/login.html",
@@ -61,8 +67,10 @@
         "client/guacamole/src/main/frontend/src/translations/ru.json",
         "client/guacamole/src/main/frontend/src/translations/tr.json",
         "client/guacamole/src/main/frontend/src/translations/zh.json",
+        "client/guacamole/src/main/frontend/webpack.config.js",
         "client/guacamole/src/main/java/org/apache/guacamole/tunnel/TunnelRequest.java",
-        "client/guacamole/src/main/java/org/apache/guacamole/tunnel/TunnelRequestService.java"
+        "client/guacamole/src/main/java/org/apache/guacamole/tunnel/TunnelRequestService.java",
+        "client/pom.xml"
       ]
     },
     "server": {

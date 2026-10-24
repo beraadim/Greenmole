@@ -1,5 +1,15 @@
+# Modified for Greenmole by its maintainers.
 .github/**
 CONTRIBUTING
 doc/licenses/*/**/*
+# Reviewed third-party license texts, validated by the license generator.
+doc/greenmole-license-supplements/**
 doc/**/html/*.html
 guacamole-docker/*.pref
+
+# Verified third-party AngularJS source/entry point and its complete security diff.
+# Original MIT license is vendor/angularjs/LICENSE.md; provenance is checksum data.
+guacamole/src/main/frontend/vendor/angularjs/angular.js
+guacamole/src/main/frontend/vendor/angularjs/index.js
+guacamole/src/main/frontend/vendor/angularjs/angular-1.8.3-security.patch
+guacamole/src/main/frontend/vendor/angularjs/provenance.json
