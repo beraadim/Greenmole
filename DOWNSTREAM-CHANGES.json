@@ -1,6 +1,6 @@
 {
-  "format_version": 1,
-  "description": "Files modified for Greenmole from the recorded Apache Guacamole source revisions.",
+  "format_version": 2,
+  "description": "Files modified or retired for Greenmole from the recorded Apache Guacamole source revisions.",
   "modification_notice": "Modified for Greenmole by its maintainers.",
   "json_notice_key": "_greenmoleModificationNotice",
   "components": {
@@ -10,6 +10,7 @@
       "modified_files": [
         "client/.ratignore",
         "client/Dockerfile",
+        "client/extensions/guacamole-auth-radius/pom.xml",
         "client/guacamole-common-js/package-lock.json",
         "client/guacamole-common-js/package.json",
         "client/guacamole-common-js/pom.xml",
@@ -68,9 +69,28 @@
         "client/guacamole/src/main/frontend/src/translations/tr.json",
         "client/guacamole/src/main/frontend/src/translations/zh.json",
         "client/guacamole/src/main/frontend/webpack.config.js",
+        "client/guacamole/src/main/java/org/apache/guacamole/tunnel/TunnelModule.java",
         "client/guacamole/src/main/java/org/apache/guacamole/tunnel/TunnelRequest.java",
         "client/guacamole/src/main/java/org/apache/guacamole/tunnel/TunnelRequestService.java",
         "client/pom.xml"
+      ],
+      "removed_files": [
+        {
+          "path": "client/guacamole/src/main/java/org/apache/guacamole/tunnel/websocket/tomcat/GuacamoleWebSocketTunnelServlet.java",
+          "upstream_blob": "25e8059ee334196263a0cf83c0f8066ba2d3b032"
+        },
+        {
+          "path": "client/guacamole/src/main/java/org/apache/guacamole/tunnel/websocket/tomcat/RestrictedGuacamoleWebSocketTunnelServlet.java",
+          "upstream_blob": "510149527b2d7f165c0d56ea8c7023c2cbd3f26f"
+        },
+        {
+          "path": "client/guacamole/src/main/java/org/apache/guacamole/tunnel/websocket/tomcat/WebSocketTunnelModule.java",
+          "upstream_blob": "5529fab59d412fa50fad35209e31efe54b1f37ab"
+        },
+        {
+          "path": "client/guacamole/src/main/java/org/apache/guacamole/tunnel/websocket/tomcat/package-info.java",
+          "upstream_blob": "4606e431b006d9b64717799da94db18d7c1451a5"
+        }
       ]
     },
     "server": {
@@ -129,7 +149,8 @@
         "server/src/protocols/rdp/settings.h",
         "server/src/protocols/rdp/tests/Makefile.am",
         "server/src/protocols/rdp/user.c"
-      ]
+      ],
+      "removed_files": []
     }
   }
 }

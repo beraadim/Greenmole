@@ -1,4 +1,6 @@
 /*
+ * Modified for Greenmole by its maintainers.
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -36,13 +38,14 @@ public class TunnelModule extends ServletModule {
     private final Logger logger = LoggerFactory.getLogger(TunnelModule.class);
 
     /**
-     * Classnames of all implementation-specific WebSocket tunnel modules.
+     * Classnames of supported WebSocket tunnel modules, ordered by preference.
+     * Tomcat uses the standard JSR-356 implementation; its obsolete proprietary
+     * Tomcat 7 API is no longer supported.
      */
     private static final String[] WEBSOCKET_MODULES = {
         "org.apache.guacamole.tunnel.websocket.WebSocketTunnelModule",
         "org.apache.guacamole.tunnel.websocket.jetty8.WebSocketTunnelModule",
-        "org.apache.guacamole.tunnel.websocket.jetty9.WebSocketTunnelModule",
-        "org.apache.guacamole.tunnel.websocket.tomcat.WebSocketTunnelModule"
+        "org.apache.guacamole.tunnel.websocket.jetty9.WebSocketTunnelModule"
     };
 
     private boolean loadWebSocketModule(String classname) {

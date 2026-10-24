@@ -298,21 +298,6 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Tomcat servlet API (websocket)  -->
-        <dependency>
-            <groupId>org.apache.tomcat</groupId>
-            <artifactId>tomcat-catalina</artifactId>
-            <version>7.0.37</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.tomcat</groupId>
-            <artifactId>tomcat-coyote</artifactId>
-            <version>7.0.37</version>
-            <scope>provided</scope>
-        </dependency>
-
         <!-- Guice - Dependency Injection -->
         <dependency>
             <groupId>com.google.inject</groupId>

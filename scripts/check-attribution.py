@@ -90,6 +90,7 @@ def inspect():
         if not reachable:
             errors.append(f"{component}: recorded upstream revision is not an ancestor of HEAD")
         modified = []
+        removed = []
         for name, (mode, digest) in sorted(upstream_files(revision).items()):
             path = ROOT / component / name
             relative = path.relative_to(ROOT).as_posix()
@@ -98,7 +99,13 @@ def inspect():
             elif path.is_file():
                 data = path.read_bytes()
             else:
-                errors.append(f"{relative}: upstream file was removed")
+                if is_attribution_file(name):
+                    errors.append(f"{relative}: upstream attribution file was removed")
+                else:
+                    # Retiring obsolete code is allowed, but must be explicitly
+                    # recorded in the reviewed manifest. The reachable upstream
+                    # revision and original blob retain its source attribution.
+                    removed.append({"path": relative, "upstream_blob": digest})
                 continue
             if is_attribution_file(name):
                 protected += 1
@@ -114,6 +121,7 @@ def inspect():
             "upstream_url": upstream["url"],
             "upstream_commit": revision,
             "modified_files": modified,
+            "removed_files": removed,
         }
 
     # The root license is an exact upstream copy. Root NOTICE adds independent
@@ -129,8 +137,8 @@ def inspect():
         errors.append("NOTICE: independent Greenmole attribution is missing")
 
     manifest = {
-        "format_version": 1,
-        "description": "Files modified for Greenmole from the recorded Apache Guacamole source revisions.",
+        "format_version": 2,
+        "description": "Files modified or retired for Greenmole from the recorded Apache Guacamole source revisions.",
         "modification_notice": NOTICE,
         "json_notice_key": JSON_NOTICE_KEY,
         "components": components,
@@ -153,7 +161,9 @@ def main():
             print(error, file=sys.stderr)
         return 1
     count = sum(len(value["modified_files"]) for value in manifest["components"].values())
+    retired = sum(len(value["removed_files"]) for value in manifest["components"].values())
     print(f"Attribution verified: {count} modified files carry notices; "
+          f"{retired} retired source files are recorded; "
           f"{protected} upstream license/notice files are unchanged; "
           "both upstream histories remain reachable.")
     return 0
