@@ -1,0 +1,382 @@
+{
+  "version": "1.6.1-greenmole.16",
+  "source_revision": "68459080bf3bb4d1c768a2bd7862e559d280f3e0",
+  "source_archive_sha256": "d2615d6c8e8fa564a298db7a7867c7220a97f84f1fb8f50672b5a411216832f5",
+  "status": "source pushed, images built and verified, deployed with existing configuration preserved",
+  "verified_at_utc": "2026-10-24T13:39:00.365243+00:00",
+  "source_checks": {
+    "commit_secret_scan_findings": 0,
+    "source_commits_scanned": [
+      "feb17b41e15e4c7a535c8c5868fe11f9db6092bc",
+      "68459080bf3bb4d1c768a2bd7862e559d280f3e0"
+    ],
+    "upstream_attribution_files_unchanged": 213,
+    "modified_upstream_files_with_notices": 117,
+    "retired_upstream_source_files_recorded": 4,
+    "upstream_histories_reachable": true,
+    "attribution_retirement_and_protected_file_negative_tests": "passed"
+  },
+  "image_build": {
+    "source_revision": "68459080bf3bb4d1c768a2bd7862e559d280f3e0",
+    "maven_build_success": true,
+    "maven_errors": 0,
+    "java": {
+      "tests": 72,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "common_js_firefox": {
+      "passed": 283,
+      "skipped": 3
+    },
+    "frontend_node": {
+      "passed": 192,
+      "failed": 0
+    },
+    "native_source_unchanged": true,
+    "native_build_uses_existing_tested_cache": true,
+    "angular_browser": [
+      {
+        "version": "1.8.3-greenmole.1",
+        "passed": 24,
+        "failed": 0,
+        "simulated_ie_document_mode": null
+      },
+      {
+        "version": "1.8.3-greenmole.1",
+        "passed": 25,
+        "failed": 0,
+        "simulated_ie_document_mode": 11
+      }
+    ]
+  },
+  "optional_radius": {
+    "sha256": "e82247983d40a4f17a3b64095b2453935647c95fcbb377da1466c0922b7ce3ec",
+    "nestedJars": [
+      "aopalliance-1.0.jar",
+      "bcprov-jdk18on-1.86.jar",
+      "checker-qual-3.37.0.jar",
+      "commons-beanutils-1.11.0.jar",
+      "commons-chain-1.2.jar",
+      "commons-collections-3.2.2.jar",
+      "commons-logging-1.4.0.jar",
+      "commons-pool-1.5.4.jar",
+      "ehcache-core-2.4.0.jar",
+      "error_prone_annotations-2.21.1.jar",
+      "failureaccess-1.0.1.jar",
+      "guava-32.1.3-jre.jar",
+      "guice-5.1.0.jar",
+      "j2objc-annotations-2.8.jar",
+      "javax.inject-1.jar",
+      "jradius-core-1.1.5.jar",
+      "jradius-dictionary-1.1.5.jar",
+      "jradius-extended-1.1.5.jar",
+      "jspecify-1.0.0.jar",
+      "jsr305-3.0.2.jar",
+      "listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar",
+      "micrometer-commons-1.16.6.jar",
+      "micrometer-observation-1.16.6.jar",
+      "spring-aop-7.0.8.jar",
+      "spring-beans-7.0.8.jar",
+      "spring-context-7.0.8.jar",
+      "spring-core-7.0.8.jar",
+      "spring-expression-7.0.8.jar"
+    ],
+    "radiusClassCount": 26,
+    "lang2Files": [],
+    "lang2References": [],
+    "runtimeDependencyListHasLang2": false,
+    "testTotals": {
+      "tests": 50,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "radiusTests": 0,
+    "runtimeProbe": "FAILS ON BOTH BASELINE AND CANDIDATE: JRadius1.1.5 eager EAP-TLS initialization references removed BouncyCastle DERObjectIdentifier",
+    "profile": "lgpl-extensions",
+    "clean_package_with_tests_enabled": "passed",
+    "upstream_radius_test_count": 0,
+    "runtime_authentication_certified": false,
+    "baseline_and_candidate_runtime_probe": "failed identically due to JRadius 1.1.5 referencing removed Bouncy Castle DERObjectIdentifier",
+    "crypto_dependencies_and_protocol_choices_unchanged": true,
+    "production_radius_extension_enabled": false,
+    "tested_parent_and_radius_poms_match_release_source": true
+  },
+  "minifier_builder": {
+    "source_commit": "68459080bf3bb4d1c768a2bd7862e559d280f3e0",
+    "release": "1.6.1-greenmole.16",
+    "expected_plexus_version": "3.6.1",
+    "expected_plexus_jar_sha256": "05a63effd67e2d6b9d610cc82e2bd7473289d34802e57a529b28110f28af5679",
+    "expected_parent_pom_sha256": "baa087ca22d0e05619f38f5e07cc25774596a08b2e3be90d8c4fbafcbabc732b",
+    "started_utc": "2026-10-24T13:37:40.883115+00:00",
+    "production_or_repository_modified": false,
+    "network_access_during_test": "none",
+    "runtime_image_id": "sha256:d595a8ad4070da76b6d930249fdf772104e5ec721cee6d530154dfacc2a95948",
+    "builder_image_id": "sha256:941cc6c02016895e6c3360dc467c4f34f213d4959de190fa71233c19b495dc2a",
+    "actual_minifier_realm_plexus": [
+      "org.codehaus.plexus:plexus-utils:jar:3.6.1"
+    ],
+    "offline_minification_succeeded": true,
+    "actual_jar_and_parent_pom_match": true,
+    "status": "passed",
+    "owned_temporary_resources_removed": true,
+    "finished_utc": "2026-10-24T13:37:47.660396+00:00"
+  },
+  "packaged_acceptance": {
+    "status": "passed",
+    "synthetic_authentication_only": true,
+    "production_configuration_mounted": false,
+    "isolated_internal_network": true,
+    "host_ports_published": false,
+    "actual_rdp_session_started": false,
+    "standard_jsr356_module_loaded": true,
+    "startup_error_lines": 0,
+    "artifacts": {
+      "archive_entries": 147057,
+      "nested_jars": 373,
+      "extension_artifacts": [
+        {
+          "path": "/opt/guacamole/drivers/postgresql-jdbc.jar",
+          "sha256": "73914527305a40cce504b0d3d90b23caf565136912d607ae8ae7c5895512332c"
+        },
+        {
+          "path": "/opt/guacamole/drivers/mysql-jdbc.jar",
+          "sha256": "6c8e6692b521376d89bc5618c16cdeaf8c61854329f4fa25677ed08776c5bb76"
+        },
+        {
+          "path": "/opt/guacamole/drivers/mssql-jdbc.jar",
+          "sha256": "81b6b9860c713b53c237bd31f6d650251517818a83d93e5e99fdff250a25f8d3"
+        },
+        {
+          "path": "/opt/guacamole/extensions/guacamole-auth-restrict/guacamole-auth-restrict.jar",
+          "sha256": "c9e1dc4bb708939fec0792e3ab3244fe7df2a9fdd6de004aa936f318c760016b"
+        },
+        {
+          "path": "/opt/guacamole/extensions/guacamole-auth-ban/guacamole-auth-ban.jar",
+          "sha256": "d6b873c9f5df14cfcd7c84e0bf2d8df87428be22c952bf065b3e710241a01287"
+        },
+        {
+          "path": "/opt/guacamole/extensions/guacamole-auth-duo/guacamole-auth-duo.jar",
+          "sha256": "ed3d3410d82bb3e536091912eef3993839971772dba39981af8d842b2a44a3b3"
+        },
+        {
+          "path": "/opt/guacamole/extensions/guacamole-vault/ksm/guacamole-vault-ksm.jar",
+          "sha256": "58d9454b16a467242a6abc9c5c5186f026544032924176897bfa5b5409743a49"
+        },
+        {
+          "path": "/opt/guacamole/extensions/guacamole-auth-totp/guacamole-auth-totp.jar",
+          "sha256": "dd77787d1e6cbd36874274638dcaee19632260564531329056096c414e80fe78"
+        },
+        {
+          "path": "/opt/guacamole/extensions/guacamole-auth-sso/cas/guacamole-auth-sso-cas.jar",
+          "sha256": "9db2f22c018363f1f202c69e38d1789d30d24df3dceca749d2475b065a29f5db"
+        },
+        {
+          "path": "/opt/guacamole/extensions/guacamole-auth-sso/saml/guacamole-auth-sso-saml.jar",
+          "sha256": "0ab6804fb42d966699031143dff46a22c2eafc63c51d8d7aa7b0f83515c67ce7"
+        },
+        {
+          "path": "/opt/guacamole/extensions/guacamole-auth-sso/openid/guacamole-auth-sso-openid.jar",
+          "sha256": "99c8cad0eb175d77bf6a697a83e588feb84a76785c631bf5ed3a1ad127c10e58"
+        },
+        {
+          "path": "/opt/guacamole/extensions/guacamole-auth-sso/ssl/guacamole-auth-sso-ssl.jar",
+          "sha256": "cb91b09fe51b7635976e442f45951191e97221815979fc3f1130af87e52a385b"
+        },
+        {
+          "path": "/opt/guacamole/extensions/guacamole-display-statistics/guacamole-display-statistics.jar",
+          "sha256": "5926cef4a857cd90a6b7033e6992c0007064fd37d5b2ef0f319d00d9c3ab6a4a"
+        },
+        {
+          "path": "/opt/guacamole/extensions/guacamole-auth-json/guacamole-auth-json.jar",
+          "sha256": "4f7330bb7c4f7ca0a201b99952348aee6bcf670329363bc8bdb48e239f80e726"
+        },
+        {
+          "path": "/opt/guacamole/extensions/guacamole-auth-quickconnect/guacamole-auth-quickconnect.jar",
+          "sha256": "d32c54437cd5397007a8a7be9dfc9b3c9fd24d170ad57f43fd42f5ae87d6d998"
+        },
+        {
+          "path": "/opt/guacamole/extensions/guacamole-history-recording-storage/guacamole-history-recording-storage.jar",
+          "sha256": "8660b74166dc27bfe006561f580e4e915e1acf7949d8456f1ca16481f3464ee4"
+        },
+        {
+          "path": "/opt/guacamole/extensions/guacamole-auth-header/guacamole-auth-header.jar",
+          "sha256": "d3eeded47ac4df76cbb59722ace7278d426e81569754c53b32bfcba3add0fd0a"
+        },
+        {
+          "path": "/opt/guacamole/extensions/guacamole-auth-ldap/guacamole-auth-ldap.jar",
+          "sha256": "e18b6b057329354aa097fd7d3104417d835190e7a572394d7de983ca18567756"
+        },
+        {
+          "path": "/opt/guacamole/extensions/guacamole-auth-jdbc/mysql/guacamole-auth-jdbc-mysql.jar",
+          "sha256": "62c221f9f9d9d775dc4c20c802de324c82c040a1e0f596b83742ace955d90169"
+        },
+        {
+          "path": "/opt/guacamole/extensions/guacamole-auth-jdbc/postgresql/guacamole-auth-jdbc-postgresql.jar",
+          "sha256": "9f33c18d6b0091c773b85bb0d178e3c056e6e4820ef1c77c34e1f282d395b17d"
+        },
+        {
+          "path": "/opt/guacamole/extensions/guacamole-auth-jdbc/sqlserver/guacamole-auth-jdbc-sqlserver.jar",
+          "sha256": "8046befebed1bb3f2e9810ad18f18cdbfebc5f4b93cbc3325895082cab81e4c2"
+        }
+      ],
+      "provided_servlet_api_runtime_absent": true,
+      "plexus_utils_runtime_absent": true,
+      "commons_lang2_runtime_absent": true,
+      "radius_runtime_absent": true,
+      "obsolete_tomcat_adapter_absent": true,
+      "tomcat_container_libraries_absent": true,
+      "war_sha256": "0f228eab786d6ea7ffe0f4a159d1badcb19be0640327d9bb58bb7eaae239166a",
+      "runtime_node_modules_absent": true,
+      "common_js_build_source_absent": true,
+      "affected_npm_package_payloads_absent": true
+    },
+    "auth": {
+      "status": "passed",
+      "angularVersion": "1.8.3-greenmole.1",
+      "syntheticBadAndGoodLogin": true,
+      "authenticatedRouteAndReload": true,
+      "pluralSelectHashAndUnicodeInterpolation": true,
+      "translationAliases": true,
+      "englishPolishLanguageSwitch": true,
+      "nativeKeyboardMouseAndNumberPreferences": true,
+      "logout": true,
+      "noActualTunnelOrRdpConnection": true,
+      "pageErrors": []
+    },
+    "translations": {
+      "locale_count": 16,
+      "message_count": 12633,
+      "icu_message_count": 98,
+      "json_examples_valid": true,
+      "actual_import_help_route_json_valid": true,
+      "failures": []
+    },
+    "transports": {
+      "status": "passed",
+      "standardWebSocketUpgradeAndSubprotocol": true,
+      "httpTunnelRegistered": true,
+      "authenticationAndMissingDestinationStatusesPreserved": true,
+      "isolatedAccountHasNoConnections": true,
+      "rdpConnectionAttempted": false,
+      "cases": [
+        {
+          "name": "authenticated-missing-destination",
+          "httpStatus": 404,
+          "guacamoleStatus": 516,
+          "websocket": {
+            "opened": true,
+            "messages": 0,
+            "code": 1002,
+            "reason": "516",
+            "protocol": "guacamole"
+          }
+        },
+        {
+          "name": "invalid-authentication",
+          "httpStatus": 403,
+          "guacamoleStatus": 769,
+          "websocket": {
+            "opened": true,
+            "messages": 0,
+            "code": 1008,
+            "reason": "769",
+            "protocol": "guacamole"
+          }
+        }
+      ]
+    },
+    "keyboard_cases": [
+      {
+        "platform": "Win32",
+        "width": 1024,
+        "initialPreferences": {
+          "inputMethod": "none",
+          "emulateAbsoluteMouse": true
+        },
+        "automaticMode": "windows",
+        "realPackagedControllerAndTemplate": true,
+        "allFourOptionsPersist": true,
+        "queryHintMatchesResolvedPreference": true,
+        "reloadPreservesChoice": true,
+        "noActualTunnelOrRdpConnection": true,
+        "noRemoteInputOrResize": true,
+        "pageErrors": []
+      },
+      {
+        "platform": "iPhone",
+        "width": 375,
+        "initialPreferences": {
+          "inputMethod": "native",
+          "emulateAbsoluteMouse": false
+        },
+        "automaticMode": "mac",
+        "realPackagedControllerAndTemplate": true,
+        "allFourOptionsPersist": true,
+        "queryHintMatchesResolvedPreference": true,
+        "reloadPreservesChoice": true,
+        "noActualTunnelOrRdpConnection": true,
+        "noRemoteInputOrResize": true,
+        "pageErrors": []
+      }
+    ],
+    "cleanup": {
+      "temporary_containers_and_network_removed": true,
+      "temporary_synthetic_config_removed": true,
+      "production_unchanged": true,
+      "owned_ssh_forward_removed": true
+    }
+  },
+  "deployment": {
+    "guacd_health": "healthy",
+    "version": "1.6.1-greenmole.16",
+    "source_revision": "68459080bf3bb4d1c768a2bd7862e559d280f3e0",
+    "images": {
+      "guacamole": "sha256:d595a8ad4070da76b6d930249fdf772104e5ec721cee6d530154dfacc2a95948",
+      "guacd": "sha256:7bcda238260eaf514f608fac8168163617dd122343e841f956e5742f76f07335"
+    },
+    "configuration_preserved_except_image_tags": true,
+    "config_files_checked": 16,
+    "container_environment_mounts_and_security_preserved": true,
+    "http_readiness_verified": true,
+    "restart_counts_zero": true,
+    "actual_rdp_session_started": false
+  },
+  "post_deployment": {
+    "windows11-guac-lab-web": {
+      "running": true,
+      "restarts": 0,
+      "image": "sha256:d595a8ad4070da76b6d930249fdf772104e5ec721cee6d530154dfacc2a95948",
+      "startup_error_severe_fatal_lines": 0,
+      "standard_jsr356_loaded": true,
+      "tomcat_versions": [
+        "Apache Tomcat/9.0.123"
+      ]
+    },
+    "windows11-guac-lab-guacd": {
+      "running": true,
+      "restarts": 0,
+      "image": "sha256:7bcda238260eaf514f608fac8168163617dd122343e841f956e5742f76f07335",
+      "startup_error_severe_fatal_lines": 0
+    }
+  },
+  "github_dependabot": {
+    "checked_at_utc": "2026-10-24T13:39:00.367382+00:00",
+    "counts": {
+      "open": 25,
+      "fixed": 5,
+      "dismissed": 0
+    },
+    "alert_refresh_requested": true,
+    "dependency_graph_shows_plexus_3_6_1_and_no_removed_tomcat_or_lang2_dependencies": true,
+    "manual_dismissals": 0
+  },
+  "limits": [
+    "Optional RADIUS packages successfully but authentication fails in a separately reproduced pre-existing JRadius/Bouncy Castle compatibility problem. It is not deployed.",
+    "The targeted Plexus override applies to the minifier plugin; other Maven plugins have separate dependency realms and were not comprehensively upgraded.",
+    "No actual RDP session or physical iPhone Safari acceptance test was run. Mobile UI testing used Chromium with iPhone platform/viewport settings.",
+    "Native source was unchanged; native build stages reused existing tested cache rather than rerunning native tests."
+  ]
+}
