@@ -6,7 +6,7 @@
     "APP" : {
 
         "NAME"    : "Greenmole",
-        "VERSION" : "${project.version}-greenmole.12",
+        "VERSION" : "${project.version}-greenmole.13",
 
         "ACTION_ACKNOWLEDGE"        : "OK",
         "ACTION_CANCEL"             : "Cancel",
@@ -63,6 +63,13 @@
     },
 
     "CLIENT" : {
+
+        "NAME_KEYBOARD_MODE" : "Greenmole RDP shortcuts",
+        "KEYBOARD_MODE_AUTO" : "Automatic (this device)",
+        "KEYBOARD_MODE_WINDOWS" : "Windows-friendly",
+        "KEYBOARD_MODE_MAC" : "Native Mac",
+        "KEYBOARD_MODE_PHYSICAL" : "Keep Control shortcuts",
+        "HELP_KEYBOARD_MODE" : "Applies to Greenmole RDP 0.1.32 or later after reconnecting. Automatic uses native Mac shortcuts on Apple devices and Windows-friendly shortcuts elsewhere. The connection administrator or host may override this choice.",
 
         "ACTION_PAN_DESKTOP" : "Pan desktop",
         "ACTION_SCROLL_WHEEL" : "Scroll wheel",
@@ -649,6 +656,13 @@
 
     "PROTOCOL_RDP" : {
 
+        "FIELD_HEADER_GREENMOLE_KEYBOARD_MODE" : "Greenmole RDP shortcuts:",
+        "FIELD_OPTION_GREENMOLE_KEYBOARD_MODE_EMPTY" : "Use browser preference",
+        "FIELD_OPTION_GREENMOLE_KEYBOARD_MODE_AUTO" : "Use browser preference",
+        "FIELD_OPTION_GREENMOLE_KEYBOARD_MODE_WINDOWS" : "Windows-friendly",
+        "FIELD_OPTION_GREENMOLE_KEYBOARD_MODE_MAC" : "Native Mac",
+        "FIELD_OPTION_GREENMOLE_KEYBOARD_MODE_PHYSICAL" : "Keep Control shortcuts",
+
         "FIELD_HEADER_CERT_TOFU"             : "Trust host certificate on first use:",
         "FIELD_HEADER_CERT_FINGERPRINTS"     : "Fingerprints of trusted host certificates:",
         "FIELD_HEADER_CLIENT_NAME"           : "Client name:",
@@ -777,8 +791,8 @@
         "FIELD_OPTION_SERVER_LAYOUT_HU_HU_QWERTZ" : "Hungarian (Qwertz)",
         "FIELD_OPTION_SERVER_LAYOUT_IT_IT_QWERTY" : "Italian (Qwerty)",
         "FIELD_OPTION_SERVER_LAYOUT_JA_JP_QWERTY" : "Japanese (Qwerty)",
-        "FIELD_OPTION_SERVER_LAYOUT_NB_NO_QWERTY" : "Norwegian Bokmål (Qwerty)",
-        "FIELD_OPTION_SERVER_LAYOUT_NO_NO_QWERTY" : "Norwegian Nynorsk (Qwerty)",
+        "FIELD_OPTION_SERVER_LAYOUT_NB_NO_QWERTY" : "Norwegian (Bokmål alias)",
+        "FIELD_OPTION_SERVER_LAYOUT_NO_NO_QWERTY" : "Norwegian (Qwerty)",
         "FIELD_OPTION_SERVER_LAYOUT_PL_PL_QWERTY" : "Polish (Qwerty)",
         "FIELD_OPTION_SERVER_LAYOUT_PT_BR_QWERTY" : "Portuguese Brazilian (Qwerty)",
         "FIELD_OPTION_SERVER_LAYOUT_PT_PT_QWERTY" : "Portuguese (Qwerty)",

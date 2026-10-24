@@ -118,6 +118,8 @@ angular.module('client').controller('clientController', ['$scope', '$routeParams
          */
         inputMethod : preferenceService.preferences.inputMethod,
 
+        keyboardMode : preferenceService.preferences.keyboardMode,
+
         /**
          * Whether translation of touch to mouse events should emulate an
          * absolute pointer device, or a relative pointer device.
@@ -159,6 +161,11 @@ angular.module('client').controller('clientController', ['$scope', '$routeParams
             preferenceService.save();
         }
         $scope.closeMenu();
+    };
+
+    // This hint takes effect on reconnect; never change modifier policy mid-chord.
+    $scope.setKeyboardMode = function setKeyboardMode() {
+        preferenceService.setKeyboardMode($scope.menu.keyboardMode);
     };
 
     /**

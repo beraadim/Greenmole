@@ -44,7 +44,7 @@ test_rdp_SOURCES =      \
     fs/normalize_path.c \
     gdi/avc444-primitives.c \
     gdi/frame-markers.c
-test_rdp_SOURCES += input/wheel.c
+test_rdp_SOURCES += input/wheel.c input/keyboard-mode.c
 
 test_rdp_CFLAGS =                \
     -Werror -Wall -pedantic      \

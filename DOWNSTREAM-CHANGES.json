@@ -18,7 +18,10 @@
         "client/guacamole-common-js/src/main/webapp/modules/Parser.js",
         "client/guacamole-common-js/src/main/webapp/modules/Tunnel.js",
         "client/guacamole-common-js/src/main/webapp/modules/VideoPlayer.js",
+        "client/guacamole-common/src/main/java/org/apache/guacamole/protocol/ConfiguredGuacamoleSocket.java",
+        "client/guacamole-common/src/main/java/org/apache/guacamole/protocol/GuacamoleClientInformation.java",
         "client/guacamole-common/src/main/java/org/apache/guacamole/websocket/GuacamoleWebSocketTunnelEndpoint.java",
+        "client/guacamole-ext/src/main/resources/org/apache/guacamole/protocols/rdp.json",
         "client/guacamole/pom.xml",
         "client/guacamole/src/main/frontend/package.json",
         "client/guacamole/src/main/frontend/src/app/client/controllers/clientController.js",
@@ -55,7 +58,9 @@
         "client/guacamole/src/main/frontend/src/translations/pt.json",
         "client/guacamole/src/main/frontend/src/translations/ru.json",
         "client/guacamole/src/main/frontend/src/translations/tr.json",
-        "client/guacamole/src/main/frontend/src/translations/zh.json"
+        "client/guacamole/src/main/frontend/src/translations/zh.json",
+        "client/guacamole/src/main/java/org/apache/guacamole/tunnel/TunnelRequest.java",
+        "client/guacamole/src/main/java/org/apache/guacamole/tunnel/TunnelRequestService.java"
       ]
     },
     "server": {
@@ -104,9 +109,14 @@
         "server/src/protocols/rdp/gdi.h",
         "server/src/protocols/rdp/input-queue.c",
         "server/src/protocols/rdp/input.c",
+        "server/src/protocols/rdp/keymap.c",
+        "server/src/protocols/rdp/keymap.h",
+        "server/src/protocols/rdp/keymaps/de_de_qwertz.keymap",
+        "server/src/protocols/rdp/keymaps/fr_fr_azerty.keymap",
         "server/src/protocols/rdp/rdp.c",
         "server/src/protocols/rdp/rdp.h",
         "server/src/protocols/rdp/settings.c",
+        "server/src/protocols/rdp/settings.h",
         "server/src/protocols/rdp/tests/Makefile.am",
         "server/src/protocols/rdp/user.c"
       ]

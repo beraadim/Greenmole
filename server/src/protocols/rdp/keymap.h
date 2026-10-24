@@ -1,4 +1,6 @@
 /*
+ * Modified for Greenmole by its maintainers.
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -216,6 +218,9 @@ extern const guac_rdp_keymap* GUAC_KEYMAPS[];
  *     The keymap having the given name, or NULL if no such keymap exists.
  */
 const guac_rdp_keymap* guac_rdp_keymap_find(const char* name);
+
+/** Return the exact OEM virtual keyboard subtype for a supported hint, else 0. */
+UINT32 guac_rdp_keyboard_mode_subtype(const char* mode);
 
 #endif
 

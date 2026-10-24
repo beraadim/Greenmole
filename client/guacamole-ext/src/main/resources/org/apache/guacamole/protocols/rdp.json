@@ -1,4 +1,5 @@
 {
+    "_greenmoleModificationNotice": "Modified for Greenmole by its maintainers. Based on Apache Guacamole; see LICENSE and NOTICE.",
     "name"  : "rdp",
     "connectionForms" : [
 
@@ -129,6 +130,11 @@
                         "tr-tr-qwerty",
                         "failsafe"
                     ]
+                },
+                {
+                    "name"    : "greenmole-keyboard-mode",
+                    "type"    : "ENUM",
+                    "options" : [ "", "auto", "windows", "mac", "physical" ]
                 },
                 {
                     "name"  : "timezone",

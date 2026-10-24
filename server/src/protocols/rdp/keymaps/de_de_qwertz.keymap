@@ -1,4 +1,6 @@
 #
+# Modified for Greenmole by its maintainers.
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -71,5 +73,4 @@ map +altgr -shift 0x32 ~ "µ"
 map -altgr +shift 0x0D ~ 0xFE50 # Dead grave
 map -altgr -shift 0x0D ~ 0xFE51 # Dead acute
 map -altgr -shift 0x29 ~ 0xFE52 # Dead circumflex
-map +altgr -shift 0x0C ~ 0xFE53 # Dead tilde
 

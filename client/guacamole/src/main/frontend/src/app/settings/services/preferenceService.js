@@ -135,6 +135,9 @@ angular.module('settings').provider('preferenceService', ['$injector',
         experimentalAvc420 : false,
         experimentalVideoMode : null,
 
+        /** Shortcut hint for Greenmole RDP; never changes local key events. */
+        keyboardMode : 'auto',
+
         /**
          * Whether translation of touch to mouse events should emulate an
          * absolute pointer device, or a relative pointer device.
@@ -213,6 +216,13 @@ angular.module('settings').provider('preferenceService', ['$injector',
         provider.preferences.iosNativeKeyboardDefaultVersion = 1;
     }
 
+    // Language and keyboard layout are intentionally not guessed from locale.
+    var isMacKeyboard = isIOS || /Mac/i.test(navigator.platform || '')
+        || /Macintosh|Mac OS X/i.test(navigator.userAgent || '');
+    var keyboardModes = ['auto', 'windows', 'mac', 'physical'];
+    if (keyboardModes.indexOf(provider.preferences.keyboardMode) === -1)
+        provider.preferences.keyboardMode = 'auto';
+
     // Factory method required by provider
     this.$get = ['$injector', function preferenceServiceFactory($injector) {
 
@@ -237,6 +247,23 @@ angular.module('settings').provider('preferenceService', ['$injector',
          * @type Object.<String, Object>
          */
         service.preferences = provider.preferences;
+
+        /** Resolve the browser-local preference only when starting a connection. */
+        service.getResolvedKeyboardMode = function getResolvedKeyboardMode() {
+            var mode = service.preferences.keyboardMode;
+            if (keyboardModes.indexOf(mode) === -1 || mode === 'auto')
+                return isMacKeyboard ? 'mac' : 'windows';
+            return mode;
+        };
+
+        /** Save a supported explicit choice; established sessions are unchanged. */
+        service.setKeyboardMode = function setKeyboardMode(mode) {
+            if (keyboardModes.indexOf(mode) === -1)
+                return false;
+            service.preferences.keyboardMode = mode;
+            service.save();
+            return true;
+        };
 
         /**
          * Persists the current values of all preferences, if possible.

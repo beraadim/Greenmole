@@ -1,4 +1,6 @@
 /*
+ * Modified for Greenmole by its maintainers.
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -284,6 +286,9 @@ typedef struct guac_rdp_settings {
      * The keymap chosen as the layout of the server.
      */
     const guac_rdp_keymap* server_layout;
+
+    /** Optional OEM Greenmole virtual keyboard hint; zero leaves FreeRDP defaults. */
+    UINT32 keyboard_subtype;
 
     /**
      * The initial program to run, if any.

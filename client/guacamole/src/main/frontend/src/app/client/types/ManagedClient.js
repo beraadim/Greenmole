@@ -296,7 +296,8 @@ angular.module('client').factory('ManagedClient', ['$rootScope', '$injector',
             + "&GUAC_WIDTH="       + Math.floor(optimal_width)
             + "&GUAC_HEIGHT="      + Math.floor(optimal_height)
             + "&GUAC_DPI="         + Math.floor(optimal_dpi)
-            + "&GUAC_TIMEZONE="    + encodeURIComponent(preferenceService.preferences.timezone);
+            + "&GUAC_TIMEZONE="    + encodeURIComponent(preferenceService.preferences.timezone)
+            + "&GUAC_KEYBOARD_MODE=" + encodeURIComponent(preferenceService.getResolvedKeyboardMode());
 
         // Add audio mimetypes to connect string
         guacAudio.supported.forEach(function(mimetype) {

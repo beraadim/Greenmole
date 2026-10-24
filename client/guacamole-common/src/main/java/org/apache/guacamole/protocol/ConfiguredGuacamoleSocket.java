@@ -1,4 +1,6 @@
 /*
+ * Modified for Greenmole by its maintainers.
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -249,6 +251,14 @@ public class ConfiguredGuacamoleSocket extends DelegatingGuacamoleSocket {
 
             // Get defined value for name
             String value = config.getParameter(arg_name);
+
+            // Only this named, optional RDP argument accepts a browser hint.
+            // Explicit administrator choices take precedence. Older guacd does
+            // not request the argument and therefore receives no extension.
+            if ("rdp".equals(config.getProtocol())
+                    && "greenmole-keyboard-mode".equals(arg_name)
+                    && (value == null || value.isEmpty() || value.equals("auto")))
+                value = info.getKeyboardMode();
 
             // If value defined, set that value
             if (value != null) arg_values[i] = value;

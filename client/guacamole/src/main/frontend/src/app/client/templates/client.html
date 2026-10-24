@@ -134,6 +134,17 @@
                     <h3>{{'CLIENT.SECTION_HEADER_INPUT_METHOD' | translate}}</h3>
                     <div class="content">
 
+                        <div class="choice" ng-if="focusedClient.protocol === 'rdp'">
+                            <label for="greenmole-keyboard-mode">{{'CLIENT.NAME_KEYBOARD_MODE' | translate}}</label>
+                            <select id="greenmole-keyboard-mode" ng-model="menu.keyboardMode" ng-change="setKeyboardMode()">
+                                <option value="auto">{{'CLIENT.KEYBOARD_MODE_AUTO' | translate}}</option>
+                                <option value="windows">{{'CLIENT.KEYBOARD_MODE_WINDOWS' | translate}}</option>
+                                <option value="mac">{{'CLIENT.KEYBOARD_MODE_MAC' | translate}}</option>
+                                <option value="physical">{{'CLIENT.KEYBOARD_MODE_PHYSICAL' | translate}}</option>
+                            </select>
+                            <p class="caption">{{'CLIENT.HELP_KEYBOARD_MODE' | translate}}</p>
+                        </div>
+
                         <!-- No IME -->
                         <div class="choice">
                             <label><input id="ime-none" name="input-method" ng-change="closeMenu()" ng-model="menu.inputMethod" type="radio" value="none"> {{'CLIENT.NAME_INPUT_METHOD_NONE' | translate}}</label>

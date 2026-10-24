@@ -78,6 +78,7 @@ const char* GUAC_RDP_CLIENT_ARGS[] = {
     "console",
     "console-audio",
     "server-layout",
+    "greenmole-keyboard-mode",
     "security",
     "ignore-cert",
     "cert-tofu",
@@ -288,6 +289,9 @@ enum RDP_ARGS_IDX {
      * source for Guacamole's RDP support.
      */
     IDX_SERVER_LAYOUT,
+
+    /** Optional Greenmole virtual keyboard shortcut hint. */
+    IDX_GREENMOLE_KEYBOARD_MODE,
 
     /**
      * The type of security to use for the connection. Valid values are "rdp",
@@ -1084,6 +1088,16 @@ guac_rdp_settings* guac_rdp_parse_args(guac_user* user,
         settings->server_layout =
             guac_rdp_keymap_find(argv[IDX_SERVER_LAYOUT]);
 
+    if (settings->server_layout == NULL && argv[IDX_SERVER_LAYOUT][0] != '\0')
+        guac_user_log(user, GUAC_LOG_WARNING, "Unsupported server keyboard layout; "
+                "using the US English layout. Check the connection settings.");
+
+    settings->keyboard_subtype = guac_rdp_keyboard_mode_subtype(argv[IDX_GREENMOLE_KEYBOARD_MODE]);
+    if (settings->keyboard_subtype == 0 && argv[IDX_GREENMOLE_KEYBOARD_MODE][0] != '\0'
+            && strcmp(argv[IDX_GREENMOLE_KEYBOARD_MODE], "auto") != 0)
+        guac_user_log(user, GUAC_LOG_WARNING, "Unsupported Greenmole keyboard mode; "
+                "using the server's default shortcut behavior.");
+
     /* If no keymap requested, use default */
     if (settings->server_layout == NULL)
         settings->server_layout = guac_rdp_keymap_find(GUAC_DEFAULT_KEYMAP);
@@ -1524,6 +1538,8 @@ void guac_rdp_push_settings(guac_client* client,
     freerdp_settings_set_uint32(rdp_settings, FreeRDP_ColorDepth, guac_settings->color_depth);
     freerdp_settings_set_string(rdp_settings, FreeRDP_AlternateShell, guac_strdup(guac_settings->initial_program));
     freerdp_settings_set_uint32(rdp_settings, FreeRDP_KeyboardLayout, guac_settings->server_layout->freerdp_keyboard_layout);
+    if (guac_settings->keyboard_subtype != 0)
+        freerdp_settings_set_uint32(rdp_settings, FreeRDP_KeyboardSubType, guac_settings->keyboard_subtype);
 
 
     /* Performance flags */
@@ -1771,6 +1787,8 @@ void guac_rdp_push_settings(guac_client* client,
     rdp_settings->DesktopHeight = guac_settings->height;
     rdp_settings->AlternateShell = guac_strdup(guac_settings->initial_program);
     rdp_settings->KeyboardLayout = guac_settings->server_layout->freerdp_keyboard_layout;
+    if (guac_settings->keyboard_subtype != 0)
+        rdp_settings->KeyboardSubType = guac_settings->keyboard_subtype;
 
     /* Performance flags */
     /* Explicitly set flag value */

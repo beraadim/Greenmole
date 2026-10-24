@@ -1,4 +1,6 @@
 /*
+ * Modified for Greenmole by its maintainers.
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -165,6 +167,8 @@ public class TunnelRequestService {
         if (imageMimetypes != null)
             info.getImageMimetypes().addAll(imageMimetypes);
         
+        info.setKeyboardMode(request.getKeyboardMode());
+
         // Set timezone if provided
         String timezone = request.getTimezone();
         if (timezone != null && !timezone.isEmpty())

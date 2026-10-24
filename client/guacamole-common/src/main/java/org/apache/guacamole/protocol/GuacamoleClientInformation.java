@@ -1,4 +1,6 @@
 /*
+ * Modified for Greenmole by its maintainers.
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -68,6 +70,32 @@ public class GuacamoleClientInformation {
      * The timezone reported by the client.
      */
     private String timezone;
+
+    /** Optional shortcut preference understood only by Greenmole RDP. */
+    private String keyboardMode;
+
+    /**
+     * Returns a validated Greenmole RDP shortcut preference, or null.
+     * @return The shortcut preference advertised by the browser.
+     */
+    public String getKeyboardMode() {
+        return keyboardMode;
+    }
+
+    /**
+     * Sets an optional shortcut hint without allowing arbitrary connection overrides.
+     * @param mode One of windows, mac or physical; null/empty clears the hint.
+     * @throws IllegalArgumentException If the supplied mode is unsupported.
+     */
+    public void setKeyboardMode(String mode) {
+        if (mode == null || mode.isEmpty()) {
+            keyboardMode = null;
+            return;
+        }
+        if (!mode.equals("windows") && !mode.equals("mac") && !mode.equals("physical"))
+            throw new IllegalArgumentException("Unsupported keyboard mode");
+        keyboardMode = mode;
+    }
 
     /**
      * Returns the optimal screen width requested by the client, in pixels.

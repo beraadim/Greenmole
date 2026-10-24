@@ -1,4 +1,6 @@
 #
+# Modified for Greenmole by its maintainers.
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -49,7 +51,12 @@ map +caps -altgr +shift 0x56 0x2C..0x35      ~ ">wxcvbn,;:!"
 # Keys requiring AltGr (unaffected by Caps Lock, but Shift must not be pressed)
 #
 
-map +altgr -shift 0x03..0x0D ~ "~#{[|`\^@]}"
+map +altgr -shift 0x04..0x07 ~ "#{[|"
+map +altgr -shift 0x09..0x0D ~ "\^@]}"
+
+# Windows French treats these AltGr combinations as dead accents.
+map +altgr -shift 0x03 ~ 0xFE53 # Dead tilde
+map +altgr -shift 0x08 ~ 0xFE50 # Dead grave
 
 map +altgr -shift 0x12 ~ "€"
 map +altgr -shift 0x1B ~ "¤"

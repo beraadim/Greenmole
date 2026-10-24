@@ -61,6 +61,9 @@ other compatible RDP clients. Greenmole RDP is an independently maintained fork
 of [MacRDP by x6nux](https://github.com/x6nux/macrdp), separately licensed under
 GPLv3. See its repository for setup instructions and downloads.
 
+Keyboard layout and Windows/Mac shortcut preferences are described in the
+[keyboard guide](docs/keyboard-layouts.md).
+
 ## Build
 
 Each Dockerfile expects its own component directory as the build context:
@@ -73,7 +76,7 @@ docker build -t greenmole/web:dev client/
 For reviewed downstream releases, use the pinned build inputs:
 
 ```sh
-python3 scripts/build-images.py releases/1.6.1-greenmole.11.json --jobs 4
+python3 scripts/build-images.py releases/1.6.1-greenmole.13.json --jobs 4
 ```
 
 The driver builds local images; it does not publish or deploy them. It pins base

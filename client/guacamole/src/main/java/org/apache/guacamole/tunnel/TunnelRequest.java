@@ -1,4 +1,6 @@
 /*
+ * Modified for Greenmole by its maintainers.
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -98,6 +100,23 @@ public abstract class TunnelRequest {
      * The name of the parameter specifying the timezone of the client.
      */
     public static final String TIMEZONE_PARAMETER = "GUAC_TIMEZONE";
+
+    /** Allowlisted browser shortcut preference; not a general configuration override. */
+    public static final String KEYBOARD_MODE_PARAMETER = "GUAC_KEYBOARD_MODE";
+
+    /**
+     * Returns the resolved browser shortcut preference for Greenmole RDP.
+     * @return windows, mac, physical, or null when omitted.
+     * @throws GuacamoleException If the supplied preference is unsupported.
+     */
+    public String getKeyboardMode() throws GuacamoleException {
+        String mode = getParameter(KEYBOARD_MODE_PARAMETER);
+        if (mode == null || mode.isEmpty())
+            return null;
+        if (!mode.equals("windows") && !mode.equals("mac") && !mode.equals("physical"))
+            throw new GuacamoleClientException("Unsupported keyboard mode.");
+        return mode;
+    }
 
     /**
      * Returns the value of the parameter having the given name.
