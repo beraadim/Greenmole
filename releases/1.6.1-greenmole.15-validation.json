@@ -1,0 +1,727 @@
+{
+  "version": "1.6.1-greenmole.15",
+  "source_revision": "332fbd8e0a07bfbc6e13ec2c0476d516f9ab9b72",
+  "npm_registry_audit": {
+    "frontend": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "common_js": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    }
+  },
+  "angular_backports": {
+    "version": "1.8.3-greenmole.1",
+    "applicable_advisories_remediated": 9,
+    "affected_optional_module_not_shipped": 1,
+    "upstream_tarball_patch_and_mit_license_reproduced": true,
+    "npm_audit_does_not_certify_vendored_code": true,
+    "original_advisory_feed_check": {
+      "originalPackage": "angular",
+      "originalVersion": "1.8.3",
+      "note": "Mapping is local remediation evidence, not an npm endorsement of vendored patches.",
+      "advisories": [
+        {
+          "id": "GHSA-prc3-vjfx-vhm9",
+          "title": "Angular (deprecated package) Cross-site Scripting",
+          "severity": "moderate",
+          "url": "https://github.com/advisories/GHSA-prc3-vjfx-vhm9",
+          "status": "backported-and-regression-tested"
+        },
+        {
+          "id": "GHSA-j58c-ww9w-pwp5",
+          "title": "AngularJS improperly sanitizes SVG elements",
+          "severity": "low",
+          "url": "https://github.com/advisories/GHSA-j58c-ww9w-pwp5",
+          "status": "backported-and-regression-tested"
+        },
+        {
+          "id": "GHSA-m2h2-264f-f486",
+          "title": "angular vulnerable to regular expression denial of service (ReDoS)",
+          "severity": "moderate",
+          "url": "https://github.com/advisories/GHSA-m2h2-264f-f486",
+          "status": "backported-and-regression-tested"
+        },
+        {
+          "id": "GHSA-m9gf-397r-hwpg",
+          "title": "AngularJS allows attackers to bypass common image source restrictions",
+          "severity": "low",
+          "url": "https://github.com/advisories/GHSA-m9gf-397r-hwpg",
+          "status": "backported-and-regression-tested"
+        },
+        {
+          "id": "GHSA-mqm9-c95h-x2p6",
+          "title": "AngularJS allows attackers to bypass common image source restrictions",
+          "severity": "low",
+          "url": "https://github.com/advisories/GHSA-mqm9-c95h-x2p6",
+          "status": "backported-and-regression-tested"
+        },
+        {
+          "id": "GHSA-4w4v-5hc9-xrr2",
+          "title": "angular vulnerable to super-linear runtime due to backtracking",
+          "severity": "high",
+          "url": "https://github.com/advisories/GHSA-4w4v-5hc9-xrr2",
+          "status": "backported-and-regression-tested"
+        },
+        {
+          "id": "GHSA-2vrf-hf26-jrp5",
+          "title": "angular vulnerable to regular expression denial of service via the angular.copy() utility",
+          "severity": "moderate",
+          "url": "https://github.com/advisories/GHSA-2vrf-hf26-jrp5",
+          "status": "backported-and-regression-tested"
+        },
+        {
+          "id": "GHSA-2qqx-w9hr-q5gx",
+          "title": "angular vulnerable to regular expression denial of service via the $resource service",
+          "severity": "moderate",
+          "url": "https://github.com/advisories/GHSA-2qqx-w9hr-q5gx",
+          "status": "affected-module-not-shipped"
+        },
+        {
+          "id": "GHSA-qwqh-hm9m-p5hr",
+          "title": "angular vulnerable to regular expression denial of service via the <input type=\"url\"> element",
+          "severity": "moderate",
+          "url": "https://github.com/advisories/GHSA-qwqh-hm9m-p5hr",
+          "status": "backported-and-regression-tested"
+        },
+        {
+          "id": "GHSA-7x27-g8rg-x87w",
+          "title": "Angular's deprecated package has a Cross-Site Scripting issue",
+          "severity": "high",
+          "url": "https://github.com/advisories/GHSA-7x27-g8rg-x87w",
+          "status": "backported-and-regression-tested"
+        }
+      ]
+    }
+  },
+  "local_tests": {
+    "frontend_node_passed": 192,
+    "common_js_chromium_passed": 286,
+    "common_js_jsdoc_passed": true,
+    "original_template_cache_entries_preserved": 91,
+    "messageformat_independent_legacy_comparisons": 9360,
+    "messageformat_nested_map_compilation_rejected": true,
+    "angular_browser": {
+      "version": "1.8.3-greenmole.1",
+      "status": "passed",
+      "count": 24,
+      "failed": 0
+    },
+    "angular_simulated_ie": {
+      "version": "1.8.3-greenmole.1",
+      "status": "passed",
+      "count": 25,
+      "failed": 0
+    },
+    "original_unpatched_browser": {
+      "version": "1.8.3",
+      "status": "failed",
+      "count": 24,
+      "failed": 16
+    },
+    "original_unpatched_simulated_ie": {
+      "version": "1.8.3",
+      "status": "failed",
+      "count": 25,
+      "failed": 18
+    },
+    "production_index_asset_urls_regression": {
+      "failed_before_correction": true,
+      "passed_after_correction": true,
+      "compiles_actual_production_webpack": true
+    },
+    "simulated_mobile_environment": "Chromium with iPhone platform and viewport settings; not physical Safari"
+  },
+  "source_checks": {
+    "upstream_attribution_files_unchanged": 213,
+    "modified_upstream_files_with_notices": 115,
+    "upstream_histories_reachable": true,
+    "commit_secret_scan_findings": 0,
+    "gnu_license_generation_passed": true,
+    "source_commits_scanned": [
+      "eeb63c2ba7fc30a3a8a5ad54f4a5d65b0a38ca95",
+      "332fbd8e0a07bfbc6e13ec2c0476d516f9ab9b72"
+    ]
+  },
+  "limits": [
+    "npm registry audit does not independently assess vendored AngularJS; source mapping, regression tests and original-package advisory checks are separate.",
+    "IE document mode is simulated in modern browsers, not tested in Internet Explorer itself.",
+    "The MessageFormat advisory lacks a public reproducer; remediation upgrades to the maintained compiler and rejects nested-map compilation inputs.",
+    "No actual RDP session or physical iPhone Safari acceptance test was run for this dependency release."
+  ],
+  "verified_at_utc": "2026-10-24T11:39:03.429022+00:00",
+  "status": "source pushed, images built and verified, deployed with existing configuration preserved",
+  "image_build": {
+    "maven_build_success": true,
+    "maven_errors": 0,
+    "java_tests_passed": 72,
+    "common_js_firefox_tests_passed": 283,
+    "common_js_firefox_tests_skipped": 3,
+    "frontend_node_tests_passed": 192,
+    "angular_browser_tests_passed": 49,
+    "native_source_unchanged": true,
+    "native_build_uses_existing_tested_cache": true,
+    "images": {
+      "greenmole/guacd:1.6.1-greenmole.15": {
+        "id": "sha256:1eadc954217a707300d46c54878f4382fb77b4fb93d5ea50d80c47ac097dd91a",
+        "revision": "332fbd8e0a07bfbc6e13ec2c0476d516f9ab9b72"
+      },
+      "greenmole/web:1.6.1-greenmole.15": {
+        "id": "sha256:45e14de7d30c7b23ce7be0036b691fefb5f5497e261711bba5a2b3b87bd2ff01",
+        "revision": "332fbd8e0a07bfbc6e13ec2c0476d516f9ab9b72"
+      }
+    }
+  },
+  "builder_verification": {
+    "status": "passed",
+    "node_version": "v24.13.0",
+    "npm_version": "11.7.0",
+    "frontend": {
+      "packages": {
+        "angular": {
+          "name": "@greenmole/angularjs",
+          "installed_version": "1.8.3-greenmole.1",
+          "lock_version": "1.8.3-greenmole.1",
+          "lock_integrity": null
+        },
+        "angular-route": {
+          "name": "angular-route",
+          "installed_version": "1.8.3",
+          "lock_version": "1.8.3",
+          "lock_integrity": "sha512-kpIcRmDR2+o1FxDVVYy8Rvfab86/7LDbOgTRb9T+X9ewPQiBRuDEnZtM3oJYBiQLvAXDYTJXHV48n/bGE9Mv2g=="
+        },
+        "messageformat": {
+          "name": "@messageformat/core",
+          "installed_version": "3.4.1",
+          "lock_version": "3.4.1",
+          "lock_integrity": "sha512-98uXHLDjPe2WZ8Xr05MhFQGfpMRbUcJDEYgjLV5ZBTgnntIkKS0VKGE+g8ug/hbgggyPEAeZBRJryIsBUp1vvw=="
+        },
+        "@messageformat/parser": {
+          "name": "@messageformat/parser",
+          "installed_version": "5.2.0",
+          "lock_version": "5.2.0",
+          "lock_integrity": "sha512-sc3hNZ0JtC32GhL5nUgPbh2ilcwji4G+Vmj/vhMd8hZaH//NDOvkfwKK1mFnRWG5h2DpksN8xr/HB5/+vMg3iw=="
+        },
+        "@messageformat/runtime": {
+          "name": "@messageformat/runtime",
+          "installed_version": "3.0.3",
+          "lock_version": "3.0.3",
+          "lock_integrity": "sha512-FE0hP0m15+9p/ia5HWQ/JsUSNLcxZkl1jl1HlRrWCiMAsgiulg7AuOFLaBR6dpPqtPWWuApY7VLo3rIAcrgrkA=="
+        },
+        "csv-parse": {
+          "name": "csv-parse",
+          "installed_version": "7.0.3",
+          "lock_version": "7.0.3",
+          "lock_integrity": "sha512-YFd3QM/yo17vH91L1IOZuvl09zM0zEEtdfTcOCKWcMdM++MNaQSyp09slXyFCLaPXvHstQFx/xC8myiFHSMUvw=="
+        },
+        "copy-webpack-plugin": {
+          "name": "copy-webpack-plugin",
+          "installed_version": "14.0.0",
+          "lock_version": "14.0.0",
+          "lock_integrity": "sha512-3JLW90aBGeaTLpM7mYQKpnVdgsUZRExY55giiZgLuX/xTQRUs1dOCwbBnWnvY6Q6rfZoXMNwzOQJCSZPppfqXA=="
+        },
+        "css-minimizer-webpack-plugin": {
+          "name": "css-minimizer-webpack-plugin",
+          "installed_version": "8.0.0",
+          "lock_version": "8.0.0",
+          "lock_integrity": "sha512-9bEpzHs8gEq6/cbEj418jXL/YWjBUD2YTLLk905Npt2JODqnRITin0+So5Vx4Dp5vyi2Lpt9pp2QHzQ7fdxNrw=="
+        },
+        "schema-utils": {
+          "name": "schema-utils",
+          "installed_version": "4.3.3",
+          "lock_version": "4.3.3",
+          "lock_integrity": "sha512-eflK8wEtyOE6+hsaRVPxvUKYCpRgzLqDTb8krvAsRIwOGlHoSgYLgBXoubGgLd2fT41/OUYdb48v4k4WWHQurA=="
+        },
+        "html-minifier-terser": {
+          "name": "html-minifier-terser",
+          "installed_version": "7.2.0",
+          "lock_version": "7.2.0",
+          "lock_integrity": "sha512-tXgn3QfqPIpGl9o+K5tpcj3/MN4SfLtsx2GWwBC3SSd0tXQGyF3gsSqad8loJgKZGM3ZxbYDd5yhiBIdWpmvLA=="
+        },
+        "terser": {
+          "name": "terser",
+          "installed_version": "5.44.1",
+          "lock_version": "5.44.1",
+          "lock_integrity": "sha512-t/R3R/n0MSwnnazuPpPNVO60LX0SKL45pyl9YlvxIdkH0Of7D5qM2EVe+yASRIlY5pZ73nclYJfNANGWPwFDZw=="
+        },
+        "make-plural": {
+          "name": "make-plural",
+          "installed_version": "7.5.0",
+          "lock_version": "7.5.0",
+          "lock_integrity": "sha512-0booA+aVYyVFoR67JBHdfVk0U08HmrBH2FrtmBqBa+NldlqXv/G2Z9VQuQq6Wgp2jDWdybEWGfBkk1cq5264WA=="
+        },
+        "moo": {
+          "name": "moo",
+          "installed_version": "0.5.3",
+          "lock_version": "0.5.3",
+          "lock_integrity": "sha512-m2fmM2dDm7GZQsY7KK2cme8agi+AAljILjQnof7p1ZMDe6dQ4bdnSMx0cPppudoeNv5hEFQirN6u+O4fDE0IWA=="
+        },
+        "safe-identifier": {
+          "name": "safe-identifier",
+          "installed_version": "0.4.2",
+          "lock_version": "0.4.2",
+          "lock_integrity": "sha512-6pNbSMW6OhAi9j+N8V+U715yBQsaWJ7eyEUaOrawX+isg5ZxhUlV1NipNtgaKHmFGiABwt+ZF04Ii+3Xjkg+8w=="
+        }
+      },
+      "checked_installed_lock_entries": 310,
+      "lock_sha256": "4844368744392ca0ce2aa8f200af7b5f2390073983f213c9c504a8b304ad5053",
+      "modification_notice": "Modified for Greenmole by its maintainers. Based on Apache Guacamole; see LICENSE and NOTICE.",
+      "angular_lock_entries": [
+        "node_modules/angular"
+      ],
+      "messageformat_lock_entries": [
+        "node_modules/messageformat"
+      ]
+    },
+    "common_js": {
+      "packages": {
+        "follow-redirects": {
+          "name": "follow-redirects",
+          "installed_version": "1.16.1",
+          "lock_version": "1.16.1",
+          "lock_integrity": "sha512-FNvFGzoMLWmE6Yj9spb/zjd7yiNCHiAW9/Tg9CXrQ8wuu32HtlJOwWO11OJafl5FfY3DxTdQ0vj42zU1kvv5jg=="
+        },
+        "markdown-it": {
+          "name": "markdown-it",
+          "installed_version": "14.3.3",
+          "lock_version": "14.3.3",
+          "lock_integrity": "sha512-L//tDAkjTjJCU6pBUSBTgs3Kg4InVaZuUZog/b6V12UKhcDQ7S78877ibbCanRExwPuYP1CZD7Gd2dxSy1GXRg=="
+        },
+        "jsdoc": {
+          "name": "jsdoc",
+          "installed_version": "4.0.5",
+          "lock_version": "4.0.5",
+          "lock_integrity": "sha512-P4C6MWP9yIlMiK8nwoZvxN84vb6MsnXcHuy7XzVOvQoCizWX5JFCBsWIIWKXBltpoRZXddUOVQmCTOZt9yDj9g=="
+        }
+      },
+      "checked_installed_lock_entries": 190,
+      "lock_sha256": "62e206769176db0b8ea5f10ac881488639e7727ad0cf65d011439df98260e27a",
+      "modification_notice": "Modified for Greenmole by its maintainers. Based on Apache Guacamole; see LICENSE and NOTICE.",
+      "angular_lock_entries": [],
+      "messageformat_lock_entries": []
+    },
+    "expected_hashes": {
+      "frontend_lock_sha256": "4844368744392ca0ce2aa8f200af7b5f2390073983f213c9c504a8b304ad5053",
+      "common_js_lock_sha256": "62e206769176db0b8ea5f10ac881488639e7727ad0cf65d011439df98260e27a",
+      "angular_source_sha256": "93a29f37e71cb891a73fb8e4ea23aa679ba40f940195c255698cb371b0311705",
+      "angular_patch_sha256": "aaa8113806ebac8b2813c160982bd531eba8160fb74aeadb6e07217507388985",
+      "angular_license_sha256": "f64ba8a51fa64d7f4616e88d0850eca2aa43c4ca73a798ff92f744012d0ff4df"
+    },
+    "builder_war_sha256": "88cc90cecade77fa6ad583e644fd49834494dc6342076c78ebf6b5783790158f",
+    "runtime_war_sha256": "88cc90cecade77fa6ad583e644fd49834494dc6342076c78ebf6b5783790158f",
+    "builder_war_matches_runtime_war": true,
+    "runtime_angular": {
+      "path": "angular.min.js",
+      "sha256": "b0da57d35c0a1b2677e1b6004ac4f0a81790b24b764f0cc3b381d87848f1f8b9",
+      "only_core_angular_runtime": true,
+      "inline_license_comment": false,
+      "license_location": "META-INF/bundled/greenmole-angularjs/LICENSE"
+    },
+    "packaged_licenses": {
+      "greenmole-angularjs": {
+        "version": "1.8.3-greenmole.1",
+        "files": [
+          "META-INF/bundled/greenmole-angularjs/LICENSE"
+        ],
+        "exact_reviewed_license_present": true
+      },
+      "messageformat-core": {
+        "version": "3.4.1",
+        "files": [
+          "META-INF/bundled/messageformat-core/LICENSE"
+        ],
+        "exact_reviewed_license_present": true
+      },
+      "messageformat-parser-v5": {
+        "version": "5.2.0",
+        "files": [
+          "META-INF/bundled/messageformat-parser-v5/LICENSE"
+        ],
+        "exact_reviewed_license_present": true
+      },
+      "messageformat-runtime": {
+        "version": "3.0.3",
+        "files": [
+          "META-INF/bundled/messageformat-runtime/LICENSE"
+        ],
+        "exact_reviewed_license_present": true
+      },
+      "moo": {
+        "version": "0.5.3",
+        "files": [
+          "META-INF/bundled/moo/LICENSE"
+        ],
+        "exact_reviewed_license_present": true
+      },
+      "safe-identifier": {
+        "version": "0.4.2",
+        "files": [
+          "META-INF/bundled/safe-identifier/LICENSE"
+        ],
+        "exact_reviewed_license_present": true
+      },
+      "make-plural": {
+        "version": "7.5.0",
+        "files": [
+          "META-INF/bundled/make-plural/LICENSE"
+        ],
+        "exact_reviewed_license_present": true
+      },
+      "csv": {
+        "version": "7.0.3",
+        "files": [
+          "META-INF/bundled/csv/LICENSE"
+        ],
+        "exact_reviewed_license_present": true
+      }
+    },
+    "apache_notice_present": true,
+    "temporary_resources_removed": true,
+    "runtime_index_script_assets_present": true
+  },
+  "runtime_angular_browser_tests": [
+    {
+      "version": "1.8.3-greenmole.1",
+      "status": "passed",
+      "count": 24,
+      "failed": 0,
+      "simulated_ie_document_mode": null
+    },
+    {
+      "version": "1.8.3-greenmole.1",
+      "status": "passed",
+      "count": 25,
+      "failed": 0,
+      "simulated_ie_document_mode": 11
+    }
+  ],
+  "deployment": {
+    "guacd_health": "healthy",
+    "version": "1.6.1-greenmole.15",
+    "source_revision": "332fbd8e0a07bfbc6e13ec2c0476d516f9ab9b72",
+    "images": {
+      "guacamole": "sha256:45e14de7d30c7b23ce7be0036b691fefb5f5497e261711bba5a2b3b87bd2ff01",
+      "guacd": "sha256:1eadc954217a707300d46c54878f4382fb77b4fb93d5ea50d80c47ac097dd91a"
+    },
+    "configuration_preserved_except_image_tags": true,
+    "config_files_checked": 16,
+    "container_environment_mounts_and_security_preserved": true,
+    "http_readiness_verified": true,
+    "restart_counts_zero": true,
+    "actual_rdp_session_started": false
+  },
+  "startup_checks": {
+    "web": {
+      "running": true,
+      "restart_count": 0,
+      "startup_error_lines": 0
+    },
+    "gateway": {
+      "running": true,
+      "restart_count": 0,
+      "startup_error_lines": 0
+    }
+  },
+  "github_dependency_graph": [
+    {
+      "name": "markdown-it",
+      "version": "14.3.3"
+    },
+    {
+      "name": "body-parser",
+      "version": "1.20.9"
+    },
+    {
+      "name": "socket.io-parser",
+      "version": "4.2.7"
+    },
+    {
+      "name": "follow-redirects",
+      "version": "1.16.1"
+    },
+    {
+      "name": "brace-expansion",
+      "version": "1.1.21"
+    },
+    {
+      "name": "engine.io",
+      "version": "6.6.11"
+    },
+    {
+      "name": "qs",
+      "version": "6.16.1"
+    },
+    {
+      "name": "@greenmole/angularjs",
+      "version": "1.8.3-greenmole.1"
+    },
+    {
+      "name": "@messageformat/core",
+      "version": "3.4.1"
+    },
+    {
+      "name": "csv-parse",
+      "version": "7.0.3"
+    }
+  ],
+  "github_alerts_at_verification": [
+    {
+      "fixed_at": null,
+      "manifest": "client/guacamole-common-js/package-lock.json",
+      "number": 6,
+      "package": "markdown-it",
+      "state": "open"
+    },
+    {
+      "fixed_at": null,
+      "manifest": "client/guacamole-common-js/package-lock.json",
+      "number": 5,
+      "package": "follow-redirects",
+      "state": "open"
+    },
+    {
+      "fixed_at": null,
+      "manifest": "client/guacamole-common-js/package-lock.json",
+      "number": 4,
+      "package": "follow-redirects",
+      "state": "open"
+    },
+    {
+      "fixed_at": null,
+      "manifest": "client/guacamole-common-js/package-lock.json",
+      "number": 3,
+      "package": "markdown-it",
+      "state": "open"
+    },
+    {
+      "fixed_at": null,
+      "manifest": "client/guacamole-common-js/package-lock.json",
+      "number": 2,
+      "package": "markdown-it",
+      "state": "open"
+    }
+  ],
+  "alert_note": "The five older markdown-it/follow-redirects alerts were still marked open at verification despite patched versions in the committed lockfile, current GitHub dependency graph and actual builder. No alerts were manually dismissed.",
+  "packaged_checks": {
+    "runtime": {
+      "status": "passed",
+      "revision": "332fbd8e0a07bfbc6e13ec2c0476d516f9ab9b72",
+      "version": "1.6.1-greenmole.15",
+      "image_ids": [
+        "sha256:1eadc954217a707300d46c54878f4382fb77b4fb93d5ea50d80c47ac097dd91a",
+        "sha256:45e14de7d30c7b23ce7be0036b691fefb5f5497e261711bba5a2b3b87bd2ff01"
+      ],
+      "isolated_internal_network": true,
+      "production_configuration_mounted": false,
+      "host_ports_published": false,
+      "synthetic_authentication_only": true,
+      "production_unchanged": true,
+      "language_count": 16,
+      "en_pl_version_correct": true,
+      "packaged_keyboard_template_present": true,
+      "authenticated_rdp_mode_enum_correct": true,
+      "norwegian_alias_and_canonical_present": true,
+      "guacd_optional_argument_advertised_once": true,
+      "guacd_arg_count": 90,
+      "rdp_connection_attempted": false,
+      "startup_error_lines": 0,
+      "artifacts": {
+        "archive_entries": 10907,
+        "nested_jars": 43,
+        "war_sha256": "88cc90cecade77fa6ad583e644fd49834494dc6342076c78ebf6b5783790158f",
+        "runtime_node_modules_absent": true,
+        "common_js_build_source_absent": true,
+        "affected_npm_package_payloads_absent": true
+      }
+    },
+    "browser": {
+      "status": "passed",
+      "version": "1.6.1-greenmole.15",
+      "revision": "332fbd8e0a07bfbc6e13ec2c0476d516f9ab9b72",
+      "browser": "155.0.8059.86",
+      "auth": {
+        "status": "passed",
+        "angularVersion": "1.8.3-greenmole.1",
+        "translations": {
+          "locales": [
+            {
+              "locale": "ca",
+              "translatedMessages": 745,
+              "icuMessages": 9,
+              "jsonExampleValid": true
+            },
+            {
+              "locale": "cs",
+              "translatedMessages": 917,
+              "icuMessages": 9,
+              "jsonExampleValid": true
+            },
+            {
+              "locale": "de",
+              "translatedMessages": 864,
+              "icuMessages": 7,
+              "jsonExampleValid": true
+            },
+            {
+              "locale": "en",
+              "translatedMessages": 1007,
+              "icuMessages": 9,
+              "jsonExampleValid": true
+            },
+            {
+              "locale": "es",
+              "translatedMessages": 772,
+              "icuMessages": 5,
+              "jsonExampleValid": true
+            },
+            {
+              "locale": "fr",
+              "translatedMessages": 912,
+              "icuMessages": 9,
+              "jsonExampleValid": true
+            },
+            {
+              "locale": "it",
+              "translatedMessages": 914,
+              "icuMessages": 7,
+              "jsonExampleValid": true
+            },
+            {
+              "locale": "ja",
+              "translatedMessages": 624,
+              "icuMessages": 3,
+              "jsonExampleValid": true
+            },
+            {
+              "locale": "ko",
+              "translatedMessages": 749,
+              "icuMessages": 2,
+              "jsonExampleValid": true
+            },
+            {
+              "locale": "nl",
+              "translatedMessages": 501,
+              "icuMessages": 4,
+              "jsonExampleValid": true
+            },
+            {
+              "locale": "no",
+              "translatedMessages": 490,
+              "icuMessages": 4,
+              "jsonExampleValid": true
+            },
+            {
+              "locale": "pl",
+              "translatedMessages": 809,
+              "icuMessages": 5,
+              "jsonExampleValid": true
+            },
+            {
+              "locale": "pt",
+              "translatedMessages": 765,
+              "icuMessages": 5,
+              "jsonExampleValid": true
+            },
+            {
+              "locale": "ru",
+              "translatedMessages": 683,
+              "icuMessages": 7,
+              "jsonExampleValid": true
+            },
+            {
+              "locale": "tr",
+              "translatedMessages": 961,
+              "icuMessages": 9,
+              "jsonExampleValid": true
+            },
+            {
+              "locale": "zh",
+              "translatedMessages": 920,
+              "icuMessages": 4,
+              "jsonExampleValid": true
+            }
+          ],
+          "examples": {
+            "ja": {
+              "active1": "現在以下のユーザが利用中です。 1 users.",
+              "active2": "現在以下のユーザが利用中です。 2 users.",
+              "anonymous1": "Anonymous",
+              "anonymous2": "Anonymous (2)"
+            },
+            "zh": {
+              "active1": "正在被 1 个用户使用。",
+              "active2": "正在被 2 个用户使用。",
+              "anonymous1": "匿名用户 (1)",
+              "anonymous2": "匿名用户 (2)"
+            }
+          },
+          "failures": [],
+          "actualImportHelpRouteJsonValid": true
+        },
+        "syntheticBadAndGoodLogin": true,
+        "authenticatedRouteAndReload": true,
+        "pluralSelectHashAndUnicodeInterpolation": true,
+        "translationAliases": true,
+        "englishPolishLanguageSwitch": true,
+        "nativeKeyboardMouseAndNumberPreferences": true,
+        "logout": true,
+        "noActualTunnelOrRdpConnection": true,
+        "pageErrors": []
+      },
+      "cases": [
+        {
+          "platform": "Win32",
+          "width": 1024,
+          "initialPreferences": {
+            "inputMethod": "none",
+            "emulateAbsoluteMouse": true
+          },
+          "automaticMode": "windows",
+          "realPackagedControllerAndTemplate": true,
+          "allFourOptionsPersist": true,
+          "queryHintMatchesResolvedPreference": true,
+          "reloadPreservesChoice": true,
+          "noActualTunnelOrRdpConnection": true,
+          "noRemoteInputOrResize": true,
+          "pageErrors": []
+        },
+        {
+          "platform": "iPhone",
+          "width": 375,
+          "initialPreferences": {
+            "inputMethod": "native",
+            "emulateAbsoluteMouse": false
+          },
+          "automaticMode": "mac",
+          "realPackagedControllerAndTemplate": true,
+          "allFourOptionsPersist": true,
+          "queryHintMatchesResolvedPreference": true,
+          "reloadPreservesChoice": true,
+          "noActualTunnelOrRdpConnection": true,
+          "noRemoteInputOrResize": true,
+          "pageErrors": []
+        }
+      ],
+      "screenshots_visually_reviewed": [
+        "packaged-auth-preferences.png",
+        "packaged-keyboard-375.png",
+        "packaged-keyboard-1024.png"
+      ]
+    },
+    "cleanup": {
+      "temporary_containers_and_network_removed": true,
+      "temporary_synthetic_config_removed": true,
+      "production_unchanged": true,
+      "owned_ssh_forward_removed": true
+    }
+  }
+}
