@@ -214,11 +214,13 @@
 
     <dependencies>
 
-        <!-- Java servlet API -->
+        <!-- Standard container API, including ServletContainerInitializer.
+             Keep this explicit rather than relying on a container implementation
+             to supply the bootstrap API transitively. -->
         <dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
-            <version>2.5</version>
+            <artifactId>javax.servlet-api</artifactId>
+            <version>3.1.0</version>
             <scope>provided</scope>
         </dependency>
 
