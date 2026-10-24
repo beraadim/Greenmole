@@ -21,6 +21,7 @@
         "client/guacamole-common/src/main/java/org/apache/guacamole/protocol/ConfiguredGuacamoleSocket.java",
         "client/guacamole-common/src/main/java/org/apache/guacamole/protocol/GuacamoleClientInformation.java",
         "client/guacamole-common/src/main/java/org/apache/guacamole/websocket/GuacamoleWebSocketTunnelEndpoint.java",
+        "client/guacamole-ext/src/main/java/org/apache/guacamole/protocols/ProtocolInfo.java",
         "client/guacamole-ext/src/main/resources/org/apache/guacamole/protocols/rdp.json",
         "client/guacamole/pom.xml",
         "client/guacamole/src/main/frontend/package.json",

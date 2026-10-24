@@ -1,4 +1,6 @@
 /*
+ * Modified for Greenmole by its maintainers.
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,6 +21,7 @@
 
 package org.apache.guacamole.protocols;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.ArrayList;
 import java.util.Collection;
 import org.apache.guacamole.form.Form;
@@ -29,6 +32,9 @@ import org.apache.guacamole.form.Form;
  * allows the parameters of a protocol to be exposed to the user as friendly
  * groupings of fields.
  */
+// The attribution marker is metadata, not a protocol parameter. Ignore only
+// this named field; misspelled or unexpected protocol fields remain errors.
+@JsonIgnoreProperties("_greenmoleModificationNotice")
 public class ProtocolInfo {
 
     /**
